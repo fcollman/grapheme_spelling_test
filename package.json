@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "reference": "vite-node scripts/generate-reference.ts"
+    "reference": "vite-node scripts/generate-reference.ts",
+    "check:single": "node scripts/check-single-file.mjs"
   },
   "dependencies": {
     "phonemizer": "^1.2.1",

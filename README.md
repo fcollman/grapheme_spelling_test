@@ -99,10 +99,41 @@ another computer.
 
 ```bash
 npm install
-npm run dev      # development server
-npm test         # engine test suite
-npm run build    # produces dist/index.html — the single deliverable
+npm run dev            # development server
+npm test               # engine test suite
+npm run build          # produces dist/index.html — the single deliverable
+npm run check:single   # asserts the build is one self-contained file
+npm run reference      # regenerates PHONEME-CATEGORIES.md from the data files
 ```
+
+### Deployment
+
+Pushing to `main` builds and publishes to GitHub Pages via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+
+**https://fcollman.github.io/grapheme_spelling_test/**
+
+Pull requests run the same build and tests but do not deploy; they attach the
+built `index.html` as a downloadable artifact instead.
+
+Before publishing, the workflow gates on four things:
+
+| Gate | Why |
+|---|---|
+| `tsc --noEmit` | Type errors |
+| `npm test` | The engine suite, including every example word in the phonics tables |
+| Reference is current | Fails if `PHONEME-CATEGORIES.md` drifts from the data files |
+| `npm run check:single` | **The important one.** Fails if `dist/` is more than one file or `index.html` references anything external |
+
+That last check guards the property the project rests on. If a future change emits
+a separate asset, the hosted site would still work while the double-click-the-file
+use case silently broke — and it would only break for the teacher, never on a dev
+server. This turns that into a build failure.
+
+Hosting the app publicly does not expose any student data: everything stays in the
+browser's local storage on the teacher's own machine, and the page makes no network
+requests at all after loading. The Pages site is just a convenient way to get the
+file — "Save Page As" gives the same standalone `index.html` that works offline.
 
 ### How it works
 

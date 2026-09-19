@@ -1,0 +1,78 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Needed by actions/deploy-pages to publish without a personal token.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The embedded eSpeak engine inflates its data with DecompressionStream,
+          # which needs Node 18 or newer.
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Check the phonics reference is up to date
+        run: |
+          npm run reference
+          if ! git diff --quiet -- PHONEME-CATEGORIES.md; then
+            echo "::error::PHONEME-CATEGORIES.md is stale. Run 'npm run reference' and commit the result."
+            git diff -- PHONEME-CATEGORIES.md
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Check the build is a single self-contained file
+        run: npm run check:single
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      # So a PR build can be downloaded and opened locally without deploying.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phoneme-analyzer-html
+          path: dist/index.html
+          if-no-files-found: error
+
+  deploy:
+    # Only publish from main; pull requests just build and test.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
