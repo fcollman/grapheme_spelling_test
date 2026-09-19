@@ -53,7 +53,7 @@ function move<T extends { id: string }>(list: T[], id: string, delta: number): T
 function reducer(project: Project, action: Action): Project {
   switch (action.type) {
     case 'replaceProject':
-      return action.project
+      return normalize(action.project)
 
     case 'addStudent': {
       const name = action.name.trim()
@@ -203,10 +203,23 @@ interface Store {
 
 const StoreContext = createContext<Store | null>(null)
 
+/**
+ * Fills in any setting a stored project predates.
+ *
+ * `notation` is forced back to sound spellings: the IPA toggle was removed from
+ * the UI, so a project saved while it was switched on would otherwise be stuck
+ * in IPA with no control to change it back.
+ */
+function normalize(stored: Project): Project {
+  return {
+    ...stored,
+    settings: { ...DEFAULT_SETTINGS, ...stored.settings, notation: 'sound' },
+  }
+}
+
 function init(): Project {
   const stored = load()
-  if (!stored) return emptyProject()
-  return { ...stored, settings: { ...DEFAULT_SETTINGS, ...stored.settings } }
+  return stored ? normalize(stored) : emptyProject()
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

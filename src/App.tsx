@@ -64,18 +64,6 @@ export function App() {
         </div>
 
         <div className="group">
-          <label className="check">
-            Notation
-            <select
-              value={project.settings.notation}
-              onChange={(e) =>
-                dispatch({ type: 'updateSettings', settings: { notation: e.target.value as 'sound' | 'ipa' } })
-              }
-            >
-              <option value="sound">/sh/ sound spellings</option>
-              <option value="ipa">/ʃ/ IPA</option>
-            </select>
-          </label>
           <button className="btn" onClick={() => saveProjectFile(project)}>
             Save file
           </button>

@@ -33,6 +33,10 @@ export interface Test {
 }
 
 export interface Settings {
+  /**
+   * Always 'sound' for now. The IPA toggle was removed from the UI, but the
+   * plumbing is left in place so it can be switched back on in one component.
+   */
   notation: Notation
   /**
    * eSpeak reduces unstressed vowels to schwa, which otherwise reads as a vowel
