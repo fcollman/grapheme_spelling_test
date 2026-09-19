@@ -692,6 +692,145 @@ th.focused {
   border-top: 1px solid var(--line);
 }
 
+/* ---------- student profile ---------- */
+
+.profile {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.profile > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 2px solid var(--line-strong);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.profile h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.profile h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 18px 0 8px;
+}
+
+.profile .sub {
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+.profile .score {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.profile .score strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.profile .score span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.profile-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px 22px;
+}
+
+.profile-columns h4 {
+  margin-top: 8px;
+}
+
+ul.chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+ul.chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f2f6;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+ul.chips .frac {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+ul.errorlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ul.errorlist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+ul.errorlist .target {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+ul.errorlist .sounds {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+ul.errorlist .arrow {
+  color: var(--muted);
+}
+
+ul.errorlist .wrote {
+  color: var(--wrong-ink);
+  font-weight: 600;
+}
+
+/* Right sound, wrong spelling: an error, but not a sound error. */
+ul.errorlist.plausible .wrote {
+  color: var(--plausible-ink);
+}
+
+ul.errorlist .in {
+  color: var(--muted);
+}
+
+ul.errorlist em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 /* ---------- empty / loading ---------- */
 
 .empty {
@@ -743,6 +882,18 @@ th.focused {
     padding: 0;
     margin-bottom: 10px;
     break-inside: avoid;
+  }
+
+  /* One student per sheet, so a profile can go straight into a file. */
+  .profile {
+    border: none;
+    padding: 0;
+    break-after: page;
+    break-inside: auto;
+  }
+
+  .profile:last-of-type {
+    break-after: auto;
   }
 
   .print-title {

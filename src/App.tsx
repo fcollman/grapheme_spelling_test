@@ -4,6 +4,8 @@ import { useAnalysis } from './state/useAnalysis'
 import { readProjectFile, saveProjectFile } from './state/persist'
 import { EntryGrid } from './pages/EntryGrid'
 import { GraphemeAnalysis } from './pages/GraphemeAnalysis'
+import { StudentProfile } from './pages/StudentProfile'
+import { ReportProgress } from './pages/ReportProgress'
 import { ReportGraphemeAccuracy } from './pages/ReportGraphemeAccuracy'
 import { ReportGraphemeConfusion } from './pages/ReportGraphemeConfusion'
 import { ReportAccuracy } from './pages/ReportAccuracy'
@@ -15,6 +17,8 @@ import './ui/styles.css'
 const TABS = [
   { id: 'entry', label: 'Spelling test', group: 'Enter' },
   { id: 'analysis', label: 'Grapheme analysis', group: 'Enter' },
+  { id: 'profile', label: 'Student profile', group: 'Per student' },
+  { id: 'progress', label: 'Progress over time', group: 'Per student' },
   { id: 'g-accuracy', label: 'Accuracy by grapheme', group: 'By spelling' },
   { id: 'g-confusion', label: 'Grapheme confusion', group: 'By spelling' },
   { id: 'accuracy', label: 'Accuracy by phoneme', group: 'By sound' },
@@ -111,6 +115,9 @@ export function App() {
 
       {tab === 'entry' && <EntryGrid />}
       {tab === 'analysis' && <GraphemeAnalysis analysis={analysis} />}
+      {tab === 'profile' && <StudentProfile analysis={analysis} />}
+      {/* Mounted only when open, so it does not analyse every test in the background. */}
+      {tab === 'progress' && <ReportProgress />}
       {tab === 'g-accuracy' && <ReportGraphemeAccuracy analysis={analysis} />}
       {tab === 'g-confusion' && <ReportGraphemeConfusion analysis={analysis} />}
       {tab === 'accuracy' && <ReportAccuracy analysis={analysis} />}

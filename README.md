@@ -1,4 +1,4 @@
-# Phoneme Analyzer
+# Graphene Spelling Test
 
 Turns a spelling test into a sound-by-sound picture of what each student can and
 cannot encode — including nonsense words.
@@ -9,7 +9,10 @@ would sound like read aloud, lines the two up, and tells you which *sounds* went
 wrong rather than only which words did.
 
 **It runs as a single file with no installation, no server, and no internet
-connection.** Student names and spellings never leave the computer.
+connection.** Student names and spellings never leave the computer.  You can save and load students and tests via a json file that contains all the information you entered.
+
+A version of this is deployed to github pages at
+<https://fcollman.github.io/grapheme_spelling_test/> with the latest compiled version of the code.
 
 ---
 
@@ -50,24 +53,38 @@ connection.** Student names and spellings never leave the computer.
 
 ### Reports
 
+**Per student** — for IEP meetings and parent conferences:
+
+4. **Student profile** — one page about one student instead of the whole class:
+   what is secure, what needs work, and the errors quoted with the word they came
+   from (*wrote “s” for `sh` in **ship***). Sound errors and spelling-only errors
+   are listed separately, because they need different teaching. Choosing "All
+   students" prints one page per student. A category counts as secure at **80%**,
+   the threshold usually used to decide something still needs teaching.
+5. **Progress over time** — accuracy on each test, oldest first, so growth on an
+   IEP goal can be shown rather than a single snapshot. By category by default
+   (a category recurs across tests; an individual spelling may not), with a
+   breakdown by spelling available. A **dash means that category was not on that
+   test** — it is not a zero and does not count against anyone.
+
 **By spelling** — what the student actually wrote:
 
-4. **Accuracy by grapheme** — how often each unit was spelled right, grouped
+6. **Accuracy by grapheme** — how often each unit was spelled right, grouped
    under the phonics categories so a whole category reads at a glance. Patterns
    that span several columns, like the `dw` in *dwell*, get their own row too and
    count as right only when every column they cover is right.
-5. **Grapheme confusion** — which spelling was written where another was needed:
+7. **Grapheme confusion** — which spelling was written where another was needed:
    `k` for `ck`, `kw` for `qu`, `tle` for `ttle`. This is where orthographic error
    patterns show up most directly.
 
 **By sound** — what the student heard and encoded, independent of spelling choice:
 
-6. **Accuracy by phoneme** — how many times each student got each sound right,
+8. **Accuracy by phoneme** — how many times each student got each sound right,
    with a whole-class column to show what needs reteaching to everybody.
-7. **Phoneme misuse** — how often a student reached for a sound that was not the
+9. **Phoneme misuse** — how often a student reached for a sound that was not the
    one needed. A big number usually means a default they fall back on.
-8. **Phoneme confusion** — which sound got written for which. The green diagonal
-   is correct; everything off it is a specific swap to teach against.
+10. **Phoneme confusion** — which sound got written for which. The green diagonal
+    is correct; everything off it is a specific swap to teach against.
 
 Every tab has **Download CSV** and **Print / Save PDF**.
 
@@ -151,6 +168,7 @@ its own dictionary.
 
 | Module | Responsibility |
 |---|---|
+| `state/useAnalysis.ts` | `analyzeTest` for one test; `useAllTests` for the progress report |
 | `engine/phonemize.ts` | eSpeak wrapper, batching, memoisation |
 | `engine/normalize.ts` | eSpeak's run-together IPA → the 45-phoneme display inventory |
 | `engine/fallback.ts` | Detects and repairs eSpeak reading letters aloud |

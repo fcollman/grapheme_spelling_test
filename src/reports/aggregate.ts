@@ -1,11 +1,11 @@
 import type { Mark, WordAnalysis } from '../engine/align'
 import type { PhonemeId } from '../data/phonemes'
 import { REPORT_ORDER } from '../data/phonemes'
-import { CATEGORIES, COLLAPSING_CATEGORIES, type CategoryId } from '../data/categories'
+import { CATEGORIES, COLLAPSING_CATEGORIES, category, type CategoryId } from '../data/categories'
 import { unitResults } from '../engine/units'
 import type { PatternMatch } from '../engine/patterns'
 import type { Project, Test } from '../state/types'
-import { cellKey, type AnalysisResult } from '../state/useAnalysis'
+import { cellKey, type TestAnalysis } from '../state/useAnalysis'
 
 /** Marker used for an omitted sound (row/column ∅ in the confusion matrix). */
 export const NONE = '∅'
@@ -51,6 +51,34 @@ export interface Reports {
   graphemeConfusion: Map<string, Map<string, Map<string, number>>>
   /** Distinct spellings students actually wrote, for confusion matrix columns. */
   writtenSpellings: string[]
+
+  /**
+   * The words behind each error, so a report can say "wrote `s` for `sh` in
+   * *ship*" rather than only "1 time". Keyed by `exampleKey`, capped per key.
+   */
+  examples: Map<string, ErrorExample[]>
+}
+
+export interface ErrorExample {
+  word: string
+  wrote: string
+  /**
+   * Kept so a report can separate a genuine sound error from a phonetically
+   * plausible spelling. "kat" for "cat" and "cet" for "cat" are both incorrect,
+   * but they call for completely different teaching.
+   */
+  mark: Mark
+}
+
+/** Enough examples to be convincing in a meeting, few enough to bound memory. */
+const MAX_EXAMPLES = 3
+
+export function exampleKey(studentId: string, unitKey: string, wrote: string): string {
+  return `${studentId}|${unitKey}|${wrote}`
+}
+
+export function getExamples(reports: Reports, studentId: string, unitKey: string, wrote: string) {
+  return reports.examples.get(exampleKey(studentId, unitKey, wrote)) ?? []
 }
 
 export const CLASS = '__class'
@@ -96,7 +124,7 @@ function nested<K1, V>(map: Map<K1, V>, key: K1, make: () => V): V {
  * Only attempted words count: a word a student did not write produces no
  * opportunities, so it shows as 0/0 rather than dragging accuracy down.
  */
-export function buildReports(project: Project, test: Test, analysis: AnalysisResult): Reports {
+export function buildReports(project: Project, test: Test, analysis: TestAnalysis): Reports {
   const amber = project.settings.amberCountsCorrect
 
   const accuracy = new Map<PhonemeId, Map<string, Tally>>()
@@ -109,6 +137,16 @@ export function buildReports(project: Project, test: Test, analysis: AnalysisRes
   const graphemeConfusion = new Map<string, Map<string, Map<string, number>>>()
   const graphemeRows = new Map<string, GraphemeRow>()
   const seenSpellings = new Set<string>()
+  const examples = new Map<string, ErrorExample[]>()
+
+  const addExample = (studentId: string, unitKey: string, wrote: string, word: string, mark: Mark) => {
+    const key = exampleKey(studentId, unitKey, wrote)
+    const list = examples.get(key) ?? []
+    if (list.length < MAX_EXAMPLES) {
+      list.push({ word, wrote, mark })
+      examples.set(key, list)
+    }
+  }
 
   const addGraphemeConfusion = (studentId: string, key: string, written: string) => {
     for (const who of [studentId, CLASS]) {
@@ -167,15 +205,17 @@ export function buildReports(project: Project, test: Test, analysis: AnalysisRes
       if (a.attempted) {
         const results = unitResults(a, units)
 
-        const record = (key: string, correct: boolean, written: string) => {
+        const record = (key: string, correct: boolean, written: string, mark: Mark) => {
           tally(nested(graphemeAccuracy, key, () => new Map<string, Tally>()), student.id, correct)
           tally(nested(graphemeAccuracy, key, () => new Map<string, Tally>()), CLASS, correct)
           seenSpellings.add(written)
           addGraphemeConfusion(student.id, key, written)
+          // Only anything less than exact is worth quoting as evidence.
+          if (mark !== 'exact') addExample(student.id, key, written, word.text, mark)
         }
 
         for (const r of results) {
-          record(r.unit.key, isCorrect(r.mark, amber), r.studentLetters || NONE)
+          record(r.unit.key, isCorrect(r.mark, amber), r.studentLetters || NONE, r.mark)
         }
 
         // A spanning pattern counts as right only when every column it covers is.
@@ -184,10 +224,18 @@ export function buildReports(project: Project, test: Test, analysis: AnalysisRes
             (r) => r.unit.startSlot < p.end && r.unit.endSlot > p.start,
           )
           if (covered.length === 0) continue
+          // A pattern is only a sound error if one of its parts is; otherwise the
+          // sounds were all there and only the spelling differed.
+          const patternMark: Mark = covered.every((r) => r.mark === 'exact')
+            ? 'exact'
+            : covered.every((r) => r.mark === 'exact' || r.mark === 'plausible')
+              ? 'plausible'
+              : 'wrong'
           record(
             patternRowKey(p),
             covered.every((r) => isCorrect(r.mark, amber)),
             covered.map((r) => r.studentLetters).join('') || NONE,
+            patternMark,
           )
         }
       }
@@ -251,6 +299,7 @@ export function buildReports(project: Project, test: Test, analysis: AnalysisRes
     writtenSpellings: [...seenSpellings].sort((a, b) =>
       a === NONE ? 1 : b === NONE ? -1 : a.localeCompare(b),
     ),
+    examples,
   }
 }
 
@@ -264,6 +313,127 @@ export function getMisuse(reports: Reports, phoneme: PhonemeId, who: string): nu
 
 export function getConfusion(reports: Reports, who: string, target: string, produced: string): number {
   return reports.confusion.get(who)?.get(target)?.get(produced) ?? 0
+}
+
+/* ------------------------------------------------------------------ *
+ * Progress across tests
+ * ------------------------------------------------------------------ */
+
+export type ProgressLevel = 'category' | 'grapheme'
+
+export interface ProgressPoint {
+  testId: string
+  testName: string
+  date: string
+  /**
+   * null means the row was not assessed in that test — either the spelling never
+   * came up, or the student attempted none of the words containing it. Showing
+   * this as 0/0 rather than as a zero matters: a gap must never read as
+   * regression on a report a teacher takes into an IEP meeting.
+   */
+  tally: Tally | null
+}
+
+export interface ProgressRow {
+  key: string
+  label: string
+  category: CategoryId
+  /** The sounds, for grapheme rows. Empty for category rows. */
+  phonemes: PhonemeId[]
+  points: ProgressPoint[]
+}
+
+/** Tests in date order, falling back to the order they were created in. */
+export function testsInOrder(project: Project): Test[] {
+  return [...project.tests].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      project.tests.indexOf(a) - project.tests.indexOf(b),
+  )
+}
+
+/**
+ * Accuracy for each category (or each grapheme) across every test, for one
+ * student or for the class.
+ *
+ * Categories are the better default: an individual spelling may appear on one
+ * test and never again, whereas a category almost always recurs, so the line is
+ * actually comparable.
+ */
+export function buildProgress(
+  project: Project,
+  byTest: Map<string, TestAnalysis>,
+  who: string,
+  level: ProgressLevel,
+): ProgressRow[] {
+  const tests = testsInOrder(project)
+  const perTest = tests.map((test) => {
+    const analysis = byTest.get(test.id)
+    return { test, reports: analysis ? buildReports(project, test, analysis) : null }
+  })
+
+  const rows = new Map<string, ProgressRow>()
+  const categoryRank = new Map(CATEGORIES.map((c, i) => [c.id, i]))
+
+  const rowFor = (key: string, label: string, category: CategoryId, phonemes: PhonemeId[]) => {
+    let row = rows.get(key)
+    if (!row) {
+      row = { key, label, category, phonemes, points: [] }
+      rows.set(key, row)
+    }
+    return row
+  }
+
+  for (const { test, reports } of perTest) {
+    const stamp = { testId: test.id, testName: test.name, date: test.date }
+
+    if (!reports) {
+      for (const row of rows.values()) row.points.push({ ...stamp, tally: null })
+      continue
+    }
+
+    // Sum this test's tallies into whichever rows the chosen level asks for.
+    const totals = new Map<string, Tally>()
+    const meta = new Map<string, { label: string; category: CategoryId; phonemes: PhonemeId[] }>()
+
+    for (const g of reports.graphemes) {
+      const key = level === 'category' ? g.category : g.key
+      const label = level === 'category' ? category(g.category).label : g.patternLabel ?? g.letters
+      if (!meta.has(key)) {
+        meta.set(key, {
+          label,
+          category: g.category,
+          phonemes: level === 'category' ? [] : g.phonemes,
+        })
+      }
+      const t = getGraphemeTally(reports, g.key, who)
+      const acc = totals.get(key) ?? { correct: 0, total: 0 }
+      acc.correct += t.correct
+      acc.total += t.total
+      totals.set(key, acc)
+    }
+
+    for (const [key, info] of meta) rowFor(key, info.label, info.category, info.phonemes)
+
+    for (const row of rows.values()) {
+      const t = totals.get(row.key)
+      row.points.push({ ...stamp, tally: t && t.total > 0 ? t : null })
+    }
+  }
+
+  // A row created part-way through needs blank points for the earlier tests.
+  for (const row of rows.values()) {
+    while (row.points.length < tests.length) {
+      const test = tests[row.points.length]
+      row.points.unshift({ testId: test.id, testName: test.name, date: test.date, tally: null })
+    }
+  }
+
+  return [...rows.values()].sort(
+    (a, b) =>
+      (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99) ||
+      a.label.localeCompare(b.label),
+  )
 }
 
 export function getGraphemeTally(reports: Reports, key: string, who: string): Tally {
