@@ -1,0 +1,33 @@
+Phoneme Analyzer
+Copyright (C) 2026
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See LICENSE for the full text.
+
+---------------------------------------------------------------------------
+Third-party components
+---------------------------------------------------------------------------
+
+eSpeak NG
+  https://github.com/espeak-ng/espeak-ng
+  Licensed under the GNU General Public License v3.0 or later.
+
+  The built index.html embeds eSpeak NG (compiled to run in the browser) as its
+  grapheme-to-phoneme engine. Because eSpeak NG is GPLv3, the distributed
+  index.html is a combined work governed by the GPLv3, which is why this project
+  carries that license.
+
+phonemizer.js
+  https://github.com/xenova/phonemizer.js
+  Licensed under the Apache License 2.0.
+  A thin browser wrapper around the eSpeak NG build above.
+
+React
+  https://github.com/facebook/react
+  Licensed under the MIT License.
+
+No student data is transmitted anywhere by this program. Everything a teacher
+enters stays in their own browser's local storage and in files they save
+themselves.
