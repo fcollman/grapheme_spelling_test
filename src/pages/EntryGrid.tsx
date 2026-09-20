@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import { cleanWord } from '../engine/phonemize'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
@@ -12,6 +13,7 @@ import { exampleProject } from '../state/example'
  */
 export function EntryGrid() {
   const { project, test, dispatch } = useStore()
+  const names = useStudentNames()
   const [wordDraft, setWordDraft] = useState('')
   const [studentDraft, setStudentDraft] = useState('')
 
@@ -70,7 +72,7 @@ export function EntryGrid() {
   }
 
   const exportCsv = () => {
-    const rows: string[][] = [['Word', 'Type', ...project.students.map((s) => s.name)]]
+    const rows: string[][] = [['Word', 'Type', ...project.students.map((s) => names(s.id))]]
     for (const w of test.words) {
       rows.push([
         w.text,
@@ -165,13 +167,17 @@ export function EntryGrid() {
                 {project.students.map((s) => (
                   <th key={s.id}>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={s.name}
-                        aria-label={`Name for ${s.name}`}
-                        style={{ width: 110, padding: '2px 5px' }}
-                        onChange={(e) => dispatch({ type: 'renameStudent', id: s.id, name: e.target.value })}
-                      />
+                      {project.settings.anonymize ? (
+                        <span style={{ width: 110, display: 'inline-block' }}>{names(s.id)}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={s.name}
+                          aria-label={`Name for ${s.name}`}
+                          style={{ width: 110, padding: '2px 5px' }}
+                          onChange={(e) => dispatch({ type: 'renameStudent', id: s.id, name: e.target.value })}
+                        />
+                      )}
                       <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
                         <button
                           className="icon"
@@ -189,7 +195,7 @@ export function EntryGrid() {
                         </button>
                         <button
                           className="icon"
-                          title={`Remove ${s.name}`}
+                          title={`Remove ${names(s.id)}`}
                           onClick={() => dispatch({ type: 'removeStudent', id: s.id })}
                         >
                           ✕
@@ -254,7 +260,7 @@ export function EntryGrid() {
                         <input
                           type="text"
                           value={value}
-                          aria-label={`${s.name} wrote for ${w.text}`}
+                          aria-label={`${names(s.id)} wrote for ${w.text}`}
                           autoComplete="off"
                           autoCapitalize="off"
                           autoCorrect="off"

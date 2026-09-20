@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import { cellKey, useAllTests } from '../state/useAnalysis'
 import type { Mark } from '../engine/align'
 import {
@@ -15,7 +16,10 @@ import {
 import { CATEGORIES, category, type CategoryId } from '../data/categories'
 import { displayList, type Notation } from '../data/phonemes'
 import { CategoryDot } from '../components/CategoryTag'
+import { Fraction } from '../components/Fraction'
 import { TestPicker } from '../components/TestPicker'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 import { scaleColor, scaleInk } from '../components/Legend'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
@@ -134,6 +138,7 @@ function ErrorList({
 
 export function StudentProfile() {
   const { project } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
   const [who, setWho] = useState<string>('all')
 
@@ -171,7 +176,7 @@ export function StudentProfile() {
     for (const s of shown) {
       for (const c of summarise(reports, s.id)) {
         rows.push([
-          s.name,
+          names(s.id),
           'Category',
           category(c.id).label,
           '',
@@ -183,7 +188,7 @@ export function StudentProfile() {
       }
       for (const e of errorLines(reports, s.id)) {
         rows.push([
-          s.name,
+          names(s.id),
           e.mark === 'plausible' ? 'Spelling error' : 'Sound error',
           e.row.patternLabel ?? e.row.letters,
           displayList(e.row.phonemes, notation),
@@ -223,7 +228,7 @@ export function StudentProfile() {
             <option value="all">All students (one page each)</option>
             {project.students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {names(s.id)}
               </option>
             ))}
           </select>
@@ -265,6 +270,7 @@ function Profile({
   sources: ReportSource[]
 }) {
   const { project } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
 
   const summary = summarise(reports, student.id)
@@ -288,24 +294,40 @@ function Profile({
   const needsWork = summary.filter((c) => c.total > 0 && c.correct / c.total < MASTERY)
   const notAssessed = summary.filter((c) => c.total === 0)
 
+  const [drill, setDrill] = useState<Drill | null>(null)
+
   const single = sources.length === 1
   const span =
     single
       ? `${sources[0].test.name} · ${sources[0].test.date}`
       : `${sources.length} tests · ${sources[0].test.date} to ${sources[sources.length - 1].test.date}`
 
+  /** Opens every answer behind one category figure, across the selected tests. */
+  const openDrill = (id: CategoryId) =>
+    setDrill({
+      kind: 'category',
+      key: id,
+      label: category(id).label,
+      studentId: student.id,
+      sources,
+      scopeLabel: span,
+    })
+
   return (
     <article className="profile">
       <header>
         <div>
-          <h3>{student.name}</h3>
+          <h3>{names(student.id)}</h3>
           <p className="sub">{span}</p>
         </div>
         <div className="score">
           <strong>
             {totalCorrect}/{totalAttempted}
           </strong>
-          <span>words spelled correctly</span>
+          <span>
+            words spelled correctly
+            {totalAttempted > 0 && ` · ${Math.round((totalCorrect / totalAttempted) * 100)}%`}
+          </span>
         </div>
       </header>
 
@@ -319,7 +341,10 @@ function Profile({
               {secure.map((c) => (
                 <li key={c.id}>
                   <CategoryDot id={c.id} />
-                  {category(c.id).label} <span className="frac">{c.correct}/{c.total}</span>
+                  {category(c.id).label}
+                  <span className="frac">
+                    <Fraction correct={c.correct} total={c.total} inline />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -335,7 +360,10 @@ function Profile({
               {needsWork.map((c) => (
                 <li key={c.id}>
                   <CategoryDot id={c.id} />
-                  {category(c.id).label} <span className="frac">{c.correct}/{c.total}</span>
+                  {category(c.id).label}
+                  <span className="frac">
+                    <Fraction correct={c.correct} total={c.total} inline />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -368,11 +396,16 @@ function Profile({
                     <CategoryDot id={c.id} />
                     {category(c.id).label}
                   </th>
-                  <td className="num">
+                  <td
+                    className={`num ${c.total > 0 ? 'drillable' : ''}`}
+                    onClick={() => c.total > 0 && openDrill(c.id)}
+                  >
                     {c.correct}/{c.total}
                   </td>
                   <td
-                    className="num"
+                    className={`num ${c.total > 0 ? 'drillable' : ''}`}
+                    onClick={() => c.total > 0 && openDrill(c.id)}
+                    title={c.total > 0 ? 'Click to see every example' : undefined}
                     style={{
                       background: frac === null ? 'var(--none-bg)' : scaleColor(frac),
                       color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
@@ -483,6 +516,8 @@ function Profile({
           </div>
         </>
       )}
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </article>
   )
 }

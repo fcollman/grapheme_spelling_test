@@ -44,6 +44,6 @@ export function exampleProject(): Project {
       },
     ],
     activeTestId: 'ex_test_1',
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false },
+    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false },
   }
 }

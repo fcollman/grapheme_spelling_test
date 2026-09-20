@@ -103,6 +103,24 @@ export function App() {
           <button className="btn danger" disabled={!hasData} onClick={() => setPending('clear')}>
             Clear data
           </button>
+          {/*
+            For showing one family where their child sits relative to the class
+            without showing them the rest of the class by name. Display only —
+            the real names are untouched and come straight back.
+          */}
+          <label
+            className={`check toggle ${project.settings.anonymize ? 'on' : ''}`}
+            title="Replace every student name with Student 1, Student 2, … everywhere, including printouts and CSVs"
+          >
+            <input
+              type="checkbox"
+              checked={project.settings.anonymize}
+              onChange={(e) =>
+                dispatch({ type: 'updateSettings', settings: { anonymize: e.target.checked } })
+              }
+            />
+            Hide student names
+          </label>
           <input
             ref={fileInput}
             type="file"

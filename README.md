@@ -104,7 +104,17 @@ A version of this is deployed to github pages at
 10. **Phoneme confusion** — which sound got written for which. The green diagonal
     is correct; everything off it is a specific swap to teach against.
 
+**Click any accuracy figure** to open the answers behind it — which words, which
+students, what they wrote for that one unit, and whether each counted. The list is
+produced by walking the same answers the report counted, so it always adds up to
+the number you clicked. Escape or **Close** dismisses it, and it exports to CSV too.
+
 Every tab has **Download CSV** and **Print / Save PDF**.
+
+**Hide student names** at the top swaps every name for "Student 1", "Student 2" …
+everywhere at once, including printouts and CSVs, so you can show one family where
+their child sits relative to the class without showing them the rest of the class.
+It is display only — the real names come straight back when you switch it off.
 
 ### Saving your work
 

@@ -358,6 +358,6 @@ export function demoProject(): Project {
     students,
     tests,
     activeTestId: tests[tests.length - 1].id,
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false },
+    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false },
   }
 }

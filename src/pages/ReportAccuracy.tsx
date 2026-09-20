@@ -1,11 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import type { AnalysisResult } from '../state/useAnalysis'
 import { buildReports, CLASS, getTally } from '../reports/aggregate'
 import { display, get } from '../data/phonemes'
 import { scaleColor, scaleInk } from '../components/Legend'
+import { Fraction, percentOf } from '../components/Fraction'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 
 /**
  * Rows are the phonemes this test actually covered, columns are students, plus a
@@ -13,15 +17,25 @@ import { toCsv } from '../export/csv'
  */
 export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
   const { project, test, dispatch } = useStore()
+  const names = useStudentNames()
+  const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
   const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
 
+  // Whole class first: the summary is what decides what to reteach, so it should
+  // not need scrolling past a full roster to reach.
+  const columns = [
+    { id: CLASS, name: 'Whole class' },
+    ...project.students.map((s) => ({ id: s.id, name: names(s.id) })),
+  ]
+
   const exportCsv = () => {
-    const rows: string[][] = [['Sound', 'Key word', ...project.students.map((s) => s.name), 'Whole class']]
+    const rows: string[][] = [['Sound', 'Key word', ...columns.map((c) => c.name)]]
     for (const p of reports.phonemes) {
-      const cells = [...project.students.map((s) => s.id), CLASS].map((who) => {
+      const cells = columns.map(({ id: who }) => {
         const t = getTally(reports, p, who)
-        return `${t.correct}/${t.total}`
+        const pct = percentOf(t.correct, t.total)
+        return pct ? `${t.correct}/${t.total} (${pct})` : `${t.correct}/${t.total}`
       })
       rows.push([display(p, notation), get(p).example, ...cells])
     }
@@ -36,8 +50,6 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
       </section>
     )
   }
-
-  const columns = [...project.students.map((s) => ({ id: s.id, name: s.name })), { id: CLASS, name: 'Whole class' }]
 
   return (
     <section className="panel">
@@ -78,7 +90,7 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
               <th className="c1">Sound</th>
               <th className="c2">As in</th>
               {columns.map((c) => (
-                <th key={c.id} className="num">
+                <th key={c.id} className={`num ${c.id === CLASS ? 'classcol' : ''}`}>
                   {c.name}
                 </th>
               ))}
@@ -95,7 +107,18 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
                   return (
                     <td
                       key={c.id}
-                      className="num"
+                      className={`num drillable ${c.id === CLASS ? 'classcol' : ''}`}
+                      onClick={() =>
+                        setDrill({
+                          kind: 'phoneme',
+                          key: p,
+                          label: display(p, notation),
+                          sounds: [p],
+                          studentId: c.id,
+                          sources: [{ test, analysis }],
+                          scopeLabel: test.name,
+                        })
+                      }
                       style={{
                         background: frac === null ? 'var(--none-bg)' : scaleColor(frac),
                         color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
@@ -107,7 +130,7 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
                           : `${Math.round(frac * 100)}% correct`
                       }
                     >
-                      {t.correct}/{t.total}
+                      <Fraction correct={t.correct} total={t.total} />
                     </td>
                   )
                 })}
@@ -116,6 +139,8 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
           </tbody>
         </table>
       </div>
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }

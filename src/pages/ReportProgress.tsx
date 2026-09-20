@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import { useAllTests } from '../state/useAnalysis'
 import { buildProgress, CLASS, testsInOrder, type ProgressLevel, type ProgressRow } from '../reports/aggregate'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 import { category } from '../data/categories'
 import { displayList } from '../data/phonemes'
 import { CategoryDot } from '../components/CategoryTag'
+import { Fraction, percentOf } from '../components/Fraction'
 import { scaleColor, scaleInk } from '../components/Legend'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
@@ -19,8 +23,10 @@ import { toCsv } from '../export/csv'
  */
 export function ReportProgress() {
   const { project } = useStore()
+  const names = useStudentNames()
   const [who, setWho] = useState<string>(CLASS)
   const [level, setLevel] = useState<ProgressLevel>('category')
+  const [drill, setDrill] = useState<Drill | null>(null)
 
   // Only analyses every test while this tab is open.
   const all = useAllTests(project, true)
@@ -31,7 +37,7 @@ export function ReportProgress() {
     [project, all.byTest, all.loading, who, level],
   )
 
-  const whoName = who === CLASS ? 'Whole class' : project.students.find((s) => s.id === who)?.name ?? ''
+  const whoName = who === CLASS ? 'Whole class' : names(who)
 
   const exportCsv = () => {
     const header = ['Category', level === 'category' ? '' : 'Spelling', 'Sounds'].filter(Boolean)
@@ -45,7 +51,11 @@ export function ReportProgress() {
           : [category(r.category).label, r.label, displayList(r.phonemes, project.settings.notation)]
       out.push([
         ...lead.filter((_, i) => (level === 'category' ? i === 0 : true)),
-        ...r.points.map((p) => (p.tally ? `${p.tally.correct}/${p.tally.total}` : 'not assessed')),
+        ...r.points.map((p) =>
+          p.tally
+            ? `${p.tally.correct}/${p.tally.total} (${percentOf(p.tally.correct, p.tally.total)})`
+            : 'not assessed',
+        ),
       ])
     }
     download(exportName(`progress-${whoName}`, 'over-time'), toCsv(out), 'text/csv')
@@ -80,7 +90,7 @@ export function ReportProgress() {
             <option value={CLASS}>Whole class</option>
             {project.students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {names(s.id)}
               </option>
             ))}
           </select>
@@ -127,17 +137,45 @@ export function ReportProgress() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <ProgressLine key={r.key} row={r} level={level} />
+                <ProgressLine
+                  key={r.key}
+                  row={r}
+                  level={level}
+                  onDrill={(testId) => {
+                    const test = tests.find((t) => t.id === testId)
+                    const analysis = all.byTest.get(testId)
+                    if (!test || !analysis) return
+                    setDrill({
+                      kind: level === 'category' ? 'category' : 'grapheme',
+                      key: r.key,
+                      label: r.label,
+                      sounds: r.phonemes,
+                      studentId: who,
+                      sources: [{ test, analysis }],
+                      scopeLabel: test.name,
+                    })
+                  }}
+                />
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }
 
-function ProgressLine({ row, level }: { row: ProgressRow; level: ProgressLevel }) {
+function ProgressLine({
+  row,
+  level,
+  onDrill,
+}: {
+  row: ProgressRow
+  level: ProgressLevel
+  onDrill: (testId: string) => void
+}) {
   const { project } = useStore()
   const { notation } = project.settings
 
@@ -166,7 +204,8 @@ function ProgressLine({ row, level }: { row: ProgressRow; level: ProgressLevel }
         return (
           <td
             key={p.testId}
-            className="num"
+            className={`num ${p.tally ? 'drillable' : ''}`}
+            onClick={() => p.tally && onDrill(p.testId)}
             style={{
               background: frac === null ? undefined : scaleColor(frac),
               color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
@@ -178,7 +217,7 @@ function ProgressLine({ row, level }: { row: ProgressRow; level: ProgressLevel }
                 : `${p.testName}: not assessed`
             }
           >
-            {p.tally ? `${p.tally.correct}/${p.tally.total}` : '—'}
+            {p.tally ? <Fraction correct={p.tally.correct} total={p.tally.total} /> : '—'}
           </td>
         )
       })}

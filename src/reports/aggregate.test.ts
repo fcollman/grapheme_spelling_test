@@ -36,7 +36,7 @@ async function build(overrides: Partial<Project['settings']> = {}) {
     students,
     tests: [test],
     activeTestId: 't',
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, ...overrides },
+    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false, ...overrides },
   }
 
   const pairs = words.flatMap((w) => students.map((s) => ({ word: w.text, attempt: responses[w.id][s.id] })))

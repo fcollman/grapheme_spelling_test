@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import type { AnalysisResult } from '../state/useAnalysis'
 import { buildReports, CLASS, getMisuse } from '../reports/aggregate'
 import { display, get, REPORT_ORDER } from '../data/phonemes'
@@ -13,16 +14,22 @@ import { toCsv } from '../export/csv'
  */
 export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
   const { project, test } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
   const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
 
   const rows = REPORT_ORDER.filter((p) => (reports.misuse.get(p)?.get(CLASS) ?? 0) > 0)
-  const columns = [...project.students.map((s) => ({ id: s.id, name: s.name })), { id: CLASS, name: 'Whole class' }]
+  // Whole class first, and the CSV header derives from the same list — otherwise
+  // reordering here would silently shift every column in the export out of line.
+  const columns = [
+    { id: CLASS, name: 'Whole class' },
+    ...project.students.map((s) => ({ id: s.id, name: names(s.id) })),
+  ]
 
   const worst = Math.max(1, ...rows.map((p) => getMisuse(reports, p, CLASS)))
 
   const exportCsv = () => {
-    const out: string[][] = [['Sound', 'Key word', ...project.students.map((s) => s.name), 'Whole class']]
+    const out: string[][] = [['Sound', 'Key word', ...columns.map((c) => c.name)]]
     for (const p of rows) {
       out.push([
         display(p, notation),
@@ -73,7 +80,7 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
               <th className="c1">Sound</th>
               <th className="c2">As in</th>
               {columns.map((c) => (
-                <th key={c.id} className="num">
+                <th key={c.id} className={`num ${c.id === CLASS ? 'classcol' : ''}`}>
                   {c.name}
                 </th>
               ))}
@@ -91,7 +98,7 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
                   return (
                     <td
                       key={c.id}
-                      className="num"
+                      className={`num ${c.id === CLASS ? 'classcol' : ''}`}
                       style={{
                         background: n === 0 ? undefined : `hsl(4 72% ${92 - intensity * 20}%)`,
                         color: n === 0 ? 'var(--muted)' : 'hsl(4 70% 28%)',

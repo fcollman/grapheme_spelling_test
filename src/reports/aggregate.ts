@@ -88,8 +88,13 @@ export const CLASS = '__class'
  * from two different words lands on one row. The label is part of the key so that
  * structurally-detected clusters, which all share an id, stay separate.
  */
-function patternRowKey(p: PatternMatch): string {
+export function patternRowKey(p: PatternMatch): string {
   return `pattern:${p.id}:${p.label}`
+}
+
+/** True for a report row that came from a spanning pattern rather than a column. */
+export function isPatternKey(key: string): boolean {
+  return key.startsWith('pattern:')
 }
 
 function isCorrect(mark: Mark, amberCounts: boolean): boolean {

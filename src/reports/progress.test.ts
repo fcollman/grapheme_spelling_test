@@ -57,7 +57,7 @@ function makeProject(): Project {
       }),
     ],
     activeTestId: 't1',
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false },
+    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false },
   }
 }
 

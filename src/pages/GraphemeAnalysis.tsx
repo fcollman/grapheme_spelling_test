@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import { cellKey, type AnalysisResult } from '../state/useAnalysis'
 import { displayList, type PhonemeId } from '../data/phonemes'
 import { CATEGORIES, COLLAPSING_CATEGORIES, category, type CategoryId } from '../data/categories'
@@ -15,7 +16,8 @@ import { Legend } from '../components/Legend'
 interface EditTarget {
   wordId: string
   studentId: string
-  studentName: string
+  // No name here on purpose: the editor looks it up from studentId, so it cannot
+  // fall out of step with the hide-student-names toggle.
   word: string
   unitIndex: number
 }
@@ -28,6 +30,7 @@ const CATEGORY_ORDER = new Map(CATEGORIES.map((c, i) => [c.id, i]))
  */
 export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
   const { project, test, dispatch } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const [editingWord, setEditingWord] = useState<string | null>(null)
@@ -87,7 +90,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
             .map((p) => `${category(p.category).label}: ${p.label}${p.source === 'structural' ? ' (unlisted)' : ''}`)
           rows.push([
             test.name, test.date, w.text, w.nonsense ? 'nonsense' : 'real',
-            s.name, a.attempt, a.spellingCorrect ? 'yes' : 'no',
+            names(s.id), a.attempt, a.spellingCorrect ? 'yes' : 'no',
             String(r.unit.index + 1), String(syllable + 1),
             r.unit.letters, displayList(r.unit.phonemes, notation),
             category(r.unit.category).label, r.unit.patternLabel ?? '',
@@ -287,6 +290,7 @@ function WordBlock({
   onEditWord: () => void
 }) {
   const { project, test } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
   const confirmed = test.wordPhonemes[wordId] !== undefined
 
@@ -384,7 +388,7 @@ function WordBlock({
               const results = unitResults(a, units)
               return (
                 <tr key={student.id}>
-                  <th className="rowhead c1">{student.name}</th>
+                  <th className="rowhead c1">{names(student.id)}</th>
                   <td className="c2" style={{ fontFamily: 'var(--mono)' }}>
                     {a.attempted ? a.attempt : <span style={{ color: 'var(--muted)' }}>—</span>}
                   </td>
@@ -394,14 +398,13 @@ function WordBlock({
                       className={`cell ${r.mark} ${r.overridden ? 'edited' : ''} ${
                         syllableStartUnits.has(r.unit.index) ? 'syllable-group' : ''
                       } ${focus !== 'all' && isFocused(r, patterns, focus) ? 'focused' : ''}`}
-                      title={`${student.name} · ${r.unit.letters} (${displayList(r.unit.phonemes, notation)}) · ${
+                      title={`${names(student.id)} · ${r.unit.letters} (${displayList(r.unit.phonemes, notation)}) · ${
                         MARK_TEXT[r.mark]
                       }${r.overridden ? ' (edited)' : ''}`}
                       onClick={() =>
                         onEditCell({
                           wordId,
                           studentId: student.id,
-                          studentName: student.name,
                           word: text,
                           unitIndex: r.unit.index,
                         })
@@ -482,6 +485,7 @@ function CellEditor({
   onApply: (student: PhonemeId[], mark: Mark, slot: number) => void
   onReset: (slot: number) => void
 }) {
+  const names = useStudentNames()
   const { project } = useStore()
   const { notation } = project.settings
   const a = analysis.byCell.get(cellKey(edit.wordId, edit.studentId))
@@ -498,7 +502,7 @@ function CellEditor({
     <div className="backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Correct this spelling">
         <h3>
-          {edit.studentName} · {edit.word} · column {edit.unitIndex + 1} of {units.length}
+          {names(edit.studentId)} · {edit.word} · column {edit.unitIndex + 1} of {units.length}
         </h3>
         <p className="sub">
           This column is <strong>{result.unit.letters}</strong> spelling{' '}

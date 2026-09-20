@@ -1,13 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import type { AnalysisResult } from '../state/useAnalysis'
 import { buildReports, CLASS, getGraphemeTally, type GraphemeRow } from '../reports/aggregate'
 import { displayList } from '../data/phonemes'
 import { category, type CategoryId } from '../data/categories'
 import { scaleColor, scaleInk } from '../components/Legend'
 import { CategoryDot } from '../components/CategoryTag'
+import { Fraction, percentOf } from '../components/Fraction'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 
 /**
  * Accuracy for the thing the teacher actually marks: the spelling unit. Rows are
@@ -16,6 +20,8 @@ import { toCsv } from '../export/csv'
  */
 export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult }) {
   const { project, test, dispatch } = useStore()
+  const names = useStudentNames()
+  const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
   const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
 
@@ -29,7 +35,12 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
     return [...map.entries()]
   }, [reports.graphemes])
 
-  const columns = [...project.students.map((s) => ({ id: s.id, name: s.name })), { id: CLASS, name: 'Whole class' }]
+  // Whole class first: the summary is what a teacher reads to decide what to
+  // reteach, and putting it left of the students means it needs no scrolling.
+  const columns = [
+    { id: CLASS, name: 'Whole class' },
+    ...project.students.map((s) => ({ id: s.id, name: names(s.id) })),
+  ]
 
   const exportCsv = () => {
     const rows: string[][] = [['Category', 'Spelling', 'Sound(s)', ...columns.map((c) => c.name)]]
@@ -41,7 +52,8 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
           displayList(g.phonemes, notation),
           ...columns.map((c) => {
             const t = getGraphemeTally(reports, g.key, c.id)
-            return `${t.correct}/${t.total}`
+            const pct = percentOf(t.correct, t.total)
+            return pct ? `${t.correct}/${t.total} (${pct})` : `${t.correct}/${t.total}`
           }),
         ])
       }
@@ -97,7 +109,7 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
               <th className="c1">Spelling</th>
               <th className="c2">Sound(s)</th>
               {columns.map((c) => (
-                <th key={c.id} className="num">
+                <th key={c.id} className={`num ${c.id === CLASS ? 'classcol' : ''}`}>
                   {c.name}
                 </th>
               ))}
@@ -131,15 +143,30 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
                       return (
                         <td
                           key={c.id}
-                          className="num"
+                          className={`num drillable ${c.id === CLASS ? 'classcol' : ''}`}
+                          onClick={() =>
+                            setDrill({
+                              kind: 'grapheme',
+                              key: g.key,
+                              label: g.patternLabel ?? g.letters,
+                              sounds: g.phonemes,
+                              studentId: c.id,
+                              sources: [{ test, analysis }],
+                              scopeLabel: test.name,
+                            })
+                          }
                           style={{
                             background: frac === null ? 'var(--none-bg)' : scaleColor(frac),
                             color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
                             fontWeight: c.id === CLASS ? 700 : 500,
                           }}
-                          title={frac === null ? 'Did not come up' : `${Math.round(frac * 100)}% correct`}
+                          title={
+                            frac === null
+                              ? 'Did not come up'
+                              : `${Math.round(frac * 100)}% correct — click to see every example`
+                          }
                         >
-                          {t.correct}/{t.total}
+                          <Fraction correct={t.correct} total={t.total} />
                         </td>
                       )
                     })}
@@ -150,6 +177,8 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
           </tbody>
         </table>
       </div>
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }

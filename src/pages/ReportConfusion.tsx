@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import type { AnalysisResult } from '../state/useAnalysis'
 import { buildReports, CLASS, getConfusion, NONE } from '../reports/aggregate'
 import { display, get, type PhonemeId } from '../data/phonemes'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 
 /**
  * Target sound down the side, sound actually produced across the top. The diagonal
@@ -14,10 +17,12 @@ import { toCsv } from '../export/csv'
  */
 export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
   const { project, test } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
   const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
   const [who, setWho] = useState<string>(CLASS)
   const [hideEmpty, setHideEmpty] = useState(true)
+  const [drill, setDrill] = useState<Drill | null>(null)
 
   const label = (id: string) => (id === NONE ? NONE : display(id as PhonemeId, notation))
 
@@ -31,7 +36,7 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
   const cols = hideEmpty ? allCols.filter((c) => colTotal(c) > 0) : allCols
 
   const exportCsv = () => {
-    const name = who === CLASS ? 'whole-class' : project.students.find((s) => s.id === who)?.name ?? 'student'
+    const name = who === CLASS ? 'whole-class' : names(who)
     const out: string[][] = [['Target sound \\ Sound produced', ...cols.map(label)]]
     for (const r of rows) {
       out.push([label(r), ...cols.map((c) => String(getConfusion(reports, who, r, c)))])
@@ -48,7 +53,7 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
     )
   }
 
-  const whoName = who === CLASS ? 'Whole class' : project.students.find((s) => s.id === who)?.name ?? ''
+  const whoName = who === CLASS ? 'Whole class' : names(who)
 
   return (
     <section className="panel">
@@ -70,7 +75,7 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
             <option value={CLASS}>Whole class</option>
             {project.students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {names(s.id)}
               </option>
             ))}
           </select>
@@ -113,7 +118,22 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
                   return (
                     <td
                       key={c}
-                      className="num"
+                      className={`num ${n > 0 ? 'drillable' : ''}`}
+                      onClick={() =>
+                        n > 0 &&
+                        setDrill({
+                          kind: 'phoneme',
+                          key: r,
+                          label:
+                            r === NONE
+                              ? `added ${label(c)}`
+                              : `${label(r)} → ${c === NONE ? 'nothing' : label(c)}`,
+                          studentId: who,
+                          sources: [{ test, analysis }],
+                          scopeLabel: test.name,
+                          produced: c,
+                        })
+                      }
                       style={{
                         background: diagonal
                           ? n > 0
@@ -140,6 +160,8 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
           </tbody>
         </table>
       </div>
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }

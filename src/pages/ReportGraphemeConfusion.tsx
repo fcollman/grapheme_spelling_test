@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
+import { useStudentNames } from '../state/names'
 import type { AnalysisResult } from '../state/useAnalysis'
 import { buildReports, CLASS, getGraphemeConfusion, NONE } from '../reports/aggregate'
 import { displayList } from '../data/phonemes'
@@ -7,6 +8,8 @@ import { category } from '../data/categories'
 import { CategoryDot } from '../components/CategoryTag'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 
 /**
  * Which spelling was written where another was needed — "k" for "ck", "a" for
@@ -15,10 +18,12 @@ import { toCsv } from '../export/csv'
  */
 export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult }) {
   const { project, test } = useStore()
+  const names = useStudentNames()
   const { notation } = project.settings
   const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
   const [who, setWho] = useState<string>(CLASS)
   const [hideEmpty, setHideEmpty] = useState(true)
+  const [drill, setDrill] = useState<Drill | null>(null)
 
   const rowTotal = (key: string) =>
     reports.writtenSpellings.reduce((sum, s) => sum + getGraphemeConfusion(reports, who, key, s), 0)
@@ -29,7 +34,7 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
   const cols = hideEmpty ? reports.writtenSpellings.filter((s) => colTotal(s) > 0) : reports.writtenSpellings
 
   const exportCsv = () => {
-    const name = who === CLASS ? 'whole-class' : project.students.find((s) => s.id === who)?.name ?? 'student'
+    const name = who === CLASS ? 'whole-class' : names(who)
     const out: string[][] = [['Needed \\ Wrote', 'Sound(s)', ...cols]]
     for (const g of rows) {
       out.push([
@@ -50,7 +55,7 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
     )
   }
 
-  const whoName = who === CLASS ? 'Whole class' : project.students.find((s) => s.id === who)?.name ?? ''
+  const whoName = who === CLASS ? 'Whole class' : names(who)
 
   return (
     <section className="panel">
@@ -71,7 +76,7 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
             <option value={CLASS}>Whole class</option>
             {project.students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {names(s.id)}
               </option>
             ))}
           </select>
@@ -118,7 +123,20 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
                   return (
                     <td
                       key={c}
-                      className="num"
+                      className={`num ${n > 0 ? 'drillable' : ''}`}
+                      onClick={() =>
+                        n > 0 &&
+                        setDrill({
+                          kind: 'grapheme',
+                          key: g.key,
+                          label: `${g.patternLabel ?? g.letters} → ${c === NONE ? 'nothing' : c}`,
+                          sounds: g.phonemes,
+                          studentId: who,
+                          sources: [{ test, analysis }],
+                          scopeLabel: test.name,
+                          produced: c,
+                        })
+                      }
                       style={{
                         background: diagonal
                           ? n > 0
@@ -145,6 +163,8 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
           </tbody>
         </table>
       </div>
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }

@@ -217,6 +217,23 @@ label.check {
   color: var(--muted);
 }
 
+/*
+ * A mode that changes what is on screen has to look switched on, or a teacher
+ * who left it on will later wonder where their roster went.
+ */
+label.check.toggle {
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+
+label.check.toggle.on {
+  background: #fdf0cf;
+  border-color: var(--plausible-line);
+  color: var(--plausible-ink);
+  font-weight: 600;
+}
+
 .spacer {
   flex: 1;
 }
@@ -718,9 +735,75 @@ th.focused {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
 }
 
+.dialog.wide {
+  max-width: 900px;
+}
+
 .dialog h3 {
   margin: 0 0 2px;
   font-size: 15px;
+}
+
+/* ---------- drill-down modal ---------- */
+
+.drillhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 2px solid var(--line-strong);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.drillhead h3 {
+  font-size: 17px;
+}
+
+.drillsounds {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 9px;
+  font-weight: 500;
+}
+
+.drillscore {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.drillscore strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.drillscore span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.drilltable {
+  max-height: 56vh;
+  overflow-y: auto;
+}
+
+.drilltable td.dim {
+  color: var(--muted);
+}
+
+.drilltable td.mono {
+  font-family: var(--mono);
+}
+
+/* Any figure that can be opened up should look like it can be. */
+td.drillable {
+  cursor: pointer;
+}
+
+td.drillable:hover {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .dialog .sub {
@@ -802,6 +885,48 @@ th.focused {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
+}
+
+/*
+ * The whole-class summary sits left of the students, so it needs a visible edge
+ * or it reads as just another student's column.
+ */
+th.classcol,
+td.classcol {
+  border-right: 2px solid var(--line-strong);
+}
+
+/* ---------- fractions with their percentage ---------- */
+
+.frac-n {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Stacked under the fraction rather than beside it: these cells sit in grids
+ * that are already a term of tests or a full class wide, and "2/3 (67%)" on one
+ * line would push them past the screen.
+ */
+.frac-pct {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  opacity: 0.72;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.frac-pct.inline {
+  display: inline;
+  margin-left: 4px;
+  font-size: 11px;
+}
+
+/* A lone 0/0, and the inline variant, both stay on one line. */
+.frac-n:only-child,
+.frac-n.inline {
+  display: inline;
 }
 
 /* ---------- test picker ---------- */
@@ -972,6 +1097,8 @@ ul.chips .frac {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
+  /* JSX drops the newline between the label and this span, so space it here. */
+  margin-left: 6px;
 }
 
 ul.errorlist {

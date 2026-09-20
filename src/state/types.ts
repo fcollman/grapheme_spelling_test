@@ -45,6 +45,12 @@ export interface Settings {
   lenientSchwa: boolean
   /** Whether "right sound, different letters" counts as correct in the reports. */
   amberCountsCorrect: boolean
+  /**
+   * Replaces every student name with "Student 1", "Student 2" and so on, for
+   * showing one family where their child sits relative to the class without
+   * showing them the rest of the class by name. Display only.
+   */
+  anonymize: boolean
 }
 
 export interface Project {
@@ -59,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notation: 'sound',
   lenientSchwa: true,
   amberCountsCorrect: false,
+  anonymize: false,
 }
 
 /** crypto.randomUUID needs a secure context; file:// qualifies in Chrome but not everywhere. */
