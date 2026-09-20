@@ -91,11 +91,11 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
       </div>
 
       <div className="scroll">
-        <table>
+        <table className="grid-sticky report-grid">
           <thead>
             <tr>
-              <th>Spelling</th>
-              <th>Sound(s)</th>
+              <th className="c1">Spelling</th>
+              <th className="c2">Sound(s)</th>
               {columns.map((c) => (
                 <th key={c.id} className="num">
                   {c.name}
@@ -107,7 +107,7 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
             {groups.map(([cat, members]) => (
               <>
                 <tr key={`h-${cat}`} className="grouphead">
-                  <th colSpan={2 + columns.length}>
+                  <th className="c1 grouplabel" colSpan={2 + columns.length}>
                     <CategoryDot id={cat} />
                     {category(cat).label}
                     <span className="keyword">{members.length} in this test</span>
@@ -115,14 +115,14 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
                 </tr>
                 {members.map((g) => (
                   <tr key={g.key}>
-                    <th className="rowhead phoneme">
+                    <th className="rowhead phoneme c1">
                       {g.patternLabel ?? g.letters}
                       {/* Only worth repeating the letters when the label differs from them. */}
                       {g.patternLabel && g.patternLabel.replace(/^-/, '') !== g.letters && (
                         <span className="keyword">{g.letters}</span>
                       )}
                     </th>
-                    <td className="phoneme" style={{ color: 'var(--muted)' }}>
+                    <td className="phoneme c2" style={{ color: 'var(--muted)' }}>
                       {displayList(g.phonemes, notation)}
                     </td>
                     {columns.map((c) => {

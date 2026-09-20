@@ -90,11 +90,11 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
       </div>
 
       <div className="scroll">
-        <table>
+        <table className="grid-sticky report-grid">
           <thead>
             <tr>
-              <th>Needed ↓ / Wrote →</th>
-              <th>Sound(s)</th>
+              <th className="c1">Needed ↓ / Wrote →</th>
+              <th className="c2">Sound(s)</th>
               {cols.map((c) => (
                 <th key={c} className="num phoneme" title={c === NONE ? 'Nothing written' : `Wrote "${c}"`}>
                   {c}
@@ -105,11 +105,11 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
           <tbody>
             {rows.map((g) => (
               <tr key={g.key}>
-                <th className="rowhead phoneme" title={category(g.category).label}>
+                <th className="rowhead phoneme c1" title={category(g.category).label}>
                   <CategoryDot id={g.category} />
                   {g.patternLabel ?? g.letters}
                 </th>
-                <td className="phoneme" style={{ color: 'var(--muted)' }}>
+                <td className="phoneme c2" style={{ color: 'var(--muted)' }}>
                   {displayList(g.phonemes, notation)}
                 </td>
                 {cols.map((c) => {

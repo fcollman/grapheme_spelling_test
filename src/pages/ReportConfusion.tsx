@@ -89,10 +89,10 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
       </div>
 
       <div className="scroll">
-        <table>
+        <table className="grid-sticky report-grid">
           <thead>
             <tr>
-              <th>Needed ↓ / Wrote →</th>
+              <th className="c1">Needed ↓ / Wrote →</th>
               {cols.map((c) => (
                 <th key={c} className="num phoneme" title={c === NONE ? 'Sound left out' : get(c).example}>
                   {label(c)}
@@ -103,7 +103,7 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r}>
-                <th className="rowhead phoneme" title={r === NONE ? 'Sound inserted' : get(r).example}>
+                <th className="rowhead phoneme c1" title={r === NONE ? 'Sound inserted' : get(r).example}>
                   {label(r)}
                   {r !== NONE && <span className="keyword">{get(r).example}</span>}
                 </th>

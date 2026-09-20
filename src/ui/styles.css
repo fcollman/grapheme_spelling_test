@@ -158,6 +158,27 @@ button.btn.danger:hover {
   color: #b03030;
 }
 
+button.btn.danger-solid {
+  background: #b03030;
+  border-color: #b03030;
+  color: #fff;
+}
+
+button.btn.danger-solid:hover {
+  filter: brightness(1.08);
+  color: #fff;
+}
+
+button.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.btn:disabled:hover {
+  border-color: var(--line-strong);
+  color: inherit;
+}
+
 button.icon {
   background: none;
   border: none;
@@ -216,6 +237,97 @@ kbd {
 
 .scroll {
   overflow-x: auto;
+}
+
+/* ---------- columns that stay put while scrolling sideways ---------- */
+
+/*
+ * With a full class the student columns run off the right, and scrolling to
+ * reach them used to take the word being tested with it — leaving a grid of
+ * spellings with nothing to compare them against. These columns stay pinned.
+ *
+ * Widths are fixed because the second column's offset has to be known up front.
+ */
+.grid-sticky th.c1,
+.grid-sticky td.c1 {
+  position: sticky;
+  left: 0;
+  width: var(--c1);
+  min-width: var(--c1);
+}
+
+.grid-sticky th.c2,
+.grid-sticky td.c2 {
+  position: sticky;
+  left: var(--c1);
+  width: var(--c2);
+  min-width: var(--c2);
+  /* Marks where the pinned columns end, so the scroll is legible. */
+  box-shadow: 1px 0 0 0 var(--line-strong);
+}
+
+/* Body cells sit above ordinary cells; header cells above both, since the
+   header is already pinned to the top and the corner belongs to both. */
+.grid-sticky tbody th.c1,
+.grid-sticky tbody td.c1,
+.grid-sticky tbody th.c2,
+.grid-sticky tbody td.c2 {
+  z-index: 2;
+  background: var(--panel);
+}
+
+.grid-sticky tbody th.c1,
+.grid-sticky tbody th.c2 {
+  background: #f4f5f8;
+}
+
+.grid-sticky thead th.c1,
+.grid-sticky thead th.c2 {
+  z-index: 5;
+  background: #eef0f4;
+}
+
+.entry-grid {
+  --c1: 212px;
+  --c2: 66px;
+}
+
+.analysis-grid {
+  --c1: 116px;
+  --c2: 92px;
+}
+
+/* Reports get wide fast — a term of tests, or a full class across the top. */
+.report-grid {
+  --c1: 172px;
+  --c2: 96px;
+}
+
+/*
+ * The category header spans the whole row, so it must not take the pinned
+ * column's width — but it should still stay readable when scrolled sideways.
+ */
+.grid-sticky th.grouplabel {
+  width: auto;
+  min-width: 0;
+  box-shadow: none;
+}
+
+/* The band rows carry their own background, which must survive being pinned. */
+.grid-sticky th.band.c1,
+.grid-sticky th.band.c2 {
+  background: #f7f8fb;
+}
+
+@media print {
+  /* Nothing scrolls on paper, and sticky cells can land in the wrong place. */
+  .grid-sticky th.c1,
+  .grid-sticky td.c1,
+  .grid-sticky th.c2,
+  .grid-sticky td.c2 {
+    position: static;
+    box-shadow: none;
+  }
 }
 
 table {

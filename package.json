@@ -1,9 +1,9 @@
 {
-  "name": "phonemeanalyzer",
+  "name": "grapheme-spelling-test",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Offline single-file phoneme error analysis for spelling tests",
+  "description": "Offline single-file grapheme and phoneme error analysis for spelling tests",
   "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "vite",

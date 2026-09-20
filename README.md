@@ -1,4 +1,4 @@
-# Graphene Spelling Test
+# Grapheme Spelling Test
 
 Turns a spelling test into a sound-by-sound picture of what each student can and
 cannot encode — including nonsense words.
@@ -19,9 +19,19 @@ A version of this is deployed to github pages at
 ## For teachers: using it
 
 1. Open `index.html` by double-clicking it. That is the whole setup.
+
+   **Just want a look first?** Press **Load demo class** at the top. It fills the
+   app with a made-up class of eight tested every two weeks for six months, so
+   every report has something in it. The students are written to show different
+   things: one at ceiling, one improving fast, one working steadily with no
+   movement, one who can hear vowels but not consonant teams, and one who misses
+   sessions. **Clear data** empties everything again. Both ask first if you have
+   real data, because nothing is stored anywhere but this browser.
+
 2. **Spelling test** tab — add your words and your students, then type what each
    student wrote. Tick "nonsense" for made-up words. Cells turn green when the
-   spelling matches exactly.
+   spelling matches exactly. With a full class the grid scrolls sideways, but the
+   word and nonsense columns stay pinned so you can always see what was dictated.
 3. **Grapheme analysis** tab — the marking grid. Each column is one spelling unit
    of the target word, with the sound or sounds it makes underneath:
 

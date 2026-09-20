@@ -67,11 +67,11 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
       </div>
 
       <div className="scroll">
-        <table>
+        <table className="grid-sticky report-grid">
           <thead>
             <tr>
-              <th>Sound</th>
-              <th>As in</th>
+              <th className="c1">Sound</th>
+              <th className="c2">As in</th>
               {columns.map((c) => (
                 <th key={c.id} className="num">
                   {c.name}
@@ -82,8 +82,8 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
           <tbody>
             {rows.map((p) => (
               <tr key={p}>
-                <th className="rowhead phoneme">{display(p, notation)}</th>
-                <td style={{ color: 'var(--muted)' }}>{get(p).example}</td>
+                <th className="rowhead phoneme c1">{display(p, notation)}</th>
+                <td className="c2" style={{ color: 'var(--muted)' }}>{get(p).example}</td>
                 {columns.map((c) => {
                   const n = getMisuse(reports, p, c.id)
                   // Heavier red the closer a count is to the worst on the sheet.

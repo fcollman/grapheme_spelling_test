@@ -340,11 +340,11 @@ function WordBlock({
       )}
 
       <div className="scroll">
-        <table>
+        <table className="grid-sticky analysis-grid">
           <thead>
             <tr>
-              <th>Student</th>
-              <th>Wrote</th>
+              <th className="c1">Student</th>
+              <th className="c2">Wrote</th>
               {units.map((u) => (
                 <th
                   key={u.index}
@@ -362,15 +362,15 @@ function WordBlock({
 
             {lanes.map((lane, laneIndex) => (
               <tr key={laneIndex} className={laneIndex === lanes.length - 1 ? 'band-row' : undefined}>
-                <th className="band" />
-                <th className="band" />
+                <th className="band c1" />
+                <th className="band c2" />
                 {renderBand(lane, units, focus)}
               </tr>
             ))}
             {lanes.length === 0 && (
               <tr className="band-row">
-                <th className="band" />
-                <th className="band" />
+                <th className="band c1" />
+                <th className="band c2" />
                 {units.map((u) => (
                   <th key={u.index} className="band" />
                 ))}
@@ -384,8 +384,8 @@ function WordBlock({
               const results = unitResults(a, units)
               return (
                 <tr key={student.id}>
-                  <th className="rowhead">{student.name}</th>
-                  <td style={{ fontFamily: 'var(--mono)' }}>
+                  <th className="rowhead c1">{student.name}</th>
+                  <td className="c2" style={{ fontFamily: 'var(--mono)' }}>
                     {a.attempted ? a.attempt : <span style={{ color: 'var(--muted)' }}>—</span>}
                   </td>
                   {results.map((r) => (

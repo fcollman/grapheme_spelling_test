@@ -110,11 +110,11 @@ export function ReportProgress() {
 
       {!all.loading && rows.length > 0 && (
         <div className="scroll">
-          <table>
+          <table className="grid-sticky report-grid">
             <thead>
               <tr>
-                <th>{level === 'category' ? 'Category' : 'Spelling'}</th>
-                {level === 'grapheme' && <th>Sounds</th>}
+                <th className="c1">{level === 'category' ? 'Category' : 'Spelling'}</th>
+                {level === 'grapheme' && <th className="c2">Sounds</th>}
                 {tests.map((t) => (
                   <th key={t.id} className="num">
                     {t.name}
@@ -152,12 +152,12 @@ function ProgressLine({ row, level }: { row: ProgressRow; level: ProgressLevel }
 
   return (
     <tr>
-      <th className="rowhead">
+      <th className="rowhead c1">
         <CategoryDot id={row.category} />
         {row.label}
       </th>
       {level === 'grapheme' && (
-        <td className="phoneme" style={{ color: 'var(--muted)' }}>
+        <td className="phoneme c2" style={{ color: 'var(--muted)' }}>
           {displayList(row.phonemes, notation)}
         </td>
       )}

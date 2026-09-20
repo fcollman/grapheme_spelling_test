@@ -6,7 +6,14 @@ import type { Project } from './types'
  * anywhere — the whole point of shipping this as a local file.
  */
 
-const KEY = 'phonemeanalyzer.project.v1'
+const KEY = 'graphemespellingtest.project.v1'
+
+/**
+ * The key used before the app was renamed. Read as a fallback so anyone who had
+ * already entered data on the deployed site does not silently lose it; the next
+ * autosave writes it under the new key.
+ */
+const LEGACY_KEY = 'phonemeanalyzer.project.v1'
 
 export function save(project: Project) {
   try {
@@ -18,7 +25,7 @@ export function save(project: Project) {
 
 export function load(): Project | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Project
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.tests)) return null
@@ -46,7 +53,7 @@ export function download(filename: string, content: string, mime: string) {
 
 export function saveProjectFile(project: Project) {
   const date = new Date().toISOString().slice(0, 10)
-  download(`phoneme-analyzer-${date}.json`, JSON.stringify(project, null, 2), 'application/json')
+  download(`grapheme-spelling-test-${date}.json`, JSON.stringify(project, null, 2), 'application/json')
 }
 
 export function exportName(testName: string, suffix: string): string {
@@ -62,7 +69,7 @@ export function readProjectFile(file: File): Promise<Project> {
       try {
         const parsed = JSON.parse(String(reader.result)) as Project
         if (!parsed || !Array.isArray(parsed.tests) || !Array.isArray(parsed.students)) {
-          reject(new Error('That file is not a Phoneme Analyzer project.'))
+          reject(new Error('That file is not a Grapheme Spelling Test project.'))
           return
         }
         resolve(parsed)

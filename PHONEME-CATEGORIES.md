@@ -3,7 +3,7 @@
 <!-- GENERATED FILE — do not edit by hand. -->
 <!-- Source: src/data/categories.ts and src/data/patterns.ts. Regenerate with: npm run reference -->
 
-This is the complete record of how Phoneme Analyzer classifies every sound and
+This is the complete record of how Grapheme Spelling Test classifies every sound and
 every multi-sound pattern. It is generated from the data the app actually uses,
 so what you read here is what the app does.
 

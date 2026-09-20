@@ -2,6 +2,9 @@ import { useRef, useState } from 'react'
 import { useStore } from './state/store'
 import { useAnalysis } from './state/useAnalysis'
 import { readProjectFile, saveProjectFile } from './state/persist'
+import { demoProject, DEMO_STUDENT_COUNT } from './state/demo'
+import { emptyProject } from './state/types'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { EntryGrid } from './pages/EntryGrid'
 import { GraphemeAnalysis } from './pages/GraphemeAnalysis'
 import { StudentProfile } from './pages/StudentProfile'
@@ -33,7 +36,23 @@ export function App() {
   const analysis = useAnalysis(project, test)
   const [tab, setTab] = useState<TabId>('entry')
   const [message, setMessage] = useState<string | null>(null)
+  const [pending, setPending] = useState<'demo' | 'clear' | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+
+  const hasData =
+    project.students.length > 0 || project.tests.some((t) => t.words.length > 0)
+
+  const loadDemo = () => {
+    dispatch({ type: 'replaceProject', project: demoProject() })
+    setTab('entry')
+    setPending(null)
+  }
+
+  const clearAll = () => {
+    dispatch({ type: 'replaceProject', project: emptyProject() })
+    setTab('entry')
+    setPending(null)
+  }
 
   async function onOpenFile(file: File | undefined) {
     if (!file) return
@@ -50,7 +69,7 @@ export function App() {
     <div className="app">
       <header className="topbar no-print">
         <div className="group">
-          <h1>Phoneme Analyzer</h1>
+          <h1>Grapheme Spelling Test</h1>
           <select
             value={test.id}
             onChange={(e) => dispatch({ type: 'selectTest', id: e.target.value })}
@@ -73,6 +92,16 @@ export function App() {
           </button>
           <button className="btn" onClick={() => fileInput.current?.click()}>
             Open file
+          </button>
+          <button
+            className="btn"
+            title="Replace everything with a made-up class and six months of tests"
+            onClick={() => (hasData ? setPending('demo') : loadDemo())}
+          >
+            Load demo class
+          </button>
+          <button className="btn danger" disabled={!hasData} onClick={() => setPending('clear')}>
+            Clear data
           </button>
           <input
             ref={fileInput}
@@ -111,6 +140,36 @@ export function App() {
         <div className="error" role="alert">
           The phoneme engine failed: {analysis.error}
         </div>
+      )}
+
+      {pending === 'demo' && (
+        <ConfirmDialog
+          title="Replace your data with the demo class?"
+          confirmLabel="Load demo class"
+          danger
+          onConfirm={loadDemo}
+          onCancel={() => setPending(null)}
+        >
+          This replaces the {project.students.length} student
+          {project.students.length === 1 ? '' : 's'} and {project.tests.length} test
+          {project.tests.length === 1 ? '' : 's'} you have now with a made-up class of{' '}
+          {DEMO_STUDENT_COUNT} tested every two weeks for six months. Nothing is kept anywhere else,
+          so use <strong>Save file</strong> first if you want your data back.
+        </ConfirmDialog>
+      )}
+
+      {pending === 'clear' && (
+        <ConfirmDialog
+          title="Clear all data?"
+          confirmLabel="Clear everything"
+          danger
+          onConfirm={clearAll}
+          onCancel={() => setPending(null)}
+        >
+          This deletes every student, test and spelling in this browser. It cannot be undone, and
+          there is no copy on a server — use <strong>Save file</strong> first if you might want it
+          back.
+        </ConfirmDialog>
       )}
 
       {tab === 'entry' && <EntryGrid />}

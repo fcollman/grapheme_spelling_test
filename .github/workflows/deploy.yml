@@ -61,7 +61,7 @@ jobs:
       # So a PR build can be downloaded and opened locally without deploying.
       - uses: actions/upload-artifact@v4
         with:
-          name: phoneme-analyzer-html
+          name: grapheme-spelling-test-html
           path: dist/index.html
           if-no-files-found: error
 

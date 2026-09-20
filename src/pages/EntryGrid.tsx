@@ -157,11 +157,11 @@ export function EntryGrid() {
         </div>
       ) : (
         <div className="scroll">
-          <table>
+          <table className="grid-sticky entry-grid">
             <thead>
               <tr>
-                <th>Word</th>
-                <th className="num no-print">Nonsense</th>
+                <th className="c1">Word</th>
+                <th className="num no-print c2">Nonsense</th>
                 {project.students.map((s) => (
                   <th key={s.id}>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -203,7 +203,7 @@ export function EntryGrid() {
             <tbody>
               {test.words.map((w, wordIndex) => (
                 <tr key={w.id}>
-                  <th className="rowhead">
+                  <th className="rowhead c1">
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <input
                         type="text"
@@ -237,7 +237,7 @@ export function EntryGrid() {
                       </span>
                     </div>
                   </th>
-                  <td className="num no-print">
+                  <td className="num no-print c2">
                     <input
                       type="checkbox"
                       checked={w.nonsense}
