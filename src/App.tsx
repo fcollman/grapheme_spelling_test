@@ -14,6 +14,7 @@ import { ReportGraphemeConfusion } from './pages/ReportGraphemeConfusion'
 import { ReportAccuracy } from './pages/ReportAccuracy'
 import { ReportMisuse } from './pages/ReportMisuse'
 import { ReportConfusion } from './pages/ReportConfusion'
+import { About } from './pages/About'
 import './ui/styles.css'
 
 /** Marking first, then the spelling-level reports, then the sound-level ones. */
@@ -29,7 +30,8 @@ const TABS = [
   { id: 'confusion', label: 'Phoneme confusion', group: 'By sound' },
 ] as const
 
-type TabId = (typeof TABS)[number]['id']
+/** 'about' is reached from the toolbar rather than the tab strip, which is for analysis. */
+type TabId = (typeof TABS)[number]['id'] | 'about'
 
 export function App() {
   const { project, test, dispatch } = useStore()
@@ -121,6 +123,12 @@ export function App() {
             />
             Hide student names
           </label>
+          <button
+            className={`btn ${tab === 'about' ? 'primary' : ''}`}
+            onClick={() => setTab(tab === 'about' ? 'entry' : 'about')}
+          >
+            About
+          </button>
           <input
             ref={fileInput}
             type="file"
@@ -190,6 +198,7 @@ export function App() {
         </ConfirmDialog>
       )}
 
+      {tab === 'about' && <About />}
       {tab === 'entry' && <EntryGrid />}
       {tab === 'analysis' && <GraphemeAnalysis analysis={analysis} />}
       {/* Both of these span every test, so they analyse lazily on open. */}

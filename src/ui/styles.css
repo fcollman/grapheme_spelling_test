@@ -1151,6 +1151,95 @@ ul.errorlist em {
   color: var(--ink);
 }
 
+/* ---------- about page (rendered from content/about.md) ---------- */
+
+.prose {
+  max-width: 68ch;
+  line-height: 1.6;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h1 {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+
+.prose h2 {
+  font-size: 15px;
+  margin: 26px 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prose h3 {
+  font-size: 13.5px;
+  margin: 18px 0 6px;
+}
+
+.prose p,
+.prose li {
+  color: var(--ink);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 20px;
+}
+
+.prose li {
+  margin: 4px 0;
+}
+
+.prose a {
+  color: var(--accent);
+}
+
+.prose code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: #eef0f4;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.prose pre {
+  background: #eef0f4;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+
+.prose blockquote {
+  margin: 14px 0;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--line-strong);
+  color: var(--muted);
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 22px 0;
+}
+
+.prose table {
+  margin: 12px 0;
+}
+
+.prose th,
+.prose td {
+  padding: 5px 10px;
+}
+
 /* ---------- empty / loading ---------- */
 
 .empty {

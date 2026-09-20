@@ -158,6 +158,17 @@ npm run check:single   # asserts the build is one self-contained file
 npm run reference      # regenerates PHONEME-CATEGORIES.md from the data files
 ```
 
+### Editing the About page
+
+The **About** button in the toolbar shows [`content/about.md`](content/about.md).
+Edit that file in Markdown, commit, and pushing to `main` rebuilds and
+republishes it — no code changes needed. Headings, lists, tables, block quotes,
+links, `code` and emphasis all render; HTML comments stay hidden.
+
+The file is inlined into the bundle at build time via Vite's `?raw` import, not
+fetched at runtime, because a runtime fetch would break the double-click-the-file
+guarantee.
+
 ### Deployment
 
 Pushing to `main` builds and publishes to GitHub Pages via
