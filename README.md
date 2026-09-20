@@ -71,6 +71,14 @@ A version of this is deployed to github pages at
    are listed separately, because they need different teaching. Choosing "All
    students" prints one page per student. A category counts as secure at **80%**,
    the threshold usually used to decide something still needs teaching.
+
+   **Pick which tests it covers.** Click test chips to add or remove them, or use
+   **Select all**, **Last 3**, **First 3** and **Most recent**. Everything on the
+   page pools across whatever is selected, so the same page serves a single
+   lesson's test, a "how is it going now" conversation, or a whole term for an
+   annual review. With one test selected you get the full word list; with several
+   you get a test-by-test score table instead, since a term's worth of words would
+   run to a hundred rows and bury the analysis.
 5. **Progress over time** — accuracy on each test, oldest first, so growth on an
    IEP goal can be shown rather than a single snapshot. By category by default
    (a category recurs across tests; an individual spelling may not), with a
