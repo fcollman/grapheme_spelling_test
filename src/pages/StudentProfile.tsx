@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import { cellKey, useAllTests } from '../state/useAnalysis'
+import { cellKey } from '../state/useAnalysis'
+import { useSelectedTests } from '../state/useSelectedTests'
 import type { Mark } from '../engine/align'
 import {
   buildReportsAcross,
   getExamples,
   getGraphemeTally,
   NONE,
-  testsInOrder,
   type GraphemeRow,
   type ReportSource,
   type Reports,
@@ -142,34 +142,19 @@ export function StudentProfile() {
   const { notation } = project.settings
   const [who, setWho] = useState<string>('all')
 
-  const tests = useMemo(() => testsInOrder(project), [project])
-  const all = useAllTests(project, true)
+  // A profile is a whole picture by default; the picker narrows it.
+  const scope = useSelectedTests('all')
 
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(tests.map((t) => t.id)))
-
-  // When the project changes underneath us — a demo loaded, a test added — start
-  // from everything again rather than holding on to ids that no longer exist.
-  const testIds = tests.map((t) => t.id).join(',')
-  useEffect(() => {
-    setSelected(new Set(tests.map((t) => t.id)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testIds])
-
-  const sources: ReportSource[] = useMemo(() => {
-    if (all.loading) return []
-    return tests
-      .filter((t) => selected.has(t.id))
-      .map((test) => ({ test, analysis: all.byTest.get(test.id)! }))
-      .filter((s) => s.analysis)
-  }, [tests, selected, all.byTest, all.loading])
-
-  const reports = useMemo(() => buildReportsAcross(project, sources), [project, sources])
+  const reports = useMemo(
+    () => buildReportsAcross(project, scope.sources),
+    [project, scope.sources],
+  )
 
   const shown = who === 'all' ? project.students : project.students.filter((s) => s.id === who)
 
   const exportCsv = () => {
     const rows: string[][] = [
-      ['Tests included', sources.map((s) => `${s.test.name} (${s.test.date})`).join('; ')],
+      ['Tests included', scope.sources.map((s) => `${s.test.name} (${s.test.date})`).join('; ')],
       [],
       ['Student', 'Section', 'Item', 'Sounds', 'Detail', 'Correct', 'Total', 'Percent'],
     ]
@@ -202,7 +187,7 @@ export function StudentProfile() {
     download(exportName('student-profiles', 'summary'), toCsv(rows), 'text/csv')
   }
 
-  if (project.students.length === 0 || tests.every((t) => t.words.length === 0)) {
+  if (project.students.length === 0 || scope.tests.every((t) => t.words.length === 0)) {
     return (
       <section className="panel">
         <h2>Student profile</h2>
@@ -234,7 +219,7 @@ export function StudentProfile() {
           </select>
         </label>
         <span className="spacer" />
-        <button className="btn" onClick={exportCsv} disabled={sources.length === 0}>
+        <button className="btn" onClick={exportCsv} disabled={scope.sources.length === 0}>
           Download CSV
         </button>
         <button className="btn" onClick={() => window.print()}>
@@ -242,19 +227,19 @@ export function StudentProfile() {
         </button>
       </div>
 
-      <TestPicker tests={tests} selected={selected} onChange={setSelected} />
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
 
-      {all.error && <div className="error">Could not analyse every test: {all.error}</div>}
-      {all.loading && <div className="empty">Analysing…</div>}
+      {scope.error && <div className="error">Could not analyse every test: {scope.error}</div>}
+      {scope.loading && <div className="empty">Analysing…</div>}
 
-      {!all.loading && sources.length === 0 && (
+      {!scope.loading && scope.sources.length === 0 && (
         <div className="empty">Choose at least one test to build a profile from.</div>
       )}
 
-      {!all.loading &&
-        sources.length > 0 &&
+      {!scope.loading &&
+        scope.sources.length > 0 &&
         shown.map((student) => (
-          <Profile key={student.id} student={student} reports={reports} sources={sources} />
+          <Profile key={student.id} student={student} reports={reports} sources={scope.sources} />
         ))}
     </section>
   )

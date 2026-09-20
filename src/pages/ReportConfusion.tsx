@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import type { AnalysisResult } from '../state/useAnalysis'
-import { buildReports, CLASS, getConfusion, NONE } from '../reports/aggregate'
+import { useSelectedTests } from '../state/useSelectedTests'
+import { TestPicker } from '../components/TestPicker'
+import { buildReportsAcross, CLASS, getConfusion, NONE } from '../reports/aggregate'
 import { display, get, type PhonemeId } from '../data/phonemes'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
@@ -15,11 +16,15 @@ import type { Drill } from '../reports/occurrences'
  * teach against. An ∅ column counts sounds left out, and an ∅ row counts sounds
  * inserted that the word did not call for.
  */
-export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
-  const { project, test } = useStore()
+export function ReportConfusion() {
+  const { project } = useStore()
+  const scope = useSelectedTests('active')
   const names = useStudentNames()
   const { notation } = project.settings
-  const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
+  const reports = useMemo(
+    () => buildReportsAcross(project, scope.sources),
+    [project, scope.sources],
+  )
   const [who, setWho] = useState<string>(CLASS)
   const [hideEmpty, setHideEmpty] = useState(true)
   const [drill, setDrill] = useState<Drill | null>(null)
@@ -41,14 +46,22 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
     for (const r of rows) {
       out.push([label(r), ...cols.map((c) => String(getConfusion(reports, who, r, c)))])
     }
-    download(exportName(test.name, `confusion-${name}`), toCsv(out), 'text/csv')
+    download(exportName(scope.scopeSlug, `confusion-${name}`), toCsv(out), 'text/csv')
   }
 
-  if (rows.length === 0 || cols.length === 0) {
+  if (scope.loading || rows.length === 0 || cols.length === 0) {
     return (
       <section className="panel">
         <h2>Confusion matrix</h2>
-        <div className="empty">Nothing to report yet — enter some student spellings first.</div>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
+        <div className="empty">
+          {scope.loading
+            ? 'Analysing every test…'
+            : scope.sources.length === 0
+              ? 'Choose at least one test above.'
+              : 'Nothing to report yet — enter some student spellings first.'}
+        </div>
       </section>
     )
   }
@@ -58,9 +71,11 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
   return (
     <section className="panel">
       <span className="print-title">
-        {test.name} · {test.date} · Confusion matrix · {whoName}
+        {scope.scopeLabel} · Confusion matrix · {whoName}
       </span>
       <h2>Confusion matrix</h2>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
         Rows are the sound the word needed; columns are the sound the student's letters actually
         made. The shaded diagonal is correct. Off-diagonal numbers are the specific swaps to teach
@@ -129,8 +144,8 @@ export function ReportConfusion({ analysis }: { analysis: AnalysisResult }) {
                               ? `added ${label(c)}`
                               : `${label(r)} → ${c === NONE ? 'nothing' : label(c)}`,
                           studentId: who,
-                          sources: [{ test, analysis }],
-                          scopeLabel: test.name,
+                          sources: scope.sources,
+                          scopeLabel: scope.scopeLabel,
                           produced: c,
                         })
                       }

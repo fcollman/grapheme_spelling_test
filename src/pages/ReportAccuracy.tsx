@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import type { AnalysisResult } from '../state/useAnalysis'
-import { buildReports, CLASS, getTally } from '../reports/aggregate'
+import { useSelectedTests } from '../state/useSelectedTests'
+import { TestPicker } from '../components/TestPicker'
+import { buildReportsAcross, CLASS, getTally } from '../reports/aggregate'
 import { display, get } from '../data/phonemes'
 import { scaleColor, scaleInk } from '../components/Legend'
 import { Fraction, percentOf } from '../components/Fraction'
@@ -15,12 +16,16 @@ import type { Drill } from '../reports/occurrences'
  * Rows are the phonemes this test actually covered, columns are students, plus a
  * class column so the teacher can spot the sounds to reteach to everyone.
  */
-export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
-  const { project, test, dispatch } = useStore()
+export function ReportAccuracy() {
+  const { project, dispatch } = useStore()
+  const scope = useSelectedTests('active')
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
-  const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
+  const reports = useMemo(
+    () => buildReportsAcross(project, scope.sources),
+    [project, scope.sources],
+  )
 
   // Whole class first: the summary is what decides what to reteach, so it should
   // not need scrolling past a full roster to reach.
@@ -39,14 +44,22 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
       })
       rows.push([display(p, notation), get(p).example, ...cells])
     }
-    download(exportName(test.name, 'accuracy-by-phoneme'), toCsv(rows), 'text/csv')
+    download(exportName(scope.scopeSlug, 'accuracy-by-phoneme'), toCsv(rows), 'text/csv')
   }
 
-  if (reports.phonemes.length === 0) {
+  if (scope.loading || reports.phonemes.length === 0) {
     return (
       <section className="panel">
         <h2>Accuracy by phoneme</h2>
-        <div className="empty">Nothing to report yet — enter some student spellings first.</div>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
+        <div className="empty">
+          {scope.loading
+            ? 'Analysing every test…'
+            : scope.sources.length === 0
+              ? 'Choose at least one test above.'
+              : 'Nothing to report yet — enter some student spellings first.'}
+        </div>
       </section>
     )
   }
@@ -54,9 +67,11 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
   return (
     <section className="panel">
       <span className="print-title">
-        {test.name} · {test.date} · Accuracy by phoneme
+        {scope.scopeLabel} · Accuracy by phoneme
       </span>
       <h2>Accuracy by phoneme</h2>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
         How many times each student spelled each sound correctly, out of the times that sound came up
         in a word they attempted. A sound that never came up shows 0/0 in grey rather than counting
@@ -115,8 +130,8 @@ export function ReportAccuracy({ analysis }: { analysis: AnalysisResult }) {
                           label: display(p, notation),
                           sounds: [p],
                           studentId: c.id,
-                          sources: [{ test, analysis }],
-                          scopeLabel: test.name,
+                          sources: scope.sources,
+                          scopeLabel: scope.scopeLabel,
                         })
                       }
                       style={{

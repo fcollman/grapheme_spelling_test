@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import type { AnalysisResult } from '../state/useAnalysis'
-import { buildReports, CLASS, getMisuse } from '../reports/aggregate'
+import { useSelectedTests } from '../state/useSelectedTests'
+import { TestPicker } from '../components/TestPicker'
+import { buildReportsAcross, CLASS, getMisuse } from '../reports/aggregate'
 import { display, get, REPORT_ORDER } from '../data/phonemes'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
@@ -14,12 +15,16 @@ import type { Drill } from '../reports/occurrences'
  * was not the one called for. A large number on one row is usually a default the
  * student falls back on when unsure.
  */
-export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
-  const { project, test } = useStore()
+export function ReportMisuse() {
+  const { project } = useStore()
+  const scope = useSelectedTests('active')
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
-  const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
+  const reports = useMemo(
+    () => buildReportsAcross(project, scope.sources),
+    [project, scope.sources],
+  )
 
   const rows = REPORT_ORDER.filter((p) => (reports.misuse.get(p)?.get(CLASS) ?? 0) > 0)
   // Whole class first, and the CSV header derives from the same list — otherwise
@@ -40,15 +45,21 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
         ...columns.map((c) => String(getMisuse(reports, p, c.id))),
       ])
     }
-    download(exportName(test.name, 'phoneme-misuse'), toCsv(out), 'text/csv')
+    download(exportName(scope.scopeSlug, 'phoneme-misuse'), toCsv(out), 'text/csv')
   }
 
-  if (rows.length === 0) {
+  if (scope.loading || rows.length === 0) {
     return (
       <section className="panel">
         <h2>Phoneme misuse</h2>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
         <div className="empty">
-          No wrong sounds recorded yet. This report fills in once students substitute or insert sounds.
+          {scope.loading
+            ? 'Analysing every test…'
+            : scope.sources.length === 0
+              ? 'Choose at least one test above.'
+              : 'Nothing to report yet — enter some student spellings first.'}
         </div>
       </section>
     )
@@ -57,9 +68,11 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
   return (
     <section className="panel">
       <span className="print-title">
-        {test.name} · {test.date} · Phoneme misuse
+        {scope.scopeLabel} · Phoneme misuse
       </span>
       <h2>Phoneme misuse</h2>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
         How many times each student wrote letters making this sound when a different sound was
         needed. Inserted sounds are counted here too. Read it alongside the accuracy report: a sound
@@ -110,8 +123,8 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
                           key: p,
                           label: `${display(p, notation)} used where it was not needed`,
                           studentId: c.id,
-                          sources: [{ test, analysis }],
-                          scopeLabel: test.name,
+                          sources: scope.sources,
+                          scopeLabel: scope.scopeLabel,
                         })
                       }
                       style={{

@@ -104,6 +104,13 @@ A version of this is deployed to github pages at
 10. **Phoneme confusion** — which sound got written for which. The green diagonal
     is correct; everything off it is a specific swap to teach against.
 
+**Every report tab has the test picker.** Reports start on the test chosen in the
+toolbar and follow it when you switch, so they behave as before until you widen
+them — then **Select all**, **Last 3** or individual chips pool the results across
+whatever you pick. Print titles, CSV names and the drill-downs all follow the
+selection. The student profile is the one exception: it starts from every test,
+since a profile is meant to be the whole picture.
+
 **Click any accuracy figure** to open the answers behind it — which words, which
 students, what they wrote for that one unit, and whether each counted. The list is
 produced by walking the same answers the report counted, so it always adds up to

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import type { AnalysisResult } from '../state/useAnalysis'
-import { buildReports, CLASS, getGraphemeTally, type GraphemeRow } from '../reports/aggregate'
+import { useSelectedTests } from '../state/useSelectedTests'
+import { TestPicker } from '../components/TestPicker'
+import { buildReportsAcross, CLASS, getGraphemeTally, type GraphemeRow } from '../reports/aggregate'
 import { displayList } from '../data/phonemes'
 import { category, type CategoryId } from '../data/categories'
 import { scaleColor, scaleInk } from '../components/Legend'
@@ -18,12 +19,16 @@ import type { Drill } from '../reports/occurrences'
  * grouped under the phonics categories so the sheet reads like a scope and
  * sequence, with the sounds each spelling makes shown alongside.
  */
-export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult }) {
-  const { project, test, dispatch } = useStore()
+export function ReportGraphemeAccuracy() {
+  const { project, dispatch } = useStore()
+  const scope = useSelectedTests('active')
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
-  const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
+  const reports = useMemo(
+    () => buildReportsAcross(project, scope.sources),
+    [project, scope.sources],
+  )
 
   const groups = useMemo(() => {
     const map = new Map<CategoryId, GraphemeRow[]>()
@@ -58,14 +63,22 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
         ])
       }
     }
-    download(exportName(test.name, 'accuracy-by-grapheme'), toCsv(rows), 'text/csv')
+    download(exportName(scope.scopeSlug, 'accuracy-by-grapheme'), toCsv(rows), 'text/csv')
   }
 
-  if (reports.graphemes.length === 0) {
+  if (scope.loading || reports.graphemes.length === 0) {
     return (
       <section className="panel">
         <h2>Accuracy by grapheme</h2>
-        <div className="empty">Nothing to report yet — enter some student spellings first.</div>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
+        <div className="empty">
+          {scope.loading
+            ? 'Analysing every test…'
+            : scope.sources.length === 0
+              ? 'Choose at least one test above.'
+              : 'Nothing to report yet — enter some student spellings first.'}
+        </div>
       </section>
     )
   }
@@ -73,9 +86,11 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
   return (
     <section className="panel">
       <span className="print-title">
-        {test.name} · {test.date} · Accuracy by grapheme
+        {scope.scopeLabel} · Accuracy by grapheme
       </span>
       <h2>Accuracy by grapheme</h2>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
         How often each student spelled each unit correctly, out of the times it came up in a word
         they attempted. Rows are grouped by kind, so a whole category can be read at a glance. A unit
@@ -151,8 +166,8 @@ export function ReportGraphemeAccuracy({ analysis }: { analysis: AnalysisResult 
                               label: g.patternLabel ?? g.letters,
                               sounds: g.phonemes,
                               studentId: c.id,
-                              sources: [{ test, analysis }],
-                              scopeLabel: test.name,
+                              sources: scope.sources,
+                              scopeLabel: scope.scopeLabel,
                             })
                           }
                           style={{

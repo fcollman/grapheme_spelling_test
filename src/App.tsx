@@ -196,11 +196,11 @@ export function App() {
       {tab === 'profile' && <StudentProfile />}
       {/* Mounted only when open, so it does not analyse every test in the background. */}
       {tab === 'progress' && <ReportProgress />}
-      {tab === 'g-accuracy' && <ReportGraphemeAccuracy analysis={analysis} />}
-      {tab === 'g-confusion' && <ReportGraphemeConfusion analysis={analysis} />}
-      {tab === 'accuracy' && <ReportAccuracy analysis={analysis} />}
-      {tab === 'misuse' && <ReportMisuse analysis={analysis} />}
-      {tab === 'confusion' && <ReportConfusion analysis={analysis} />}
+      {tab === 'g-accuracy' && <ReportGraphemeAccuracy />}
+      {tab === 'g-confusion' && <ReportGraphemeConfusion />}
+      {tab === 'accuracy' && <ReportAccuracy />}
+      {tab === 'misuse' && <ReportMisuse />}
+      {tab === 'confusion' && <ReportConfusion />}
     </div>
   )
 }

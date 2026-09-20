@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import type { AnalysisResult } from '../state/useAnalysis'
-import { buildReports, CLASS, getGraphemeConfusion, NONE } from '../reports/aggregate'
+import { useSelectedTests } from '../state/useSelectedTests'
+import { TestPicker } from '../components/TestPicker'
+import { buildReportsAcross, CLASS, getGraphemeConfusion, NONE } from '../reports/aggregate'
 import { displayList } from '../data/phonemes'
 import { category } from '../data/categories'
 import { CategoryDot } from '../components/CategoryTag'
@@ -16,11 +17,15 @@ import type { Drill } from '../reports/occurrences'
  * "ai". This is where orthographic error patterns show up most directly, since
  * the sound can be right while the spelling is consistently wrong.
  */
-export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult }) {
-  const { project, test } = useStore()
+export function ReportGraphemeConfusion() {
+  const { project } = useStore()
+  const scope = useSelectedTests('active')
   const names = useStudentNames()
   const { notation } = project.settings
-  const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
+  const reports = useMemo(
+    () => buildReportsAcross(project, scope.sources),
+    [project, scope.sources],
+  )
   const [who, setWho] = useState<string>(CLASS)
   const [hideEmpty, setHideEmpty] = useState(true)
   const [drill, setDrill] = useState<Drill | null>(null)
@@ -43,14 +48,22 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
         ...cols.map((c) => String(getGraphemeConfusion(reports, who, g.key, c))),
       ])
     }
-    download(exportName(test.name, `grapheme-confusion-${name}`), toCsv(out), 'text/csv')
+    download(exportName(scope.scopeSlug, `grapheme-confusion-${name}`), toCsv(out), 'text/csv')
   }
 
-  if (rows.length === 0 || cols.length === 0) {
+  if (scope.loading || rows.length === 0 || cols.length === 0) {
     return (
       <section className="panel">
         <h2>Grapheme confusion</h2>
-        <div className="empty">Nothing to report yet — enter some student spellings first.</div>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
+        <div className="empty">
+          {scope.loading
+            ? 'Analysing every test…'
+            : scope.sources.length === 0
+              ? 'Choose at least one test above.'
+              : 'Nothing to report yet — enter some student spellings first.'}
+        </div>
       </section>
     )
   }
@@ -60,9 +73,11 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
   return (
     <section className="panel">
       <span className="print-title">
-        {test.name} · {test.date} · Grapheme confusion · {whoName}
+        {scope.scopeLabel} · Grapheme confusion · {whoName}
       </span>
       <h2>Grapheme confusion</h2>
+
+      <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
         Rows are the spelling the word needed; columns are what the student actually wrote. The
         shaded diagonal is correct. Everything off it is a specific substitution to teach against —{' '}
@@ -132,8 +147,8 @@ export function ReportGraphemeConfusion({ analysis }: { analysis: AnalysisResult
                           label: `${g.patternLabel ?? g.letters} → ${c === NONE ? 'nothing' : c}`,
                           sounds: g.phonemes,
                           studentId: who,
-                          sources: [{ test, analysis }],
-                          scopeLabel: test.name,
+                          sources: scope.sources,
+                          scopeLabel: scope.scopeLabel,
                           produced: c,
                         })
                       }
