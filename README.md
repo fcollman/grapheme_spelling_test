@@ -32,6 +32,12 @@ A version of this is deployed to github pages at
    student wrote. Tick "nonsense" for made-up words. Cells turn green when the
    spelling matches exactly. With a full class the grid scrolls sideways, but the
    word and nonsense columns stay pinned so you can always see what was dictated.
+
+   Your class is shared across tests, so a new test already starts with everyone
+   on it. Removing a student or a word asks first if there are spellings behind
+   it, and says how many. A removed student's answers are kept, so **Add from an
+   earlier test** puts them back with their old work and its analysis intact —
+   the button only appears when there is someone to restore.
 3. **Grapheme analysis** tab — the marking grid. Each column is one spelling unit
    of the target word, with the sound or sounds it makes underneath:
 

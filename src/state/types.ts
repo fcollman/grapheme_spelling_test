@@ -56,6 +56,15 @@ export interface Settings {
 export interface Project {
   version: 1
   students: Student[]
+  /**
+   * Students taken off the roster whose spellings are still sitting in a test.
+   *
+   * Removing a student deliberately leaves their answers behind rather than
+   * destroying them, but without the name there was no way to reach that data
+   * again. Keeping it here is what lets an earlier test's students be added
+   * back. Optional so project files written before this existed still load.
+   */
+  archivedStudents?: Student[]
   tests: Test[]
   activeTestId: string | null
   settings: Settings

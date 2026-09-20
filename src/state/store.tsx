@@ -12,11 +12,12 @@ import {
 } from './types'
 import { load, save } from './persist'
 
-type Action =
+export type Action =
   | { type: 'replaceProject'; project: Project }
   | { type: 'addStudent'; name: string }
   | { type: 'renameStudent'; id: string; name: string }
   | { type: 'removeStudent'; id: string }
+  | { type: 'restoreStudents'; ids: string[] }
   | { type: 'moveStudent'; id: string; delta: number }
   | { type: 'addTest' }
   | { type: 'selectTest'; id: string }
@@ -50,7 +51,8 @@ function move<T extends { id: string }>(list: T[], id: string, delta: number): T
   return next
 }
 
-function reducer(project: Project, action: Action): Project {
+/** Exported for tests: the roster rules are the one part worth pinning down. */
+export function reducer(project: Project, action: Action): Project {
   switch (action.type) {
     case 'replaceProject':
       return normalize(action.project)
@@ -65,13 +67,33 @@ function reducer(project: Project, action: Action): Project {
         ...project,
         students: project.students.map((s) => (s.id === action.id ? { ...s, name: action.name } : s)),
       }
-    case 'removeStudent':
+    case 'removeStudent': {
+      // Responses for a removed student are left in place deliberately: deleting
+      // a column by accident should not silently destroy the data behind it.
+      // Archiving the name is what makes that recoverable — without it the data
+      // stays in the file but nothing can find it again.
+      const gone = project.students.find((s) => s.id === action.id)
+      const hasData =
+        gone !== undefined &&
+        project.tests.some((t) =>
+          Object.values(t.responses).some((byStudent) => (byStudent[action.id] ?? '').trim() !== ''),
+        )
       return {
         ...project,
         students: project.students.filter((s) => s.id !== action.id),
-        // Responses for a removed student are left in place deliberately: deleting
-        // a column by accident should not silently destroy the data behind it.
+        archivedStudents: hasData ? [...(project.archivedStudents ?? []), gone] : project.archivedStudents,
       }
+    }
+    case 'restoreStudents': {
+      const archived = project.archivedStudents ?? []
+      const back = archived.filter((s) => action.ids.includes(s.id))
+      if (back.length === 0) return project
+      return {
+        ...project,
+        students: [...project.students, ...back],
+        archivedStudents: archived.filter((s) => !action.ids.includes(s.id)),
+      }
+    }
     case 'moveStudent':
       return { ...project, students: move(project.students, action.id, action.delta) }
 
@@ -244,4 +266,4 @@ export function useStore(): Store {
   return ctx
 }
 
-export type { Action, Student }
+export type { Student }

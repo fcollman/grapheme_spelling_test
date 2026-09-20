@@ -5,6 +5,8 @@ import { cleanWord } from '../engine/phonemize'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
 import { exampleProject } from '../state/example'
+import { Fraction, percentOf } from '../components/Fraction'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 
 /**
  * The spreadsheet the teacher fills in during or after the test: words down the
@@ -16,6 +18,14 @@ export function EntryGrid() {
   const names = useStudentNames()
   const [wordDraft, setWordDraft] = useState('')
   const [studentDraft, setStudentDraft] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<{
+    kind: 'student' | 'word'
+    id: string
+    name: string
+    count: number
+  } | null>(null)
+  /** Which archived students are ticked in the "add from an earlier test" dialog; null = closed. */
+  const [restoring, setRestoring] = useState<Set<string> | null>(null)
 
   /**
    * Keyboard navigation for the grid. Teachers work through one student's paper
@@ -71,6 +81,88 @@ export function EntryGrid() {
     setStudentDraft('')
   }
 
+  /**
+   * A plain word score per student, for grading.
+   *
+   * Counted out of every word on the test, not just the ones attempted: a word
+   * left blank is a word not spelled correctly. The blank count is shown beside
+   * it so a low score for an absent student is not mistaken for a low score for
+   * a struggling one.
+   */
+  const scoreFor = (studentId: string) => {
+    let correct = 0
+    let blank = 0
+    for (const w of test.words) {
+      const written = test.responses[w.id]?.[studentId] ?? ''
+      if (written.trim() === '') blank += 1
+      else if (cleanWord(written) === cleanWord(w.text)) correct += 1
+    }
+    return { correct, blank, total: test.words.length }
+  }
+
+  /**
+   * How much a delete would take with it.
+   *
+   * A student's spellings span every test, not just the one on screen, so the
+   * count has to look project-wide or the warning understates the damage.
+   */
+  const spellingsByStudent = (studentId: string) =>
+    project.tests.reduce(
+      (n, t) =>
+        n + Object.values(t.responses).filter((byStudent) => (byStudent[studentId] ?? '').trim() !== '').length,
+      0,
+    )
+
+  const spellingsForWord = (wordId: string) =>
+    Object.values(test.responses[wordId] ?? {}).filter((v) => v.trim() !== '').length
+
+  const removeStudent = (s: { id: string; name: string }) => {
+    const count = spellingsByStudent(s.id)
+    if (count === 0) dispatch({ type: 'removeStudent', id: s.id })
+    else setPendingDelete({ kind: 'student', id: s.id, name: names(s.id), count })
+  }
+
+  const removeWord = (w: { id: string; text: string }) => {
+    const count = spellingsForWord(w.id)
+    if (count === 0) dispatch({ type: 'removeWord', id: w.id })
+    else setPendingDelete({ kind: 'word', id: w.id, name: w.text, count })
+  }
+
+  /**
+   * Students who are no longer on the roster but still have spellings in a test.
+   *
+   * The roster is project-wide, so a new test already starts with everyone on
+   * it — the only students "missing" from a test are ones that were removed.
+   * This is what puts them back, along with the analysis of their old work.
+   */
+  const archived = project.archivedStudents ?? []
+
+  const testsWithDataFor = (studentId: string) =>
+    project.tests.filter((t) =>
+      Object.values(t.responses).some((byStudent) => (byStudent[studentId] ?? '').trim() !== ''),
+    )
+
+  /**
+   * Archived names go through the privacy toggle too. They are not in the roster,
+   * so `names()` cannot number them; they get their own numbering instead.
+   */
+  const archivedName = (id: string) => {
+    const index = archived.findIndex((s) => s.id === id)
+    if (project.settings.anonymize) return `Former student ${index + 1}`
+    return archived[index]?.name ?? 'Unknown'
+  }
+
+  const openRestore = () => setRestoring(new Set(archived.map((s) => s.id)))
+
+  const toggleRestore = (id: string) => {
+    setRestoring((current) => {
+      const next = new Set(current ?? [])
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const exportCsv = () => {
     const rows: string[][] = [['Word', 'Type', ...project.students.map((s) => names(s.id))]]
     for (const w of test.words) {
@@ -80,11 +172,104 @@ export function EntryGrid() {
         ...project.students.map((s) => test.responses[w.id]?.[s.id] ?? ''),
       ])
     }
+    // The same grading row that closes the grid on screen.
+    rows.push([
+      'Words correct',
+      '',
+      ...project.students.map((s) => {
+        const { correct, total } = scoreFor(s.id)
+        const pct = percentOf(correct, total)
+        return pct ? `${correct}/${total} (${pct})` : `${correct}/${total}`
+      }),
+    ])
     download(exportName(test.name, 'responses'), toCsv(rows), 'text/csv')
   }
 
   return (
     <section className="panel">
+      {/* The ✕ buttons sit next to the reorder arrows, so a misclick is easy. */}
+      {pendingDelete && (
+        <ConfirmDialog
+          title={
+            pendingDelete.kind === 'student'
+              ? `Remove ${pendingDelete.name} from the class?`
+              : `Remove the word “${pendingDelete.name}”?`
+          }
+          confirmLabel={pendingDelete.kind === 'student' ? 'Remove student' : 'Remove word'}
+          danger
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            dispatch(
+              pendingDelete.kind === 'student'
+                ? { type: 'removeStudent', id: pendingDelete.id }
+                : { type: 'removeWord', id: pendingDelete.id },
+            )
+            setPendingDelete(null)
+          }}
+        >
+          {pendingDelete.kind === 'student' ? (
+            <>
+              <strong>{pendingDelete.name}</strong> has {pendingDelete.count} spelling
+              {pendingDelete.count === 1 ? '' : 's'} recorded across{' '}
+              {project.tests.length === 1 ? 'this test' : `your ${project.tests.length} tests`}. The
+              roster is shared, so removing them takes their column out of <em>every</em> test, not
+              just this one.
+              <br />
+              Their answers are kept, so <strong>Add from an earlier test</strong> can put them back
+              with their work intact.
+            </>
+          ) : (
+            <>
+              <strong>{pendingDelete.name}</strong> has {pendingDelete.count} spelling
+              {pendingDelete.count === 1 ? '' : 's'} recorded against it on this test. Removing the
+              word removes those too.
+            </>
+          )}
+        </ConfirmDialog>
+      )}
+
+      {restoring && (
+        <ConfirmDialog
+          title="Add students from an earlier test"
+          confirmLabel={restoring.size === 1 ? 'Add 1 student' : `Add ${restoring.size} students`}
+          confirmDisabled={restoring.size === 0}
+          onCancel={() => setRestoring(null)}
+          onConfirm={() => {
+            dispatch({ type: 'restoreStudents', ids: [...restoring] })
+            setRestoring(null)
+          }}
+        >
+          <p style={{ marginTop: 0 }}>
+            These students were removed from the class but their spellings are still in the file.
+            Adding one back puts their column on every test again, with their old work and its
+            analysis intact.
+          </p>
+          <div className="testpicker-list">
+            {archived.map((s) => {
+              const on = restoring.has(s.id)
+              const tests = testsWithDataFor(s.id)
+              const spellings = spellingsByStudent(s.id)
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`testchip ${on ? 'on' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => toggleRestore(s.id)}
+                >
+                  <span className="mark">{on ? '✓' : '+'}</span>
+                  <span className="name">{archivedName(s.id)}</span>
+                  <span className="date">
+                    {spellings} spelling{spellings === 1 ? '' : 's'} in {tests.length} test
+                    {tests.length === 1 ? '' : 's'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </ConfirmDialog>
+      )}
+
       <h2>Spelling test</h2>
       <p className="hint">
         Add the words you dictated and the students who took the test, then type what each student
@@ -119,6 +304,16 @@ export function EntryGrid() {
         <button className="btn primary" onClick={addStudent}>
           Add student
         </button>
+        {/*
+          Only shown when there is something to put back. The roster carries over
+          to every new test on its own, so with nobody archived this button would
+          be an offer to do nothing.
+        */}
+        {archived.length > 0 && (
+          <button className="btn" onClick={openRestore}>
+            Add from an earlier test ({archived.length})
+          </button>
+        )}
 
         <span className="spacer" />
 
@@ -196,7 +391,7 @@ export function EntryGrid() {
                         <button
                           className="icon"
                           title={`Remove ${names(s.id)}`}
-                          onClick={() => dispatch({ type: 'removeStudent', id: s.id })}
+                          onClick={() => removeStudent(s)}
                         >
                           ✕
                         </button>
@@ -236,7 +431,7 @@ export function EntryGrid() {
                         <button
                           className="icon"
                           title={`Remove ${w.text}`}
-                          onClick={() => dispatch({ type: 'removeWord', id: w.id })}
+                          onClick={() => removeWord(w)}
                         >
                           ✕
                         </button>
@@ -284,6 +479,21 @@ export function EntryGrid() {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr>
+                <th className="rowhead c1">Words correct</th>
+                <td className="num no-print c2" />
+                {project.students.map((s) => {
+                  const { correct, blank, total } = scoreFor(s.id)
+                  return (
+                    <td key={s.id} className="num score">
+                      <Fraction correct={correct} total={total} />
+                      {blank > 0 && <span className="blanks">{blank} blank</span>}
+                    </td>
+                  )
+                })}
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}

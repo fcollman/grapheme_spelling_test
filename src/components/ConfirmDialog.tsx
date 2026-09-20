@@ -8,6 +8,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
+  confirmDisabled = false,
   danger = false,
   onConfirm,
   onCancel,
@@ -15,6 +16,8 @@ export function ConfirmDialog({
   title: string
   children: ReactNode
   confirmLabel: string
+  /** For a dialog where the action needs a choice made in it first. */
+  confirmDisabled?: boolean
   danger?: boolean
   onConfirm: () => void
   onCancel: () => void
@@ -35,7 +38,11 @@ export function ConfirmDialog({
           <button className="btn" onClick={onCancel}>
             Cancel
           </button>
-          <button className={`btn ${danger ? 'danger-solid' : 'primary'}`} onClick={onConfirm}>
+          <button
+            className={`btn ${danger ? 'danger-solid' : 'primary'}`}
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </footer>
