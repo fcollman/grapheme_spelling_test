@@ -174,7 +174,8 @@ export function App() {
 
       {tab === 'entry' && <EntryGrid />}
       {tab === 'analysis' && <GraphemeAnalysis analysis={analysis} />}
-      {tab === 'profile' && <StudentProfile analysis={analysis} />}
+      {/* Both of these span every test, so they analyse lazily on open. */}
+      {tab === 'profile' && <StudentProfile />}
       {/* Mounted only when open, so it does not analyse every test in the background. */}
       {tab === 'progress' && <ReportProgress />}
       {tab === 'g-accuracy' && <ReportGraphemeAccuracy analysis={analysis} />}

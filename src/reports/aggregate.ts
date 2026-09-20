@@ -124,7 +124,24 @@ function nested<K1, V>(map: Map<K1, V>, key: K1, make: () => V): V {
  * Only attempted words count: a word a student did not write produces no
  * opportunities, so it shows as 0/0 rather than dragging accuracy down.
  */
+export interface ReportSource {
+  test: Test
+  analysis: TestAnalysis
+}
+
+/** Reports for a single test — what most of the tabs want. */
 export function buildReports(project: Project, test: Test, analysis: TestAnalysis): Reports {
+  return buildReportsAcross(project, [{ test, analysis }])
+}
+
+/**
+ * Reports aggregated over any set of tests.
+ *
+ * Every accumulator below already sums across words, so summing across tests as
+ * well needs nothing more than a longer list of words to walk. Counts, examples
+ * and confusions all pool, which is what a profile spanning a term should show.
+ */
+export function buildReportsAcross(project: Project, sources: ReportSource[]): Reports {
   const amber = project.settings.amberCountsCorrect
 
   const accuracy = new Map<PhonemeId, Map<string, Tally>>()
@@ -163,7 +180,12 @@ export function buildReports(project: Project, test: Test, analysis: TestAnalysi
     }
   }
 
-  for (const word of test.words) {
+  // Flattened so the body below is unchanged whether one test or twelve.
+  const everyWord = sources.flatMap(({ test, analysis }) =>
+    test.words.map((word) => ({ word, analysis })),
+  )
+
+  for (const { word, analysis } of everyWord) {
     const units = analysis.unitsByWord.get(word.id) ?? []
     const target = analysis.byWord.get(word.id)
 

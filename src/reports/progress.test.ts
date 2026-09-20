@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeTest, collectNorms, cellKey, type TestAnalysis } from '../state/useAnalysis'
-import { buildProgress, buildReports, CLASS, getExamples, testsInOrder } from './aggregate'
+import {
+  buildProgress,
+  buildReports,
+  buildReportsAcross,
+  CLASS,
+  getExamples,
+  getGraphemeTally,
+  testsInOrder,
+} from './aggregate'
 import type { Project, Test } from '../state/types'
 
 const students = [
@@ -147,6 +155,60 @@ describe('error examples', () => {
 
     const sh = reports.graphemes.find((g) => g.letters === 'sh')!
     expect(getExamples(reports, 's1', sh.key, 's').length).toBe(3)
+  })
+})
+
+describe('reports across several tests', () => {
+  it('pools counts from every test given to it', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const sources = project.tests.map((test) => ({ test, analysis: byTest.get(test.id)! }))
+    const across = buildReportsAcross(project, sources)
+
+    // "sh" is on test 1 and test 3. Ben wrote "sip" then "ship".
+    const sh = across.graphemes.find((g) => g.letters === 'sh')!
+    expect(getGraphemeTally(across, sh.key, 's2')).toEqual({ correct: 1, total: 2 })
+    expect(getGraphemeTally(across, sh.key, 's1')).toEqual({ correct: 2, total: 2 })
+
+    // "cat" is on all three tests and both students always got it right.
+    const c = across.graphemes.find((g) => g.letters === 'c' && g.phonemes.join() === 'K')!
+    expect(getGraphemeTally(across, c.key, CLASS)).toEqual({ correct: 6, total: 6 })
+  })
+
+  it('matches the single-test report when given one test', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const test = project.tests[0]
+    const analysis = byTest.get(test.id)!
+
+    const one = buildReports(project, test, analysis)
+    const across = buildReportsAcross(project, [{ test, analysis }])
+
+    expect(across.graphemes.map((g) => g.key)).toEqual(one.graphemes.map((g) => g.key))
+    for (const g of one.graphemes) {
+      expect(getGraphemeTally(across, g.key, CLASS)).toEqual(getGraphemeTally(one, g.key, CLASS))
+    }
+  })
+
+  it('pools the quoted error examples too', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    // Only the two tests containing "ship".
+    const sources = [project.tests[0], project.tests[2]].map((test) => ({
+      test,
+      analysis: byTest.get(test.id)!,
+    }))
+    const across = buildReportsAcross(project, sources)
+
+    const sh = across.graphemes.find((g) => g.letters === 'sh')!
+    expect(getExamples(across, 's2', sh.key, 's').map((e) => e.word)).toEqual(['ship'])
+  })
+
+  it('returns an empty report when no tests are selected', () => {
+    const project = makeProject()
+    const empty = buildReportsAcross(project, [])
+    expect(empty.graphemes).toEqual([])
+    expect(empty.phonemes).toEqual([])
   })
 })
 

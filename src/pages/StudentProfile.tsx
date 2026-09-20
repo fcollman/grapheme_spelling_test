@@ -1,18 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../state/store'
-import { cellKey, type AnalysisResult } from '../state/useAnalysis'
+import { cellKey, useAllTests } from '../state/useAnalysis'
 import type { Mark } from '../engine/align'
 import {
-  buildReports,
+  buildReportsAcross,
   getExamples,
   getGraphemeTally,
   NONE,
+  testsInOrder,
   type GraphemeRow,
+  type ReportSource,
   type Reports,
 } from '../reports/aggregate'
 import { CATEGORIES, category, type CategoryId } from '../data/categories'
 import { displayList, type Notation } from '../data/phonemes'
 import { CategoryDot } from '../components/CategoryTag'
+import { TestPicker } from '../components/TestPicker'
 import { scaleColor, scaleInk } from '../components/Legend'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
@@ -20,7 +23,10 @@ import type { Student } from '../state/types'
 
 /**
  * Everything about one student on one page, for an IEP meeting or a parent
- * conference. Every other report in the app is class-wide.
+ * conference. Every other report except progress is class-wide.
+ *
+ * Which tests it covers is up to the teacher: one lesson's test, the last three,
+ * the first three against the last three, or a whole term pooled together.
  */
 
 /**
@@ -126,17 +132,40 @@ function ErrorList({
   )
 }
 
-export function StudentProfile({ analysis }: { analysis: AnalysisResult }) {
-  const { project, test } = useStore()
+export function StudentProfile() {
+  const { project } = useStore()
   const { notation } = project.settings
   const [who, setWho] = useState<string>('all')
 
-  const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
+  const tests = useMemo(() => testsInOrder(project), [project])
+  const all = useAllTests(project, true)
+
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(tests.map((t) => t.id)))
+
+  // When the project changes underneath us — a demo loaded, a test added — start
+  // from everything again rather than holding on to ids that no longer exist.
+  const testIds = tests.map((t) => t.id).join(',')
+  useEffect(() => {
+    setSelected(new Set(tests.map((t) => t.id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testIds])
+
+  const sources: ReportSource[] = useMemo(() => {
+    if (all.loading) return []
+    return tests
+      .filter((t) => selected.has(t.id))
+      .map((test) => ({ test, analysis: all.byTest.get(test.id)! }))
+      .filter((s) => s.analysis)
+  }, [tests, selected, all.byTest, all.loading])
+
+  const reports = useMemo(() => buildReportsAcross(project, sources), [project, sources])
 
   const shown = who === 'all' ? project.students : project.students.filter((s) => s.id === who)
 
   const exportCsv = () => {
     const rows: string[][] = [
+      ['Tests included', sources.map((s) => `${s.test.name} (${s.test.date})`).join('; ')],
+      [],
       ['Student', 'Section', 'Item', 'Sounds', 'Detail', 'Correct', 'Total', 'Percent'],
     ]
     for (const s of shown) {
@@ -165,10 +194,10 @@ export function StudentProfile({ analysis }: { analysis: AnalysisResult }) {
         ])
       }
     }
-    download(exportName(test.name, 'student-profiles'), toCsv(rows), 'text/csv')
+    download(exportName('student-profiles', 'summary'), toCsv(rows), 'text/csv')
   }
 
-  if (project.students.length === 0 || test.words.length === 0) {
+  if (project.students.length === 0 || tests.every((t) => t.words.length === 0)) {
     return (
       <section className="panel">
         <h2>Student profile</h2>
@@ -181,9 +210,10 @@ export function StudentProfile({ analysis }: { analysis: AnalysisResult }) {
     <section className="panel">
       <h2>Student profile</h2>
       <p className="hint">
-        One page per student, for an IEP meeting or a parent conference. A category counts as secure
-        at {Math.round(MASTERY * 100)}% or above — the threshold usually used to decide something
-        still needs teaching.
+        One page per student, for an IEP meeting or a parent conference. Choose which tests it
+        covers — a single test, the last three, or a whole term pooled together. A category counts
+        as secure at {Math.round(MASTERY * 100)}% or above, the threshold usually used to decide
+        something still needs teaching.
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -199,7 +229,7 @@ export function StudentProfile({ analysis }: { analysis: AnalysisResult }) {
           </select>
         </label>
         <span className="spacer" />
-        <button className="btn" onClick={exportCsv}>
+        <button className="btn" onClick={exportCsv} disabled={sources.length === 0}>
           Download CSV
         </button>
         <button className="btn" onClick={() => window.print()}>
@@ -207,11 +237,19 @@ export function StudentProfile({ analysis }: { analysis: AnalysisResult }) {
         </button>
       </div>
 
-      {analysis.loading && <div className="empty">Analysing…</div>}
+      <TestPicker tests={tests} selected={selected} onChange={setSelected} />
 
-      {!analysis.loading &&
+      {all.error && <div className="error">Could not analyse every test: {all.error}</div>}
+      {all.loading && <div className="empty">Analysing…</div>}
+
+      {!all.loading && sources.length === 0 && (
+        <div className="empty">Choose at least one test to build a profile from.</div>
+      )}
+
+      {!all.loading &&
+        sources.length > 0 &&
         shown.map((student) => (
-          <Profile key={student.id} student={student} reports={reports} analysis={analysis} />
+          <Profile key={student.id} student={student} reports={reports} sources={sources} />
         ))}
     </section>
   )
@@ -220,13 +258,13 @@ export function StudentProfile({ analysis }: { analysis: AnalysisResult }) {
 function Profile({
   student,
   reports,
-  analysis,
+  sources,
 }: {
   student: Student
   reports: Reports
-  analysis: AnalysisResult
+  sources: ReportSource[]
 }) {
-  const { project, test } = useStore()
+  const { project } = useStore()
   const { notation } = project.settings
 
   const summary = summarise(reports, student.id)
@@ -234,29 +272,38 @@ function Profile({
   const soundErrors = errors.filter((e) => e.mark !== 'plausible')
   const spellingErrors = errors.filter((e) => e.mark === 'plausible')
 
-  const attempted = test.words.filter(
-    (w) => analysis.byCell.get(cellKey(w.id, student.id))?.attempted,
-  )
-  const correctWords = attempted.filter(
-    (w) => analysis.byCell.get(cellKey(w.id, student.id))?.spellingCorrect,
-  )
+  // Per-test scores, which double as the header's overall total.
+  const perTest = sources.map(({ test, analysis }) => {
+    const attempted = test.words.filter((w) => analysis.byCell.get(cellKey(w.id, student.id))?.attempted)
+    const correct = attempted.filter(
+      (w) => analysis.byCell.get(cellKey(w.id, student.id))?.spellingCorrect,
+    )
+    return { test, analysis, attempted: attempted.length, correct: correct.length }
+  })
+
+  const totalAttempted = perTest.reduce((n, t) => n + t.attempted, 0)
+  const totalCorrect = perTest.reduce((n, t) => n + t.correct, 0)
 
   const secure = summary.filter((c) => c.total > 0 && c.correct / c.total >= MASTERY)
   const needsWork = summary.filter((c) => c.total > 0 && c.correct / c.total < MASTERY)
   const notAssessed = summary.filter((c) => c.total === 0)
+
+  const single = sources.length === 1
+  const span =
+    single
+      ? `${sources[0].test.name} · ${sources[0].test.date}`
+      : `${sources.length} tests · ${sources[0].test.date} to ${sources[sources.length - 1].test.date}`
 
   return (
     <article className="profile">
       <header>
         <div>
           <h3>{student.name}</h3>
-          <p className="sub">
-            {test.name} · {test.date}
-          </p>
+          <p className="sub">{span}</p>
         </div>
         <div className="score">
           <strong>
-            {correctWords.length}/{attempted.length}
+            {totalCorrect}/{totalAttempted}
           </strong>
           <span>words spelled correctly</span>
         </div>
@@ -266,7 +313,7 @@ function Profile({
         <section>
           <h4>Secure ({Math.round(MASTERY * 100)}% or above)</h4>
           {secure.length === 0 ? (
-            <p className="sub">Nothing reached {Math.round(MASTERY * 100)}% on this test.</p>
+            <p className="sub">Nothing reached {Math.round(MASTERY * 100)}% across these tests.</p>
           ) : (
             <ul className="chips">
               {secure.map((c) => (
@@ -282,7 +329,7 @@ function Profile({
         <section>
           <h4>Needs work</h4>
           {needsWork.length === 0 ? (
-            <p className="sub">Nothing fell below {Math.round(MASTERY * 100)}% on this test.</p>
+            <p className="sub">Nothing fell below {Math.round(MASTERY * 100)}%.</p>
           ) : (
             <ul className="chips">
               {needsWork.map((c) => (
@@ -298,7 +345,7 @@ function Profile({
 
       {notAssessed.length > 0 && (
         <p className="sub">
-          Not assessed on this test: {notAssessed.map((c) => category(c.id).label).join(', ')}.
+          Not assessed on these tests: {notAssessed.map((c) => category(c.id).label).join(', ')}.
         </p>
       )}
 
@@ -343,7 +390,7 @@ function Profile({
 
       <h4>Wrong sound</h4>
       {soundErrors.length === 0 ? (
-        <p className="sub">No sound errors on this test.</p>
+        <p className="sub">No sound errors on these tests.</p>
       ) : (
         <ErrorList lines={soundErrors} notation={notation} />
       )}
@@ -359,33 +406,83 @@ function Profile({
         </>
       )}
 
-      <h4>Every word</h4>
-      <div className="scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Word</th>
-              <th>Wrote</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {test.words.map((w) => {
-              const a = analysis.byCell.get(cellKey(w.id, student.id))
-              const state = !a?.attempted ? 'omitted' : a.spellingCorrect ? 'exact' : 'wrong'
-              return (
-                <tr key={w.id}>
-                  <th className="rowhead">{w.text}</th>
-                  <td className={`cell ${state}`} style={{ fontFamily: 'var(--mono)', cursor: 'default' }}>
-                    {a?.attempted ? a.attempt : '—'}
-                  </td>
-                  <td style={{ color: 'var(--muted)' }}>{w.nonsense ? 'nonsense' : 'real'}</td>
+      {/*
+        With one test the word list is the evidence. Across a term it would run to
+        a hundred rows and bury everything above it, so the per-test scores stand
+        in for it instead.
+      */}
+      {single ? (
+        <>
+          <h4>Every word</h4>
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Word</th>
+                  <th>Wrote</th>
+                  <th>Type</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {sources[0].test.words.map((w) => {
+                  const a = sources[0].analysis.byCell.get(cellKey(w.id, student.id))
+                  const state = !a?.attempted ? 'omitted' : a.spellingCorrect ? 'exact' : 'wrong'
+                  return (
+                    <tr key={w.id}>
+                      <th className="rowhead">{w.text}</th>
+                      <td className={`cell ${state}`} style={{ fontFamily: 'var(--mono)', cursor: 'default' }}>
+                        {a?.attempted ? a.attempt : '—'}
+                      </td>
+                      <td style={{ color: 'var(--muted)' }}>{w.nonsense ? 'nonsense' : 'real'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <>
+          <h4>Test by test</h4>
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Test</th>
+                  <th>Date</th>
+                  <th className="num">Words correct</th>
+                  <th className="num">Accuracy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perTest.map(({ test, attempted, correct }) => {
+                  const frac = attempted === 0 ? null : correct / attempted
+                  return (
+                    <tr key={test.id}>
+                      <th className="rowhead">{test.name}</th>
+                      <td style={{ color: 'var(--muted)' }}>{test.date}</td>
+                      <td className="num">
+                        {correct}/{attempted}
+                      </td>
+                      <td
+                        className="num"
+                        style={{
+                          background: frac === null ? 'var(--none-bg)' : scaleColor(frac),
+                          color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
+                          fontWeight: 600,
+                        }}
+                        title={frac === null ? 'Nothing attempted' : undefined}
+                      >
+                        {frac === null ? 'not taken' : `${Math.round(frac * 100)}%`}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </article>
   )
 }
