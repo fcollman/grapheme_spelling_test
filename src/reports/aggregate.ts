@@ -97,6 +97,17 @@ export function isPatternKey(key: string): boolean {
   return key.startsWith('pattern:')
 }
 
+/**
+ * True when the SOUND was right, whatever letters were used.
+ *
+ * Distinct from isCorrect(), which is about scoring and depends on whether the
+ * teacher counts a different-spelling answer as correct. This one decides
+ * whether an answer represents a sound confusion at all.
+ */
+export function soundAccepted(mark: Mark): boolean {
+  return mark === 'exact' || mark === 'plausible'
+}
+
 function isCorrect(mark: Mark, amberCounts: boolean): boolean {
   if (mark === 'exact') return true
   if (mark === 'plausible') return amberCounts
@@ -285,9 +296,16 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
         // inserted sound, which belongs in the insertion row, not the diagonal.
         const [first, ...extra] = slot.student
         seenProduced.add(first)
-        addConfusion(student.id, slot.target, first)
 
-        if (first !== slot.target) {
+        // The marking may have accepted a sound that is not literally the target
+        // — "accept any unstressed vowel for a schwa" does exactly that. Such an
+        // answer belongs on the diagonal, or the confusion matrix would report a
+        // swap that the accuracy report counts as correct, and drilling into it
+        // would show rows saying "correct" under a cell that reads as an error.
+        const accepted = soundAccepted(slot.mark)
+        addConfusion(student.id, slot.target, accepted ? slot.target : first)
+
+        if (!accepted) {
           bump(nested(misuse, first, () => new Map<string, number>()), student.id)
           bump(nested(misuse, first, () => new Map<string, number>()), CLASS)
         }

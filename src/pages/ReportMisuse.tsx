@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import type { AnalysisResult } from '../state/useAnalysis'
@@ -6,6 +6,8 @@ import { buildReports, CLASS, getMisuse } from '../reports/aggregate'
 import { display, get, REPORT_ORDER } from '../data/phonemes'
 import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 
 /**
  * The mirror of the accuracy report: how often a student reached for a sound that
@@ -15,6 +17,7 @@ import { toCsv } from '../export/csv'
 export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
   const { project, test } = useStore()
   const names = useStudentNames()
+  const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
   const reports = useMemo(() => buildReports(project, test, analysis), [project, test, analysis])
 
@@ -98,7 +101,19 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
                   return (
                     <td
                       key={c.id}
-                      className={`num ${c.id === CLASS ? 'classcol' : ''}`}
+                      className={`num ${n > 0 ? 'drillable' : ''} ${c.id === CLASS ? 'classcol' : ''}`}
+                      title={n > 0 ? 'Click to see every example' : undefined}
+                      onClick={() =>
+                        n > 0 &&
+                        setDrill({
+                          kind: 'misuse',
+                          key: p,
+                          label: `${display(p, notation)} used where it was not needed`,
+                          studentId: c.id,
+                          sources: [{ test, analysis }],
+                          scopeLabel: test.name,
+                        })
+                      }
                       style={{
                         background: n === 0 ? undefined : `hsl(4 72% ${92 - intensity * 20}%)`,
                         color: n === 0 ? 'var(--muted)' : 'hsl(4 70% 28%)',
@@ -114,6 +129,8 @@ export function ReportMisuse({ analysis }: { analysis: AnalysisResult }) {
           </tbody>
         </table>
       </div>
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }

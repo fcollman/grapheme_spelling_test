@@ -5,7 +5,7 @@ import { COLLAPSING_CATEGORIES } from '../data/categories'
 import { unitResults } from '../engine/units'
 import { cellKey } from '../state/useAnalysis'
 import type { Project } from '../state/types'
-import { CLASS, isPatternKey, NONE, patternRowKey, type ReportSource } from './aggregate'
+import { CLASS, isPatternKey, NONE, patternRowKey, soundAccepted, type ReportSource } from './aggregate'
 
 /**
  * The individual answers behind a single number in a report.
@@ -19,11 +19,15 @@ import { CLASS, isPatternKey, NONE, patternRowKey, type ReportSource } from './a
  * contradict the number that opened it. A test asserts the two agree.
  */
 
-export type DrillKind = 'grapheme' | 'phoneme' | 'category'
+export type DrillKind = 'grapheme' | 'phoneme' | 'category' | 'misuse'
 
 export interface Drill {
   kind: DrillKind
-  /** A grapheme unit key, a phoneme id, or a category id. */
+  /**
+   * A grapheme unit key, a category id, or a phoneme id. For 'phoneme' that is
+   * the sound the word NEEDED; for 'misuse' it is the sound the student
+   * PRODUCED where something else was wanted.
+   */
   key: string
   /** What to call it in the modal title. */
   label: string
@@ -97,6 +101,42 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
           attempt: a.attempt,
         }
 
+        // Misuse counts a sound the student REACHED FOR where it was not wanted,
+        // whatever the target happened to be — both a substitution and an extra
+        // sound inserted on top of one. Mirrors the misuse tally exactly.
+        if (drill.kind === 'misuse') {
+          for (const slot of a.slots) {
+            const [produced, ...extra] = slot.student
+
+            // Not a misuse if the marking accepted the sound — lenient schwa can
+            // accept a vowel that is not literally the target.
+            if (produced === drill.key && !soundAccepted(slot.mark)) {
+              out.push({
+                ...stamp,
+                targetLetters: slot.targetGrapheme,
+                wroteLetters: slot.studentGrapheme,
+                sounds: [slot.target],
+                mark: slot.mark,
+                producedKey: drill.key,
+              })
+            }
+
+            for (const inserted of extra) {
+              if (inserted !== drill.key) continue
+              out.push({
+                ...stamp,
+                // An inserted sound had nothing to be needed for.
+                targetLetters: '',
+                wroteLetters: slot.studentGrapheme,
+                sounds: [slot.target],
+                mark: 'wrong',
+                producedKey: drill.key,
+              })
+            }
+          }
+          continue
+        }
+
         if (drill.kind === 'phoneme') {
           for (const slot of a.slots) {
             // The ∅ row of a phoneme confusion matrix is not a target at all —
@@ -121,7 +161,13 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
             }
 
             if (slot.target !== drill.key) continue
-            const producedKey = slot.student.length === 0 ? NONE : slot.student[0]
+            // Mirrors the matrix: an accepted sound sits on the diagonal.
+            const producedKey =
+              slot.student.length === 0
+                ? NONE
+                : soundAccepted(slot.mark)
+                  ? slot.target
+                  : slot.student[0]
             if (!wanted(producedKey)) continue
             out.push({
               ...stamp,

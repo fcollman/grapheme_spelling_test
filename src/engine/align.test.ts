@@ -88,6 +88,51 @@ describe('alignment fixtures', () => {
   })
 })
 
+/**
+ * eSpeak guesses stress from the spelling, so a word it knows and a misspelling
+ * of that word can reduce different vowels to schwa. "bombastic" is stressed on
+ * the second syllable and reduces the first vowel; "bombastick" is unknown to
+ * it, gets first-syllable stress, and reduces the second vowel instead. Letters
+ * the student copied correctly must not be marked down for that.
+ */
+describe('vowel reduction caused by the engine, not the student', () => {
+  it('accepts a letter the student copied exactly, despite the sound shifting', async () => {
+    const a = await analyzePair('bombastic', 'bombastick', {}, { lenientSchwa: true })
+    const slots = a.slots.map((s) => `${s.targetGrapheme}→${s.studentGrapheme}:${s.mark}`)
+
+    // The "a" is the stressed vowel in the target and a schwa in their spelling,
+    // yet they wrote the same letter the word uses.
+    expect(slots).toContain('a→a:exact')
+    // And the first vowel, schwa in the target, likewise.
+    expect(slots).toContain('o→o:exact')
+  })
+
+  it('still marks a genuine vowel change wrong when letters happen to match', async () => {
+    // Adding a silent e changes the vowel. No schwa is involved, so matching
+    // letters must not excuse it, or "hope" for "hop" would score full marks.
+    for (const [target, attempt] of [
+      ['hop', 'hope'],
+      ['tap', 'tape'],
+      ['cat', 'cate'],
+    ]) {
+      const a = await analyzePair(target, attempt, {}, { lenientSchwa: true })
+      const vowel = a.slots.find((s) => s.targetGrapheme === target[1])
+      expect(vowel?.mark, `${target} -> ${attempt}`).toBe('wrong')
+    }
+  })
+
+  it('leaves a different letter as a spelling difference, not a match', async () => {
+    // "bumbastic" has the right sound but the wrong letter, which is amber.
+    const a = await analyzePair('bombastic', 'bumbastic', {}, { lenientSchwa: true })
+    expect(a.slots.find((s) => s.targetGrapheme === 'o')?.mark).toBe('plausible')
+  })
+
+  it('does not apply the waiver when lenient schwa is switched off', async () => {
+    const a = await analyzePair('bombastic', 'bombastick', {}, { lenientSchwa: false })
+    expect(a.slots.find((s) => s.targetGrapheme === 'a')?.mark).toBe('wrong')
+  })
+})
+
 describe('syllabify', () => {
   const cases: Array<[string, string]> = [
     ['cat', 'K-A-T'],

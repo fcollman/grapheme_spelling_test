@@ -7,6 +7,7 @@ import {
   getTally,
   getConfusion,
   getGraphemeConfusion,
+  getMisuse,
   NONE,
   type ReportSource,
 } from './aggregate'
@@ -200,6 +201,98 @@ describe('drilling into an accuracy figure', () => {
       drillFor({ key: sh.key, studentId: CLASS, sources, produced: 'sh' }),
     )
     expect(right.map((r) => r.studentId).sort()).toEqual(['s1', 's3'])
+  })
+
+  it('matches the misuse counts for every sound and student', async () => {
+    const { sources, reports } = await setup()
+
+    for (const p of reports.producedPhonemes) {
+      for (const who of [...students.map((s) => s.id), CLASS]) {
+        const count = getMisuse(reports, p, who)
+        const rows = findOccurrences(
+          project,
+          drillFor({ kind: 'misuse', key: p, studentId: who, sources }),
+        )
+        expect(rows.length, `misuse of ${p} for ${who}`).toBe(count)
+      }
+    }
+  })
+
+  it('reads a misuse cell as a sound reached for where it was not wanted', async () => {
+    const { sources } = await setup()
+    // Cruz wrote "cet" for "cat", so /e/ turned up where /a/ was needed.
+    const rows = findOccurrences(project, drillFor({ kind: 'misuse', key: 'E', studentId: 's3', sources }))
+
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows[0]).toMatchObject({ word: 'cat', attempt: 'cet', wroteLetters: 'e' })
+    // Never lists a sound the word actually called for.
+    expect(rows.every((r) => r.sounds[0] !== 'E')).toBe(true)
+  })
+
+  /**
+   * Regression. "bombastic" carries an unstressed schwa spelled "o", so a student
+   * who writes "o" produces /o/ — which the lenient-schwa setting accepts. That
+   * answer used to be counted correct by the accuracy report while also appearing
+   * as a /ə/ → /o/ swap in the confusion matrix, so drilling into an off-diagonal
+   * cell showed a list of rows all saying "correct".
+   */
+  describe('a sound the marking accepted', () => {
+    const schwaTest: Test = {
+      id: 'ts',
+      name: 'Schwa',
+      date: '2026-02-01',
+      words: [{ id: 'ws', text: 'bombastic', nonsense: false }],
+      responses: { ws: { s1: 'bombastic', s2: 'bombastick', s3: 'bomback' } },
+      overrides: {},
+      wordPhonemes: {},
+    }
+
+    async function build(lenientSchwa: boolean) {
+      const p: Project = {
+        ...project,
+        tests: [schwaTest],
+        activeTestId: 'ts',
+        settings: { ...project.settings, lenientSchwa },
+      }
+      const norms = await collectNorms(p, p.tests)
+      const analysis = analyzeTest(p, schwaTest, norms, { lenientSchwa })
+      const sources: ReportSource[] = [{ test: schwaTest, analysis }]
+      return { p, sources, reports: buildReportsAcross(p, sources) }
+    }
+
+    it('sits on the diagonal, not off it, when lenient schwa is on', async () => {
+      const { reports } = await build(true)
+      expect(getConfusion(reports, CLASS, 'SCHWA', 'O')).toBe(0)
+      expect(getConfusion(reports, CLASS, 'SCHWA', 'SCHWA')).toBeGreaterThan(0)
+      // And it is not a misuse of /o/ either, since /o/ was accepted here.
+      expect(getMisuse(reports, 'O', CLASS)).toBe(0)
+    })
+
+    it('is a real confusion again when lenient schwa is off', async () => {
+      const { reports } = await build(false)
+      expect(getConfusion(reports, CLASS, 'SCHWA', 'O')).toBeGreaterThan(0)
+      expect(getMisuse(reports, 'O', CLASS)).toBeGreaterThan(0)
+    })
+
+    it('never shows a row marked correct under an off-diagonal cell', async () => {
+      for (const lenient of [true, false]) {
+        const { p, sources, reports } = await build(lenient)
+        for (const produced of [...reports.producedPhonemes, NONE]) {
+          if (produced === 'SCHWA') continue // the diagonal may of course be correct
+          const rows = findOccurrences(p, {
+            kind: 'phoneme',
+            key: 'SCHWA',
+            label: '',
+            studentId: CLASS,
+            sources,
+            scopeLabel: '',
+            produced,
+          })
+          const wronglyCorrect = rows.filter((r) => r.mark === 'exact' || r.mark === 'plausible')
+          expect(wronglyCorrect, `lenient=${lenient}, /ə/ -> ${produced}`).toEqual([])
+        }
+      }
+    })
   })
 
   it('skips words a student did not attempt', async () => {

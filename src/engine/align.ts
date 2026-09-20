@@ -143,15 +143,35 @@ function markOf(
   if (student.length === 0) return 'omitted'
 
   const single = student.length === 1 ? student[0] : null
-  const schwaMatch =
-    options.lenientSchwa &&
-    !stressed &&
+  const sameLetters = graphemeKey(studentGrapheme, target) === graphemeKey(targetGrapheme, target)
+
+  /**
+   * Either side of the comparison can turn out to be a schwa purely because of
+   * how eSpeak guessed the stress.
+   *
+   * It knows "bombastic" and stresses the second syllable, reducing the first
+   * vowel to /ə/. It does not know "bombastick", so it falls back to rules,
+   * stresses the FIRST syllable, and reduces the second vowel instead. The same
+   * letter in the same position then carries a different sound in the target and
+   * in the attempt, through no doing of the student's.
+   */
+  const schwaPair =
     single !== null &&
     ((target === 'SCHWA' && isVowel(single)) || (single === 'SCHWA' && isVowel(target)))
 
+  /**
+   * Normally only an unstressed vowel is forgiven. But where the student wrote
+   * the very letters the word uses, the difference cannot be a spelling mistake
+   * — it is the engine having stressed their spelling differently — so the
+   * stress condition is waived. Restricted to schwa pairs on purpose: matching
+   * letters alone must not excuse a real vowel error such as "hope" for "hop",
+   * where the sounds differ without a schwa being involved.
+   */
+  const schwaMatch =
+    options.lenientSchwa && schwaPair && (!stressed || (sameLetters && studentGrapheme !== ''))
+
   if (single === target || schwaMatch) {
-    const same = graphemeKey(studentGrapheme, target) === graphemeKey(targetGrapheme, target)
-    return same ? 'exact' : 'plausible'
+    return sameLetters ? 'exact' : 'plausible'
   }
   return 'wrong'
 }

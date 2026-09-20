@@ -40,6 +40,12 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
 
   const correct = rows.filter((r) => r.mark === 'exact').length
   const plausible = rows.filter((r) => r.mark === 'plausible').length
+  /**
+   * A confusion or misuse cell already counts one specific outcome, so a
+   * "4 of 6 correct" score would be meaningless there — every row is that same
+   * outcome. Those show how often it happened instead.
+   */
+  const countOnly = drill.produced !== undefined || drill.kind === 'misuse'
   const manyTests = new Set(rows.map((r) => r.testId)).size > 1
   const manyStudents = drill.studentId === '__class'
 
@@ -83,13 +89,8 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
               {drill.scopeLabel}
             </p>
           </div>
-          {/*
-            A confusion cell already counts one specific outcome, so a
-            "4 of 6 correct" score there would be meaningless — every row is the
-            same outcome. Show how often it happened instead.
-          */}
           <div className="drillscore">
-            {drill.produced === undefined ? (
+            {!countOnly ? (
               <>
                 <strong>
                   {correct}/{rows.length}
