@@ -1363,3 +1363,217 @@ ul.errorlist em {
 .print-title {
   display: none;
 }
+
+/* ---------------------------------------------------------------- Help ---- */
+
+/*
+ * Two ways through the guide at once: the list on the left for jumping straight
+ * to a section, the pager at the bottom for reading it front to back.
+ */
+.help {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+/* Scroll target, so a new section starts at its own top rather than wherever
+   the last one was left. */
+.help-anchor {
+  grid-column: 1 / -1;
+  height: 0;
+  scroll-margin-top: 12px;
+}
+
+.help-nav {
+  position: sticky;
+  top: 12px;
+  border-right: 1px solid var(--line);
+  padding-right: 16px;
+}
+
+.help-nav h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
+.help-nav h3 + ol,
+.help-nav h3 + ul {
+  margin: 0 0 18px;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: help;
+}
+
+.help-nav li {
+  margin: 0;
+}
+
+.help-nav ol li {
+  counter-increment: help;
+}
+
+.help-nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.help-nav ol button::before {
+  content: counter(help) '. ';
+  color: var(--muted);
+}
+
+.help-nav button:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.help-nav button[aria-current='true'] {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.help-nav > .btn {
+  /* Wins back the button styling that the sidebar-link rule above strips off. */
+  margin-top: 4px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 6px 10px;
+}
+
+.help-body {
+  min-width: 0;
+}
+
+.help-pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.help-pager .btn {
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.help-count {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Screenshots in the guide. Bordered so the edge of the picture is not mistaken
+   for the edge of a panel in the app itself. */
+.prose figure {
+  margin: 16px 0 20px;
+}
+
+.prose figure img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.prose figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.prose table {
+  font-size: 13px;
+}
+
+.prose kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: #eef0f4;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.prose blockquote {
+  margin: 14px 0;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--line-strong);
+  color: var(--muted);
+}
+
+/*
+ * The guide needs two widths at once: prose stays at a readable measure, while a
+ * screenshot of a full-width table gets the whole column. Capping the text
+ * elements rather than the article is what lets the figures out.
+ */
+.help .prose {
+  max-width: none;
+}
+
+.help .prose p,
+.help .prose ul,
+.help .prose ol,
+.help .prose h1,
+.help .prose h2,
+.help .prose h3,
+.help .prose blockquote,
+.help .prose pre {
+  max-width: 72ch;
+}
+
+.help .prose table {
+  max-width: 100%;
+}
+
+@media (max-width: 860px) {
+  .help {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .help-nav {
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 0 0 12px;
+  }
+}
+
+/* Printing the guide gives a plain document: no sidebar, no pager. */
+@media print {
+  .help {
+    display: block;
+  }
+
+  .help .prose {
+    max-width: none;
+  }
+}

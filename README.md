@@ -18,7 +18,9 @@ A version of this is deployed to github pages at
 
 ## For teachers: using it
 
-1. Open `index.html` by double-clicking it. That is the whole setup.
+1. Open `index.html` by double-clicking it. That is the whole setup. The
+   **Help** button in the toolbar has a walk-through of every tab with
+   screenshots, which is a gentler start than the rest of this file.
 
    **Just want a look first?** Press **Load demo class** at the top. It fills the
    app with a made-up class of eight tested every two weeks for six months, so
@@ -164,16 +166,33 @@ npm run check:single   # asserts the build is one self-contained file
 npm run reference      # regenerates PHONEME-CATEGORIES.md from the data files
 ```
 
-### Editing the About page
+### Editing the Help section
 
-The **About** button in the toolbar shows [`content/about.md`](content/about.md).
-Edit that file in Markdown, commit, and pushing to `main` rebuilds and
-republishes it — no code changes needed. Headings, lists, tables, block quotes,
-links, `code` and emphasis all render; HTML comments stay hidden.
+The **Help** button in the toolbar opens a how-to guide followed by the About
+page. All of it is Markdown under [`content/`](content/), so it can be edited and
+committed without touching any code; pushing to `main` rebuilds and republishes
+it.
 
-The file is inlined into the bundle at build time via Vite's `?raw` import, not
-fetched at runtime, because a runtime fetch would break the double-click-the-file
-guarantee.
+| File | Becomes |
+|---|---|
+| `content/help/NN-name.md` | One numbered section of the guide |
+| `content/help/images/*.webp` | The screenshots those sections show |
+| `content/about.md` | The **About this tool** entry at the end |
+
+Each file's first `# heading` is its label in the sidebar, and the numeric
+filename prefix sets the reading order — adding `10-something.md` adds a section,
+with no code change. Headings, lists, tables, block quotes, links, `code` and
+emphasis all render; HTML comments stay hidden.
+
+Screenshots are written as `![caption](images/name.webp)`. The alt text becomes
+the visible caption. A reference with no matching file is dropped rather than
+left in place: leaving it would emit a real `<img src="images/…">`, which cannot
+load from `file://` and would fail the single-file check.
+
+Everything is inlined into the bundle at build time — the Markdown through Vite's
+`?raw` import, the screenshots as `data:` URIs — rather than fetched at runtime,
+because a runtime fetch would break the double-click-the-file guarantee. The
+pictures are why `dist/index.html` is around 2.3MB rather than 1.6MB.
 
 ### Deployment
 

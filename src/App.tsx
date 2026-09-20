@@ -14,7 +14,7 @@ import { ReportGraphemeConfusion } from './pages/ReportGraphemeConfusion'
 import { ReportAccuracy } from './pages/ReportAccuracy'
 import { ReportMisuse } from './pages/ReportMisuse'
 import { ReportConfusion } from './pages/ReportConfusion'
-import { About } from './pages/About'
+import { Help } from './pages/Help'
 import './ui/styles.css'
 
 /** Marking first, then the spelling-level reports, then the sound-level ones. */
@@ -30,8 +30,8 @@ const TABS = [
   { id: 'confusion', label: 'Phoneme confusion', group: 'By sound' },
 ] as const
 
-/** 'about' is reached from the toolbar rather than the tab strip, which is for analysis. */
-type TabId = (typeof TABS)[number]['id'] | 'about'
+/** 'help' is reached from the toolbar rather than the tab strip, which is for analysis. */
+type TabId = (typeof TABS)[number]['id'] | 'help'
 
 export function App() {
   const { project, test, dispatch } = useStore()
@@ -124,10 +124,11 @@ export function App() {
             Hide student names
           </label>
           <button
-            className={`btn ${tab === 'about' ? 'primary' : ''}`}
-            onClick={() => setTab(tab === 'about' ? 'entry' : 'about')}
+            className={`btn ${tab === 'help' ? 'primary' : ''}`}
+            title="How to use the app, and about it"
+            onClick={() => setTab(tab === 'help' ? 'entry' : 'help')}
           >
-            About
+            Help
           </button>
           <input
             ref={fileInput}
@@ -198,7 +199,7 @@ export function App() {
         </ConfirmDialog>
       )}
 
-      {tab === 'about' && <About />}
+      {tab === 'help' && <Help />}
       {tab === 'entry' && <EntryGrid />}
       {tab === 'analysis' && <GraphemeAnalysis analysis={analysis} />}
       {/* Both of these span every test, so they analyse lazily on open. */}
