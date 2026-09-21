@@ -1,6 +1,6 @@
 # Phoneme confusion
 
-The sound-level twin of **Grapheme confusion**, and the last tab in the app.
+The sound-level twin of **Grapheme confusion**.
 Grapheme confusion shows which *spelling* was written where another was needed;
 this shows which *sound* was.
 
@@ -10,22 +10,13 @@ this shows which *sound* was.
 
 Same shape as the grapheme matrix:
 
-- **Rows** are the sound the word needed.
-- **Columns** are the sound the student's letters actually made.
+- **Rows** are the sound the word should have written.
+- **Columns** are the sound the student's letters maid (or is it made).
 - The **green diagonal** is where the two agree — the sound was encoded
   correctly.
 - Every **red** cell off the diagonal is a specific swap, with the number of
   times it happened. Darker red means more often.
 - **∅** means the sound was left out altogether rather than replaced.
-
-A cluster on /e/ → /i/ is not "vowel problems". It is one contrast, and one
-contrast is something you can put in front of a student on Monday morning with
-minimal pairs and a mirror.
-
-Substitutions that are close together in the mouth — /b/ and /p/, /f/ and /v/,
-/m/ and /n/ — are the ones worth looking for. Pairs like those differ by a single
-feature, so a student confusing them is usually not hearing that feature rather
-than forgetting a rule.
 
 ## Whole class or one student
 
@@ -34,15 +25,11 @@ the same reasons as on the grapheme matrix: the class view finds the contrasts
 nobody has secured, and the single-student view finds the personal substitution
 that is quietly costing them marks across every test.
 
-## Click any cell, and pool your tests
+## The usual controls
 
-Every cell with a number is clickable, red and green alike, and opens the
-individual answers behind it — the words, the students, and what was written —
-with its own **Download CSV**.
-
-The test picker at the top pools across whatever tests you select. Confusions
-need pooling more than any other report here: a single occurrence is noise, and
-the same swap eleven times across a term is a diagnosis.
+- The **test picker** at the top pools the count across any tests you select. 
+- **Click any number** to open the examples behind it.
+- **Download CSV** and **Print / Save PDF** work as they do everywhere else.
 
 ---
 

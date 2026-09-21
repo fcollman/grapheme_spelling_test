@@ -15,31 +15,20 @@ often did a /ch/ turn up somewhere a /ch/ did not belong?"
 It is the same set of mistakes, sorted by the other end. And it surfaces
 something accuracy cannot: a **default**.
 
-A student who is unsure will reach for a sound they are confident about. Spread
-across an accuracy report, that shows up as a handful of unrelated small losses —
+A student who is unsure might reach for a sound they are confident about. Spread
+across an accuracy report, that could show up as a handful of unrelated small losses —
 short *e* a bit low, short *i* a bit low, schwa a bit low. Sorted by what they
-actually wrote, it collapses into one large number next to short *a*, because
-short *a* is what they write whenever they are not sure.
-
-That single number is worth more than the five small ones. It tells you what the
-student falls back on, and a fallback is something you can teach directly against.
+actually wrote, but viewed by incorrect sound, this collapses into one large number
+say next to short *a*, because short *a* is what they write whenever they are not sure.
 
 ## Reading it
 
 Rows are sounds; columns are students, with the **whole class** first. A high
-number is a sound being over-used, not a sound being failed — a big number here
-is not the same kind of bad news as a low number on the accuracy page.
-
-A sound with zeros all the way across is simply one nobody reached for wrongly.
+number is a sound being over-used.
 
 ## The usual controls
 
-- The **test picker** at the top pools the count across any tests you select. One
-  test rarely shows a default clearly; a term always does.
-- **Click any number** to open the examples behind it — which word, which
-  student, what they wrote, and what was needed instead. This is where "17 uses
-  of short *a*" becomes seventeen specific words you can put on a list.
+- The **test picker** at the top pools the count across any tests you select. 
+- **Click any number** to open the examples behind it.
 - **Download CSV** and **Print / Save PDF** work as they do everywhere else.
 
-Read this page next to **Phoneme confusion**: misuse tells you what a student
-over-uses, and confusion tells you what they are over-using it *instead of*.

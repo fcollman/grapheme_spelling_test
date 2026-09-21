@@ -11,8 +11,9 @@
 
 Grapheme Spelling Test turns spelling tests into a sound-by-sound picture of
 what a student can and cannot encode, including nonsense words. It was built for
-middle-school and elementary special education, where the useful question
-is not how many words were right but *which sounds and spellings* are secure.
+middle-school and late elementary special education, where studentds can form
+letters reliably, but might struggle with how *sounds and spellings* are written
+in different diosyncratic contexts or hearing differences in closely related sounds.  
 
 ## Who made it
 
@@ -30,7 +31,9 @@ The source code for this application can be found [here](https://www.github.com/
 server and nobody listening to or tracking what you enter here. 
 This page makes no network requests at all once it has loaded. 
 If you want to verify this you can open the browser developer tools 
-and examine the networking tab.
+and examine the networking tab. Although a Large Language Model (LLM) was used
+in creating the page, no LLMs are used within the code that runs.  
+This means the results are **fast**, **100% deterministic** and **local**. 
 
 - Student names and spellings are saved in your own browser's local storage.
  When you come back to the website it will reload the data from there, but this
@@ -43,15 +46,15 @@ and examine the networking tab.
 - Printouts and CSV exports are generated in the browser and go straight to your
   own machine.
 
-If you are showing results to a family, **Hide student names** at the top of the
+If you need to share results anonymousely, **Hide student names** at the top of the
 page replaces every name with "Student 1", "Student 2" and so on, everywhere
-including printouts and exports.
+including printouts and CSV exports.
 
 ## Using it offline
 
 The whole application is a single HTML file. You can save it to a USB stick or a
 shared drive and open it by double-clicking, with no installation and no internet
-connection.
+connection. It should work in any modern browser. 
 
 ## Credits and licence
 

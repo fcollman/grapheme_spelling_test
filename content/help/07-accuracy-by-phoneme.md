@@ -32,32 +32,21 @@ or producing that sound — and no amount of spelling rules will fix it.
 **Count "correct sound, different letters" as correct** is the important control
 on this page.
 
-- **Ticked:** `fone` for *phone* counts as correct — the student got the /f/.
-  This is the setting that makes the page measure what it is named after: how
-  reliably the student hears and encodes each sound.
-- **Unticked:** only the exact spelling counts, and the page behaves more like
-  the by-spelling report.
+- **Ticked:** This is what makes the most sense for this page, if you are focused on
+looking for sounds problems.
+- **Unticked:** This could make sense to toggle to see if there is just confusion 
+about what was to spell a particular sound in a particular context. 
 
-Read the same class both ways and the comparison is the diagnosis. If a student
-sits at 55% unticked and 90% ticked, their ears are fine and they need
-orthography. If both readings are 55%, the sound itself is the problem.
-
-The setting is shared with **Accuracy by grapheme**, so it stays where you put
-it.
+Note, the setting is shared with **Accuracy by grapheme**, so it stays where you put
+it to ensure consistency across pages.
 
 ## Otherwise it works like the grapheme report
 
 Everything else on this page behaves exactly as **Accuracy by grapheme** does:
 
 - Rows are grouped by category, with the **whole class** column first.
-- The test picker at the top pools results across any tests you choose — one
-  test, the last three, or all of them.
+- The test picker at the top pools results across any tests you choose.
 - The **Student** columns let you compare across the class, or read one child.
-- **Click any fraction or percentage** to open every example behind it: the
-  words, the students, what they wrote for that unit, and whether it counted.
+- **Click any fraction or percentage** to open every example behind it.
 - **Download CSV** and **Print / Save PDF** follow whatever you have on screen.
 
-Some sounds have more than one entry — there are two short *a* rows, for
-instance — because the speech engine distinguishes sounds that are written the
-same way. That is a feature of the sound inventory, not a bug in your data; both
-rows are real and both count.
