@@ -80,8 +80,11 @@ A version of this is deployed to github pages at
    means reteach bossy R. It is the letters that are red, not the word — the `ai`
    in *rain* is an ordinary long vowel. The list is in
    [PHONEME-CATEGORIES.md](PHONEME-CATEGORIES.md) under **Red words**, and the
-   **Red** tick on the spelling test tab labels a word without changing how it is
-   marked. The **By sound** tabs deliberately still count the sound error.
+   **red** column on the spelling test tab fills itself in from it rather than
+   being something to tick. The ◆ beside a column's dot on the analysis tab
+   overrules the list for that spelling, in every word that uses it, and clicking
+   it back to the app's own answer clears the override. The **By sound** tabs
+   deliberately still count the sound error.
 
    Every column is tagged with what kind of unit it is (consonant digraph, short
    vowel, r-controlled…). Use the **Pattern** menu to show only the words

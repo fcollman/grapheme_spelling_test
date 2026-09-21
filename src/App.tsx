@@ -338,7 +338,7 @@ function Workspace() {
       )}
 
       {tab === 'help' && <Help />}
-      {tab === 'entry' && <EntryGrid />}
+      {tab === 'entry' && <EntryGrid analysis={analysis} />}
       {tab === 'analysis' && <GraphemeAnalysis analysis={analysis} />}
       {/* Both of these span every test, so they analyse lazily on open. */}
       {tab === 'profile' && <StudentProfile />}

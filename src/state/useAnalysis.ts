@@ -94,7 +94,7 @@ export function analyzeTest(
       target.word,
     )
     result.patternsByWord.set(w.id, patterns)
-    result.unitsByWord.set(w.id, buildUnits(target, patterns))
+    result.unitsByWord.set(w.id, buildUnits(target, patterns, project.redWordOverrides ?? {}))
 
     for (const s of project.students) {
       const attempt = cleanWord(test.responses[w.id]?.[s.id] ?? '')
@@ -119,6 +119,9 @@ function testSignature(project: Project, test: Test) {
     wordPhonemes: test.wordPhonemes,
     students: project.students.map((s) => s.id),
     lenientSchwa: project.settings.lenientSchwa,
+    // Changing which spellings count as red words re-categorises the columns,
+    // so it has to re-run the analysis the same way a setting does.
+    redWordOverrides: project.redWordOverrides,
   }
 }
 

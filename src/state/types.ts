@@ -11,18 +11,6 @@ export interface Word {
   text: string
   /** Nonsense words test encoding without letting sight-word memory help. */
   nonsense: boolean
-  /**
-   * A word the teacher teaches as a red word — one with a part that has to be
-   * remembered rather than sounded out.
-   *
-   * This is a label, not the mechanism. Which letters are irregular is decided
-   * by the table in `data/irregular.ts`, and that applies whether or not the tick
-   * is set: `said` is irregular either way. The tick marks the word wherever it
-   * appears, and flags up a word the table does not yet know about.
-   *
-   * Optional, so project files written before it existed still load.
-   */
-  redWord?: boolean
 }
 
 export interface SlotOverrideData {
@@ -95,6 +83,15 @@ export interface Project {
    * back. Optional so project files written before this existed still load.
    */
   archivedStudents?: Student[]
+  /**
+   * Spellings the teacher has decided for themselves, overriding the built-in
+   * red-word table. Keyed by the unit's `letters|sounds`, true to treat it as a
+   * red word and false to treat it as ordinary phonics.
+   *
+   * Keyed on the spelling rather than on the word on purpose — see the note in
+   * `data/irregular.ts`. Optional, so older project files still load.
+   */
+  redWordOverrides?: Record<string, boolean>
   tests: Test[]
   activeTestId: string | null
   settings: Settings

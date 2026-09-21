@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { isIrregular } from '../data/irregular'
 import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
@@ -94,7 +95,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
             .map((p) => `${category(p.category).label}: ${p.label}${p.source === 'structural' ? ' (unlisted)' : ''}`)
           rows.push([
             test.name, test.date, w.text, w.nonsense ? 'nonsense' : 'real',
-            w.redWord ? 'red word' : '',
+            r.unit.category === 'red-word' ? 'red word' : '',
             names(s.id), a.attempt, a.spellingCorrect ? 'yes' : 'no',
             String(r.unit.index + 1), String(syllable + 1),
             r.unit.letters, displayList(r.unit.phonemes, notation),
@@ -234,7 +235,6 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
               wordId={word.id}
               text={word.text}
               nonsense={word.nonsense}
-              redWord={!!word.redWord}
               target={target}
               units={units}
               patterns={analysis.patternsByWord.get(word.id) ?? []}
@@ -242,6 +242,18 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
               analysis={analysis}
               onEditCell={setEditing}
               onEditWord={() => setEditingWord(word.id)}
+              onToggleRedWord={(u) =>
+                dispatch({
+                  type: 'setRedWord',
+                  key: u.key,
+                  // Back to the table's judgement when the teacher's decision
+                  // would have agreed with it anyway, so overrides do not pile
+                  // up recording things the app already knew.
+                  value: isIrregular(u.letters.toLowerCase(), u.phonemes) === (u.category !== 'red-word')
+                    ? null
+                    : u.category !== 'red-word',
+                })
+              }
             />
           )
         })}
@@ -285,7 +297,6 @@ function WordBlock({
   wordId,
   text,
   nonsense,
-  redWord,
   target,
   units,
   patterns,
@@ -293,11 +304,11 @@ function WordBlock({
   analysis,
   onEditCell,
   onEditWord,
+  onToggleRedWord,
 }: {
   wordId: string
   text: string
   nonsense: boolean
-  redWord: boolean
   target: WordAnalysis
   units: GraphemeUnit[]
   patterns: PatternMatch[]
@@ -305,6 +316,7 @@ function WordBlock({
   analysis: AnalysisResult
   onEditCell: (t: EditTarget) => void
   onEditWord: () => void
+  onToggleRedWord: (unit: GraphemeUnit) => void
 }) {
   const { project, test } = useStore()
   const names = useStudentNames()
@@ -334,7 +346,9 @@ function WordBlock({
       <header>
         <span className="word">{text}</span>
         {nonsense && <span className="tag">nonsense</span>}
-        {redWord && <span className="tag red-word">red word</span>}
+        {units.some((u) => u.category === 'red-word') && (
+          <span className="tag red-word">red word</span>
+        )}
         <span className="tag">
           {target.syllables.length} syllable{target.syllables.length === 1 ? '' : 's'}
         </span>
@@ -342,20 +356,6 @@ function WordBlock({
           {target.syllables.map((s) => displayList(s.phonemes, notation)).join('  ·  ')}
         </span>
         {confirmed && <span className="tag">breakdown edited</span>}
-        {/*
-          Ticked as a red word, but no column came out irregular. Either the word
-          is regular after all, or its pair is missing from data/irregular.ts —
-          and the second is the one worth hearing about, so it says so rather
-          than staying quiet.
-        */}
-        {redWord && !units.some((u) => u.category === 'red-word') && (
-          <span
-            className="tag unlisted"
-            title="Marked as a red word, but none of these columns is an irregular spelling the app knows about. If a part of this word has to be remembered, it is worth adding to the phonics tables."
-          >
-            no irregular part found ?
-          </span>
-        )}
         <span className="spacer" />
         <button className="btn no-print" onClick={onEditWord}>
           Edit breakdown
@@ -392,6 +392,27 @@ function WordBlock({
                   <span className="unitletters">{u.letters || '—'}</span>
                   <span className="unitsounds">{displayList(u.phonemes, notation)}</span>
                   <CategoryDot id={u.category} title={category(u.category).label} />
+                  {/*
+                    The teacher's say over the built-in table, exercised on the
+                    column where the spelling is actually visible. It applies to
+                    the spelling rather than to this word, which the title says
+                    outright, because a report row IS a spelling — see the note
+                    in data/irregular.ts.
+                  */}
+                  {u.letters !== '' && (
+                    <button
+                      className={`redtoggle no-print ${u.category === 'red-word' ? 'on' : ''}`}
+                      aria-pressed={u.category === 'red-word'}
+                      title={
+                        u.category === 'red-word'
+                          ? `"${u.letters}" spelling ${displayList(u.phonemes, notation)} counts as a red word. Click to treat it as ordinary phonics instead, in every word.`
+                          : `Click to count "${u.letters}" spelling ${displayList(u.phonemes, notation)} as a red word, in every word that uses it.`
+                      }
+                      onClick={() => onToggleRedWord(u)}
+                    >
+                      ◆
+                    </button>
+                  )}
                 </th>
               ))}
             </tr>

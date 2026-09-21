@@ -109,7 +109,21 @@ export const IRREGULAR_UNITS = new Set(
   IRREGULAR.map((e) => `${e.letters || '∅'}|${e.phonemes.join('+')}`),
 )
 
-/** @returns true when these letters make this sound only because the word says so. */
-export function isIrregular(letters: string, phonemes: PhonemeId[]): boolean {
-  return IRREGULAR_UNITS.has(`${letters || '∅'}|${phonemes.join('+')}`)
+/**
+ * The teacher's answer where they have given one, otherwise the table's.
+ *
+ * Overrides are keyed on the spelling, not on the word, because that is the
+ * grain everything else uses: a report row IS a letters-and-sounds pair, so an
+ * override attached to one word would leave the same row meaning two different
+ * things depending on which word was counted last. Saying "ea spelling /e/ is
+ * not a red word in my program" is also the claim a teacher actually wants to
+ * make — it is true of *head* and *bread* together or of neither.
+ */
+export function isIrregular(
+  letters: string,
+  phonemes: PhonemeId[],
+  overrides: Record<string, boolean> = {},
+): boolean {
+  const key = `${letters || '∅'}|${phonemes.join('+')}`
+  return overrides[key] ?? IRREGULAR_UNITS.has(key)
 }

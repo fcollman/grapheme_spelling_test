@@ -39,8 +39,6 @@ type Skill =
 interface BankWord {
   text: string
   nonsense?: boolean
-  /** Taught as a word to be remembered, not sounded out. */
-  redWord?: boolean
   skills: Skill[]
 }
 
@@ -154,13 +152,13 @@ const UNITS: Array<{ name: string; words: BankWord[] }> = [
     // skills, and only the memorised part lands under Red word.
     name: 'Red words',
     words: [
-      { text: 'said', redWord: true, skills: ['red-word'] },
-      { text: 'their', redWord: true, skills: ['red-word', 'digraph'] },
-      { text: 'come', redWord: true, skills: ['red-word'] },
-      { text: 'friend', redWord: true, skills: ['red-word', 'blend'] },
-      { text: 'one', redWord: true, skills: ['red-word'] },
-      { text: 'was', redWord: true, skills: ['red-word'] },
-      { text: 'been', redWord: true, skills: ['red-word'] },
+      { text: 'said', skills: ['red-word'] },
+      { text: 'their', skills: ['red-word', 'digraph'] },
+      { text: 'come', skills: ['red-word'] },
+      { text: 'friend', skills: ['red-word', 'blend'] },
+      { text: 'one', skills: ['red-word'] },
+      { text: 'was', skills: ['red-word'] },
+      { text: 'been', skills: ['red-word'] },
       { text: 'shed', skills: ['digraph', 'short-vowel'] },
       { text: 'thrim', nonsense: true, skills: ['blend', 'digraph'] },
     ],
@@ -332,7 +330,6 @@ export function demoProject(): Project {
       id: `demo_t${t}_w${i}`,
       text: w.text,
       nonsense: !!w.nonsense,
-      redWord: !!w.redWord,
     }))
 
     const responses: Record<string, Record<string, string>> = {}

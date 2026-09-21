@@ -1766,3 +1766,33 @@ thead .flagcol span {
   border-color: hsl(345 55% 84%);
   color: hsl(345 55% 38%);
 }
+
+/* The red-word mark in the entry grid: filled in by the app, not a control. */
+.redflag {
+  display: inline-block;
+  width: 13px;
+  text-align: center;
+  color: hsl(345 60% 50%);
+  font-size: 11px;
+}
+
+/* The teacher's override, on the column whose spelling it applies to. */
+.redtoggle {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0 3px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--line-strong);
+  border-radius: 3px;
+}
+
+.redtoggle:hover {
+  color: hsl(345 60% 50%);
+  background: hsl(345 70% 96%);
+}
+
+.redtoggle.on {
+  color: hsl(345 60% 50%);
+}

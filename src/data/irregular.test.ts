@@ -57,6 +57,41 @@ describe('the red-word table', () => {
   )
 })
 
+describe('the teacher overrides the table', () => {
+  it('can treat a listed spelling as ordinary phonics', async () => {
+    // "ea" saying /e/ ships as a red word, but it is a big enough family that a
+    // program may well teach it as a second sound of the ea team instead.
+    const a = await analyzePair('head', '')
+    const units = buildUnits(a, findPatterns(a.targetPhonemes, a.targetGraphemes, a.syllables, a.word), {
+      'ea|E': false,
+    })
+    expect(units.find((u) => u.letters === 'ea')?.category).toBe('short-vowel')
+  })
+
+  it('can treat an unlisted spelling as a red word', async () => {
+    const a = await analyzePair('ship', '')
+    const units = buildUnits(a, findPatterns(a.targetPhonemes, a.targetGraphemes, a.syllables, a.word), {
+      'sh|SH': true,
+    })
+    expect(units.find((u) => u.letters === 'sh')?.category).toBe('red-word')
+  })
+
+  it('leaves every other spelling to the table', async () => {
+    const a = await analyzePair('said', '')
+    const units = buildUnits(a, findPatterns(a.targetPhonemes, a.targetGraphemes, a.syllables, a.word), {
+      'ea|E': false,
+    })
+    expect(units.find((u) => u.letters === 'ai')?.category).toBe('red-word')
+  })
+
+  it('reads as the table says when there is no override', () => {
+    expect(isIrregular('ea', ['E'])).toBe(true)
+    expect(isIrregular('ea', ['E'], {})).toBe(true)
+    expect(isIrregular('ea', ['E'], { 'ea|E': false })).toBe(false)
+    expect(isIrregular('sh', ['SH'], { 'sh|SH': true })).toBe(true)
+  })
+})
+
 describe('red words in a word', () => {
   it('leaves the regular parts of the word alone', async () => {
     const units = await unitsFor('their')

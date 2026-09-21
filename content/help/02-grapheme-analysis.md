@@ -76,14 +76,31 @@ each other.
 red; the `ai` in *rain* is an ordinary long vowel. They make different sounds, so
 the app was already treating them as different things.
 
-This happens automatically, from an internal list.  Ticking the **Red** box next to a word on the spelling test
-tab does not change the marking — it labels the word for you throughout the app,
-and tells you if the app does *not* recognise an irregular part in a word you
-think has one.  Provide feedback to the app on the github page (see about) section if you find some examples that are missing persistently. 
+This happens automatically, from an internal list, which is why the **red** column
+on the spelling test tab fills itself in rather than waiting for you to tick it.
+
+**You have the final say.** Every column here carries a small ◆ next to its
+coloured dot. Click it to change your mind about that spelling: red where the app
+thought it was ordinary phonics, ordinary phonics where the app thought it was
+red. Your decision is remembered and the reports follow it immediately.
+
+Two things about that button worth knowing. It applies to the **spelling**, not to
+the word you clicked it in — marking `ea` saying /e/ as ordinary phonics changes
+*head* and *bread* together, because that is the claim you are really making, and
+because the reports group by spelling rather than by word. And clicking it back to
+where the app had it removes your override entirely rather than recording an
+opinion the app already held.
+
+The likeliest one to want is `ea` saying /e/. It ships as a red word, but there
+are enough of those words that some programs teach it as a second sound of the
+`ea` team instead. If that is yours, one click settles it.
+
+Provide feedback on the github page (see about) if you find spellings that are
+missing persistently.
 
 The **By sound** tabs are deliberately left out of this. They ask whether the
 student heard the sound, which is a fair question about a red word too: `thar`
-for *their* really is /ar/ where /air/ was wanted, and that still shows up there.
+for *their* really is /ar/ where /air/ was wanted, and that still shows up thar (sic pun, but we mean in the by sound reports).
 
 ## Check it, then correct it
 

@@ -67,15 +67,19 @@ function matchesMultiSound(graphemes: string[], phonemes: PhonemeId[], start: nu
  * Chooses the category for a unit. A collapsed pattern keeps its own; otherwise
  * the spelling decides, exactly as it does for a single sound.
  */
-function unitCategory(letters: string, phonemes: PhonemeId[]): CategoryId {
+function unitCategory(
+  letters: string,
+  phonemes: PhonemeId[],
+  redWords: Record<string, boolean>,
+): CategoryId {
   // The unit's whole sound sequence, not the lead sound slotCategory would use:
   // the o in "once" says /w/ + /u/ together, and only the pair is irregular.
-  if (isIrregular(letters.toLowerCase(), phonemes)) return 'red-word'
+  if (isIrregular(letters.toLowerCase(), phonemes, redWords)) return 'red-word'
 
   const first = phonemes.find((p) => !isVowel(p)) ?? phonemes[0]
   // A vowel unit is categorised by its vowel, not by a consonant beside it.
   const lead = isVowel(phonemes[0]) ? phonemes[0] : first
-  return slotCategory(lead, letters).category
+  return slotCategory(lead, letters, redWords).category
 }
 
 /**
@@ -85,7 +89,12 @@ function unitCategory(letters: string, phonemes: PhonemeId[]): CategoryId {
  * belong to the same unit — every merge rule is a contiguous range, so a simple
  * join-to-next flag is enough.
  */
-export function buildUnits(target: WordAnalysis, patterns: PatternMatch[]): GraphemeUnit[] {
+export function buildUnits(
+  target: WordAnalysis,
+  patterns: PatternMatch[],
+  /** The teacher's red-word decisions, overriding the built-in table. */
+  redWords: Record<string, boolean> = {},
+): GraphemeUnit[] {
   const phonemes = target.targetPhonemes
   const graphemes = target.targetGraphemes
   const count = phonemes.length
@@ -130,7 +139,7 @@ export function buildUnits(target: WordAnalysis, patterns: PatternMatch[]): Grap
       phonemes: slice,
       startSlot: start,
       endSlot: end,
-      category: pattern ? pattern.category : unitCategory(letters, slice),
+      category: pattern ? pattern.category : unitCategory(letters, slice, redWords),
       patternId: pattern?.id,
       patternLabel: pattern?.label,
       key: unitKey(letters, slice),
