@@ -9,7 +9,7 @@ If you would rather poke at a finished example than start from scratch, press
 eight students tested every two weeks for six months, so every report has
 something in it. **Clear data** empties it again.
 
-![The toolbar: choose a test, start a new one, save and open files, and load the demo class](images/toolbar.webp)
+![The toolbar: choose a test, start a new one, delete one, save and open files, and load the demo class](images/toolbar.webp)
 
 ## Name the test
 
@@ -23,6 +23,13 @@ exactly what was being taught that fortnight.
 
 The date matters too: it is what orders the tests, so set it to the day you gave
 the test rather than leaving whatever the box started with.
+
+**Delete test** removes the one you are looking at. Use it for the test created
+by one click too many, or one you started typing before realising it was the
+wrong class. It asks first if there is anything on it, and tells you how much —
+and unlike removing a student, a deleted test is gone for good, so use **Save
+file** first if you are not sure. Deleting your only test leaves a fresh empty
+one in its place.
 
 ## Add the words
 
