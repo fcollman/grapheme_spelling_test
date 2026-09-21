@@ -334,23 +334,21 @@ export function EntryGrid() {
         </button>
       </div>
 
-      {test.words.length === 0 || project.students.length === 0 ? (
+      {/*
+        The grid appears as soon as there is anything to put in it, even half a
+        test. Hiding it until both words and students exist made the words a
+        teacher had just typed disappear, which reads as the app being broken
+        rather than as a prompt to carry on.
+      */}
+      {test.words.length === 0 && project.students.length === 0 ? (
         <div className="empty">
-          {test.words.length === 0 && project.students.length === 0 ? (
-            <>
-              <p style={{ marginTop: 0 }}>Add some words and students to get started.</p>
-              <button
-                className="btn"
-                onClick={() => dispatch({ type: 'replaceProject', project: exampleProject() })}
-              >
-                Or load an example test to look around
-              </button>
-            </>
-          ) : test.words.length === 0 ? (
-            'Add the words from the test.'
-          ) : (
-            'Add the students who took the test.'
-          )}
+          <p style={{ marginTop: 0 }}>Add some words and students to get started.</p>
+          <button
+            className="btn"
+            onClick={() => dispatch({ type: 'replaceProject', project: exampleProject() })}
+          >
+            Or load an example test to look around
+          </button>
         </div>
       ) : (
         <div className="scroll">
@@ -479,7 +477,8 @@ export function EntryGrid() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
+            {/* Nothing to total until there are words to be right about. */}
+            <tfoot hidden={test.words.length === 0}>
               <tr>
                 <th className="rowhead c1">Words correct</th>
                 <td className="num no-print c2" />
@@ -496,6 +495,19 @@ export function EntryGrid() {
             </tfoot>
           </table>
         </div>
+      )}
+
+      {/* Says what is still missing, now that the half-built grid says it is not broken. */}
+      {project.students.length === 0 && test.words.length > 0 && (
+        <p className="hint no-print">
+          That is the word list. Add the students who took the test and a column will appear for
+          each of them.
+        </p>
+      )}
+      {test.words.length === 0 && project.students.length > 0 && (
+        <p className="hint no-print">
+          That is the class. Add the words you dictated and a row will appear for each of them.
+        </p>
       )}
     </section>
   )
