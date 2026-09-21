@@ -61,9 +61,33 @@ because a student who writes `frittle` correctly has actually decoded it, while
 analyze them the same way, but the tick reminds you which is which when you are
 reading a student's results.
 
-The small arrows next to each word move it up or down, and the ✕ deletes it. If
-a word already has spellings recorded against it, the ✕ asks you first and tells
-you how many you are about to throw away.
+### Putting the words in order
+
+You can reorder spelling words by **Drag them by the ⠿ handle** on the left of the row and drop it where it belongs. The blue line shows where it will land.
+
+![Dragging a word up the list. The blue line shows where it will land](images/word-drag.webp)
+
+The spellings already recorded against a word travel with it, so a test you have
+half marked can be reordered without losing anything.
+
+Working from the keyboard instead? <kbd>Tab</kbd> to a word's handle and press
+<kbd>↑</kbd> or <kbd>↓</kbd> to move it one row at a time.
+
+The ✕ deletes a word. If it already has spellings recorded against it, it asks
+first and tells you how many you are about to throw away.
+
+### Locking the list
+
+Once the words are right, you can press **🔓 Lock word list** to prevent accidental editing via misclick or typing.
+
+Locking puts the word column out of reach — no handle, no ✕, and the words
+themselves cannot be retyped or re-ticked as nonsense. The answer cells carry on
+working exactly as before.
+
+![The same list locked: the words read as plain text and the answer cells carry on working](images/word-locked.webp)
+
+Press **🔒 Word list locked** to unlock it again. The setting is remembered, so a
+list you locked is still locked next time you open the app.
 
 ## Add the students
 

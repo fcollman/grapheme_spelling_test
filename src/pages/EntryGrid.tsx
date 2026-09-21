@@ -27,6 +27,14 @@ export function EntryGrid() {
     name: string
     count: number
   } | null>(null)
+  /**
+   * With the word list locked, the row headers are read-only: no drag handle, no
+   * arrows, no delete, no renaming and no nonsense tick. Only the answer cells
+   * stay live, which is what you want once the list is settled and you are
+   * working down a pile of papers.
+   */
+  const locked = project.settings.lockWords
+
   /** Which archived students are ticked in the "add from an earlier test" dialog; null = closed. */
   const [restoring, setRestoring] = useState<Set<string> | null>(null)
 
@@ -129,6 +137,64 @@ export function EntryGrid() {
     const count = spellingsForWord(w.id)
     if (count === 0) dispatch({ type: 'removeWord', id: w.id })
     else setPendingDelete({ kind: 'word', id: w.id, name: w.text, count })
+  }
+
+  /**
+   * Dragging a word to a new place in the list.
+   *
+   * The arrows move a word one row at a time, which is fine for a slip and
+   * tedious for a word that was left out and belongs eight rows up. Dragging
+   * handles that case; the arrows stay because they work from the keyboard and
+   * on a touchscreen, where HTML drag and drop does not.
+   *
+   * `dragging` is the word being moved, `dropAt` the index it would land at,
+   * counting gaps between rows — so 0 is above the first word and words.length
+   * is below the last.
+   */
+  /*
+   * Held in refs as well as state. A drag is a burst of events that can arrive
+   * faster than React commits, and dragover has to know what is being dragged
+   * the moment it fires — `dataTransfer.getData` is deliberately unreadable
+   * during a drag, so the refs are the only synchronous answer. The state
+   * copies exist purely to redraw the row and the drop line.
+   */
+  const draggingRef = useRef<string | null>(null)
+  const dropAtRef = useRef<number | null>(null)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dropAt, setDropAt] = useState<number | null>(null)
+
+  const startDrag = (id: string) => {
+    draggingRef.current = id
+    setDragging(id)
+  }
+
+  const onRowDragOver = (e: React.DragEvent, index: number) => {
+    if (draggingRef.current === null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    // Above or below the row's midpoint decides which gap the word lands in.
+    const box = e.currentTarget.getBoundingClientRect()
+    const at = e.clientY < box.top + box.height / 2 ? index : index + 1
+    dropAtRef.current = at
+    setDropAt(at)
+  }
+
+  const endDrag = () => {
+    const id = draggingRef.current
+    const at = dropAtRef.current
+    if (id !== null && at !== null) dispatch({ type: 'moveWordTo', id, index: at })
+    draggingRef.current = null
+    dropAtRef.current = null
+    setDragging(null)
+    setDropAt(null)
+  }
+
+  /** Which edge of this row to draw the drop line on, if any. */
+  const dropEdge = (index: number): string => {
+    if (dropAt === null || dragging === null) return ''
+    if (dropAt === index) return ' drop-above'
+    if (dropAt === index + 1 && index === test.words.length - 1) return ' drop-below'
+    return ''
   }
 
   /**
@@ -290,17 +356,38 @@ export function EntryGrid() {
       </p>
 
       <div className="group no-print" style={{ marginBottom: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          placeholder="Add words (comma or newline separated)"
-          value={wordDraft}
-          style={{ minWidth: 280 }}
-          onChange={(e) => setWordDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addWords()}
-        />
-        <button className="btn primary" onClick={addWords}>
-          Add words
-        </button>
+        {!locked && (
+          <>
+            <input
+              type="text"
+              placeholder="Add words (comma or newline separated)"
+              value={wordDraft}
+              style={{ minWidth: 280 }}
+              onChange={(e) => setWordDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addWords()}
+            />
+            <button className="btn primary" onClick={addWords}>
+              Add words
+            </button>
+          </>
+        )}
+        {/*
+          Offered only once there is a list to protect. On an empty test it would
+          be a button that locks nothing.
+        */}
+        {test.words.length > 0 && (
+          <button
+            className={`btn ${locked ? 'primary' : ''}`}
+            title={
+              locked
+                ? 'Unlock the word list to add, rename, reorder or delete words'
+                : 'Lock the word list so typing in spellings cannot disturb it'
+            }
+            onClick={() => dispatch({ type: 'updateSettings', settings: { lockWords: !locked } })}
+          >
+            {locked ? '🔒 Word list locked' : '🔓 Lock word list'}
+          </button>
+        )}
 
         <input
           type="text"
@@ -409,45 +496,75 @@ export function EntryGrid() {
             </thead>
             <tbody>
               {test.words.map((w, wordIndex) => (
-                <tr key={w.id}>
+                <tr
+                  key={w.id}
+                  className={`${dragging === w.id ? 'dragging' : ''}${dropEdge(wordIndex)}`}
+                  onDragOver={(e) => onRowDragOver(e, wordIndex)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    endDrag()
+                  }}
+                >
                   <th className="rowhead c1">
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      {!locked && (
+                        <span
+                          className="grip no-print"
+                          draggable
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Move ${w.text}. Drag, or use the up and down arrow keys.`}
+                          title="Drag to move this word, or focus it and use ↑ ↓"
+                          /*
+                           * The ▲▼ buttons this replaces were also how the list
+                           * was reordered from a keyboard, so the handle answers
+                           * to the arrow keys rather than leaving that behind.
+                           */
+                          onKeyDown={(e) => {
+                            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                            e.preventDefault()
+                            dispatch({ type: 'moveWord', id: w.id, delta: e.key === 'ArrowUp' ? -1 : 1 })
+                          }}
+                          onDragStart={(e) => {
+                            startDrag(w.id)
+                            e.dataTransfer.effectAllowed = 'move'
+                            // Some browsers cancel a drag with nothing in the payload.
+                            e.dataTransfer.setData('text/plain', w.id)
+                            // Drag the whole row, not the little handle glyph.
+                            const row = e.currentTarget.closest('tr')
+                            if (row) e.dataTransfer.setDragImage(row, 12, 12)
+                          }}
+                          onDragEnd={endDrag}
+                        >
+                          ⠿
+                        </span>
+                      )}
                       <input
                         type="text"
                         value={w.text}
                         aria-label={`Word ${w.text}`}
+                        readOnly={locked}
                         style={{ width: 130, padding: '2px 5px' }}
                         onChange={(e) => dispatch({ type: 'updateWord', id: w.id, text: e.target.value })}
                       />
-                      <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
-                        <button
-                          className="icon"
-                          title="Move up"
-                          onClick={() => dispatch({ type: 'moveWord', id: w.id, delta: -1 })}
-                        >
-                          ▲
-                        </button>
-                        <button
-                          className="icon"
-                          title="Move down"
-                          onClick={() => dispatch({ type: 'moveWord', id: w.id, delta: 1 })}
-                        >
-                          ▼
-                        </button>
-                        <button
-                          className="icon"
-                          title={`Remove ${w.text}`}
-                          onClick={() => removeWord(w)}
-                        >
-                          ✕
-                        </button>
-                      </span>
+                      {!locked && (
+                        <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
+                          <button
+                            className="icon"
+                            title={`Remove ${w.text}`}
+                            onClick={() => removeWord(w)}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      )}
                     </div>
                   </th>
                   <td className="num no-print c2">
                     <input
                       type="checkbox"
                       checked={w.nonsense}
+                      disabled={locked}
                       aria-label={`${w.text} is a nonsense word`}
                       onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
                     />

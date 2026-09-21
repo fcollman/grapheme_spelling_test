@@ -1,4 +1,5 @@
 import type { Project, Student, Test, Word } from './types'
+import { DEFAULT_SETTINGS } from './types'
 
 /**
  * A made-up class and six months of fortnightly tests, so the app can be
@@ -360,6 +361,6 @@ export function demoProject(): Project {
     students,
     tests,
     activeTestId: tests[tests.length - 1].id,
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false },
+    settings: { ...DEFAULT_SETTINGS },
   }
 }
