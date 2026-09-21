@@ -129,7 +129,10 @@ students, what they wrote for that one unit, and whether each counted. The list 
 produced by walking the same answers the report counted, so it always adds up to
 the number you clicked. Escape or **Close** dismisses it, and it exports to CSV too.
 
-Every tab has **Download CSV** and **Print / Save PDF**.
+Every tab has **Download CSV** and **Print / Save PDF**. Printing is set up as
+landscape with half-inch margins, so nothing lands in the strip at the edge of
+the paper that most office printers cannot reach. A browser's own **Margins:
+None** setting overrides that, so check it if a PDF comes out edge to edge.
 
 **Hide student names** at the top swaps every name for "Student 1", "Student 2" …
 everywhere at once, including printouts and CSVs, so you can show one family where

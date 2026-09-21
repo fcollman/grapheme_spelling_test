@@ -142,5 +142,11 @@ Every tab has two buttons in its toolbar:
   toolbar, tab strip and buttons are left out of the printed version, and the
   colours are kept.
 
+  Pages are set up as landscape with **half-inch margins**, so reports have
+  room to breathe and nothing sits in the strip at the edge of the paper that
+  most office printers cannot reach. If your PDF comes out edge to edge anyway,
+  check the **Margins** setting in the print dialog — if it is set to *None* or
+  *Minimum*, the browser is overriding the page. Set it back to *Default*.
+
 Both of them follow whatever you have on screen — the tests you picked, the
 student you chose, and whether names are hidden.
