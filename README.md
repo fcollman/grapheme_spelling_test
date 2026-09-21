@@ -40,6 +40,11 @@ A version of this is deployed to github pages at
    it, and says how many. A removed student's answers are kept, so **Add from an
    earlier test** puts them back with their old work and its analysis intact —
    the button only appears when there is someone to restore.
+
+   **Delete test** in the toolbar removes the test on screen. It confirms first
+   when there is anything on it, and deletes outright — a test has nowhere else
+   for its data to live, so nothing is kept back the way a student's answers are.
+   Deleting the only test leaves a fresh empty one behind.
 3. **Grapheme analysis** tab — the marking grid. Each column is one spelling unit
    of the target word, with the sound or sounds it makes underneath:
 

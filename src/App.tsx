@@ -38,7 +38,7 @@ export function App() {
   const analysis = useAnalysis(project, test)
   const [tab, setTab] = useState<TabId>('entry')
   const [message, setMessage] = useState<string | null>(null)
-  const [pending, setPending] = useState<'demo' | 'clear' | null>(null)
+  const [pending, setPending] = useState<'demo' | 'clear' | 'deleteTest' | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const hasData =
@@ -47,6 +47,20 @@ export function App() {
   const loadDemo = () => {
     dispatch({ type: 'replaceProject', project: demoProject() })
     setTab('entry')
+    setPending(null)
+  }
+
+  /** How much deleting the current test would throw away. */
+  const testWords = test.words.length
+  const testSpellings = Object.values(test.responses).reduce(
+    (n, byStudent) => n + Object.values(byStudent).filter((v) => v.trim() !== '').length,
+    0,
+  )
+  // A test with nothing on it is not worth a dialog — that is the misclick case.
+  const testIsEmpty = testWords === 0 && testSpellings === 0
+
+  const deleteTest = () => {
+    dispatch({ type: 'removeTest', id: test.id })
     setPending(null)
   }
 
@@ -85,6 +99,18 @@ export function App() {
           </select>
           <button className="btn" onClick={() => dispatch({ type: 'addTest' })}>
             New test
+          </button>
+          {/*
+            Mostly used for a test created by one click too many, or one started
+            against the wrong class. Confirmed first, because unlike a student
+            there is nothing left behind to recover.
+          */}
+          <button
+            className="btn danger"
+            title={`Delete “${test.name}” and everything on it`}
+            onClick={() => (testIsEmpty ? deleteTest() : setPending('deleteTest'))}
+          >
+            Delete test
           </button>
         </div>
 
@@ -182,6 +208,33 @@ export function App() {
           {project.tests.length === 1 ? '' : 's'} you have now with a made-up class of{' '}
           {DEMO_STUDENT_COUNT} tested every two weeks for six months. Nothing is kept anywhere else,
           so use <strong>Save file</strong> first if you want your data back.
+        </ConfirmDialog>
+      )}
+
+      {pending === 'deleteTest' && (
+        <ConfirmDialog
+          title={`Delete “${test.name}”?`}
+          confirmLabel="Delete test"
+          danger
+          onConfirm={deleteTest}
+          onCancel={() => setPending(null)}
+        >
+          This removes the test along with its {testWords} word
+          {testWords === 1 ? '' : 's'}
+          {testSpellings > 0 && (
+            <>
+              {' '}
+              and the {testSpellings} spelling{testSpellings === 1 ? '' : 's'} recorded on it
+            </>
+          )}
+          , and it takes this test out of every report. Unlike removing a student, nothing is kept
+          behind to put back — use <strong>Save file</strong> first if you are not sure.
+          {project.tests.length === 1 && (
+            <>
+              {' '}
+              This is your only test, so an empty one will be left in its place.
+            </>
+          )}
         </ConfirmDialog>
       )}
 

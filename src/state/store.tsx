@@ -114,12 +114,24 @@ export function reducer(project: Project, action: Action): Project {
         tests: project.tests.map((t) => (t.id === action.id ? { ...t, date: action.date } : t)),
       }
     case 'removeTest': {
+      /*
+       * A test is deleted outright, words, responses and corrections together —
+       * unlike a student, whose answers are kept so they can be put back. There
+       * is nowhere else for a test's data to live, and the reason to delete one
+       * is that it should not exist, so keeping a ghost of it would be worse
+       * than useless. The UI confirms first and says so.
+       */
+      const index = project.tests.findIndex((t) => t.id === action.id)
       const tests = project.tests.filter((t) => t.id !== action.id)
+      // Never leave the app with no test at all to type into.
       const fallback = tests.length > 0 ? tests : [emptyTest('Spelling Test 1')]
+      // Land on the neighbour rather than jumping to the first test, which is
+      // what you want after deleting a stray test from the end of a long term.
+      const next = fallback[Math.min(Math.max(index - 1, 0), fallback.length - 1)]
       return {
         ...project,
         tests: fallback,
-        activeTestId: project.activeTestId === action.id ? fallback[0].id : project.activeTestId,
+        activeTestId: project.activeTestId === action.id ? next.id : project.activeTestId,
       }
     }
 
