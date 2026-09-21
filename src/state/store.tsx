@@ -30,6 +30,7 @@ export type Action =
   | { type: 'updateWord'; id: string; text?: string; nonsense?: boolean }
   | { type: 'removeWord'; id: string }
   | { type: 'moveWord'; id: string; delta: number }
+  | { type: 'moveWordTo'; id: string; index: number }
   | { type: 'setResponse'; wordId: string; studentId: string; value: string }
   | { type: 'setOverride'; wordId: string; studentId: string; slot: number; value: SlotOverrideData | null }
   | { type: 'clearOverridesForWord'; wordId: string }
@@ -41,6 +42,21 @@ function withActiveTest(project: Project, fn: (test: Test) => Test): Project {
     ...project,
     tests: project.tests.map((t) => (t.id === project.activeTestId ? fn(t) : t)),
   }
+}
+
+/**
+ * Takes `id` out of the list and puts it back at `index`, where `index` counts
+ * positions in the ORIGINAL list — which is what a drop between two rows means.
+ */
+function moveTo<T extends { id: string }>(list: T[], id: string, index: number): T[] {
+  const from = list.findIndex((x) => x.id === id)
+  if (from < 0 || index < 0 || index > list.length) return list
+  const rest = list.filter((x) => x.id !== id)
+  // Removing the item shifts everything after it up one.
+  const to = index > from ? index - 1 : index
+  if (to === from) return list
+  rest.splice(to, 0, list[from])
+  return rest
 }
 
 function move<T extends { id: string }>(list: T[], id: string, delta: number): T[] {
@@ -177,6 +193,15 @@ export function reducer(project: Project, action: Action): Project {
       return withActiveTest(project, (t) => ({ ...t, words: t.words.filter((w) => w.id !== action.id) }))
     case 'moveWord':
       return withActiveTest(project, (t) => ({ ...t, words: move(t.words, action.id, action.delta) }))
+    case 'moveWordTo': {
+      // Dropping a word somewhere, as opposed to nudging it one place at a time.
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active) return project
+      const words = moveTo(active.words, action.id, action.index)
+      // Dropped back where it started: not a change, so not a re-render or a save.
+      if (words === active.words) return project
+      return withActiveTest(project, (t) => ({ ...t, words }))
+    }
 
     case 'setResponse':
       return withActiveTest(project, (t) => ({

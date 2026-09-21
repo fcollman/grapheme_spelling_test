@@ -35,6 +35,13 @@ A version of this is deployed to github pages at
    spelling matches exactly. With a full class the grid scrolls sideways, but the
    word and nonsense columns stay pinned so you can always see what was dictated.
 
+   Words are reordered by **dragging the ⠿ handle**, with their spellings
+   following them; focus a handle and press ↑ or ↓ to do the same from the
+   keyboard. **Lock word list** puts the word column out of reach — no handle, no
+   arrows, no ✕, no renaming — while leaving the answer cells live, so a long
+   session of typing cannot disturb a list that is already right. The lock is
+   remembered between sessions.
+
    Your class is shared across tests, so a new test already starts with everyone
    on it. Removing a student or a word asks first if there are spellings behind
    it, and says how many. A removed student's answers are kept, so **Add from an

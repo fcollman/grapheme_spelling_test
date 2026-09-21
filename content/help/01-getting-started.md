@@ -61,17 +61,34 @@ because a student who writes `frittle` correctly has actually decoded it, while
 analyze them the same way, but the tick reminds you which is which when you are
 reading a student's results.
 
-The small arrows next to each word move it up or down, and the ✕ deletes it. If
-a word already has spellings recorded against it, the ✕ asks you first and tells
-you how many you are about to throw away.
+### Putting the words in order
+
+You can reorder spelling words by **Drag them by the ⠿ handle** on the left of the row and drop it where it belongs. The blue line shows where it will land.
+
+![Dragging a word up the list. The blue line shows where it will land](images/word-drag.webp)
+
+The spellings already recorded against a word travel with it.
+
+The ✕ deletes a word. If it already has spellings recorded against it, it asks
+first and tells you how many you are about to throw away.
+
+### Locking the list
+
+Once the words are right, you can press **🔓 Lock word list** to prevent accidental editing.
+
+![The same list locked: the words read as plain text and the answer cells carry on working](images/word-locked.webp)
+
+Press **🔒 Word list locked** to unlock it again.
 
 ## Add the students
 
 Type each name into **Add a student** and press Enter.
 
 Your class is shared across every test, so you only do this once. Making a new
-test does not mean re-entering the roster — everyone is already on it, and a
-student who missed that day simply has an empty column.
+test does not mean re-entering the roster. 
+A student who missed that day simply has an empty column. This student won't 
+have any grapheme's marked incorrect for those words, though their score
+for that test on this page will show as 0% with all blanks noted.
 
 If you removed someone and want them back, an **Add from an earlier test**
 button appears next to *Add student*. Their old spellings were kept, so they
