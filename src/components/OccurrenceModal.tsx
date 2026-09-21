@@ -4,8 +4,9 @@ import { useStudentNames } from '../state/names'
 import { findOccurrences, type Drill } from '../reports/occurrences'
 import { displayList } from '../data/phonemes'
 import type { Mark } from '../engine/align'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from './DownloadProvider'
+import { useFileName } from '../state/filename'
 
 const MARK_TEXT: Record<Mark, string> = {
   exact: 'correct',
@@ -24,6 +25,8 @@ const MARK_TEXT: Record<Mark, string> = {
 export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () => void }) {
   const { project } = useStore()
   const names = useStudentNames()
+  const { requestDownload } = useDownloads()
+  const fileName = useFileName()
   const { notation } = project.settings
 
   const rows = useMemo(() => findOccurrences(project, drill), [project, drill])
@@ -65,7 +68,12 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
         MARK_TEXT[r.mark],
       ]),
     ]
-    download(exportName(`${drill.label}-examples`, 'detail'), toCsv(out), 'text/csv')
+    requestDownload({
+      name: fileName('Examples', [drill.label]),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(out),
+    })
   }
 
   return (

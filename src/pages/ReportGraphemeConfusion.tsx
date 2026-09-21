@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
@@ -7,8 +8,9 @@ import { buildReportsAcross, CLASS, getGraphemeConfusion, NONE } from '../report
 import { displayList } from '../data/phonemes'
 import { category } from '../data/categories'
 import { CategoryDot } from '../components/CategoryTag'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
 
@@ -21,6 +23,8 @@ export function ReportGraphemeConfusion() {
   const { project } = useStore()
   const scope = useSelectedTests('active')
   const names = useStudentNames()
+  const { requestDownload, requestPrint } = useDownloads()
+  const fileName = useFileName()
   const { notation } = project.settings
   const reports = useMemo(
     () => buildReportsAcross(project, scope.sources),
@@ -38,8 +42,10 @@ export function ReportGraphemeConfusion() {
   const rows = hideEmpty ? reports.graphemes.filter((g) => rowTotal(g.key) > 0) : reports.graphemes
   const cols = hideEmpty ? reports.writtenSpellings.filter((s) => colTotal(s) > 0) : reports.writtenSpellings
 
+  // One label for this view, used in the heading, the file name and the printout.
+  const whoName = who === CLASS ? 'Whole class' : names(who)
+
   const exportCsv = () => {
-    const name = who === CLASS ? 'whole-class' : names(who)
     const out: string[][] = [['Needed \\ Wrote', 'Sound(s)', ...cols]]
     for (const g of rows) {
       out.push([
@@ -48,7 +54,12 @@ export function ReportGraphemeConfusion() {
         ...cols.map((c) => String(getGraphemeConfusion(reports, who, g.key, c))),
       ])
     }
-    download(exportName(scope.scopeSlug, `grapheme-confusion-${name}`), toCsv(out), 'text/csv')
+    requestDownload({
+      name: fileName('Grapheme confusion', [whoName, scope.scopeSlug], scope.scopeDate),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(out),
+    })
   }
 
   if (scope.loading || rows.length === 0 || cols.length === 0) {
@@ -68,13 +79,12 @@ export function ReportGraphemeConfusion() {
     )
   }
 
-  const whoName = who === CLASS ? 'Whole class' : names(who)
 
   return (
     <section className="panel">
-      <span className="print-title">
+      <PrintTitle>
         {scope.scopeLabel} · Grapheme confusion · {whoName}
-      </span>
+      </PrintTitle>
       <h2>Grapheme confusion</h2>
 
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
@@ -104,7 +114,10 @@ export function ReportGraphemeConfusion() {
         <button className="btn" onClick={exportCsv}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => window.print()}>
+        <button
+          className="btn"
+          onClick={() => requestPrint(fileName('Grapheme confusion', [whoName, scope.scopeSlug], scope.scopeDate))}
+        >
           Print / Save PDF
         </button>
       </div>

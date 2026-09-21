@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useAllTests } from '../state/useAnalysis'
@@ -10,8 +11,9 @@ import { displayList } from '../data/phonemes'
 import { CategoryDot } from '../components/CategoryTag'
 import { Fraction, percentOf } from '../components/Fraction'
 import { scaleColor, scaleInk } from '../components/Legend'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 
 /**
  * Accuracy across every test, for showing growth on an IEP goal rather than a
@@ -24,6 +26,8 @@ import { toCsv } from '../export/csv'
 export function ReportProgress() {
   const { project } = useStore()
   const names = useStudentNames()
+  const { requestDownload, requestPrint } = useDownloads()
+  const fileName = useFileName()
   const [who, setWho] = useState<string>(CLASS)
   const [level, setLevel] = useState<ProgressLevel>('category')
   const [drill, setDrill] = useState<Drill | null>(null)
@@ -58,7 +62,12 @@ export function ReportProgress() {
         ),
       ])
     }
-    download(exportName(`progress-${whoName}`, 'over-time'), toCsv(out), 'text/csv')
+    requestDownload({
+      name: fileName('Progress over time', [whoName]),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(out),
+    })
   }
 
   if (project.tests.length < 2) {
@@ -75,7 +84,7 @@ export function ReportProgress() {
 
   return (
     <section className="panel">
-      <span className="print-title">Progress over time · {whoName}</span>
+      <PrintTitle>Progress over time · {whoName}</PrintTitle>
       <h2>Progress over time</h2>
       <p className="hint">
         Accuracy on each test, oldest first, so growth on a goal can be shown rather than a single
@@ -106,7 +115,7 @@ export function ReportProgress() {
         <button className="btn" onClick={exportCsv} disabled={rows.length === 0}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => window.print()}>
+        <button className="btn" onClick={() => requestPrint(fileName('Progress over time', [whoName]))}>
           Print / Save PDF
         </button>
       </div>

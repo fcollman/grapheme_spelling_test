@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
+import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
 import { buildReportsAcross, CLASS, getMisuse } from '../reports/aggregate'
 import { display, get, REPORT_ORDER } from '../data/phonemes'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
 
@@ -18,6 +20,8 @@ import type { Drill } from '../reports/occurrences'
 export function ReportMisuse() {
   const { project } = useStore()
   const scope = useSelectedTests('active')
+  const { requestDownload, requestPrint } = useDownloads()
+  const fileName = useFileName()
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
@@ -45,7 +49,12 @@ export function ReportMisuse() {
         ...columns.map((c) => String(getMisuse(reports, p, c.id))),
       ])
     }
-    download(exportName(scope.scopeSlug, 'phoneme-misuse'), toCsv(out), 'text/csv')
+    requestDownload({
+      name: fileName('Phoneme misuse', [scope.scopeSlug], scope.scopeDate),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(out),
+    })
   }
 
   if (scope.loading || rows.length === 0) {
@@ -67,9 +76,9 @@ export function ReportMisuse() {
 
   return (
     <section className="panel">
-      <span className="print-title">
+      <PrintTitle>
         {scope.scopeLabel} · Phoneme misuse
-      </span>
+      </PrintTitle>
       <h2>Phoneme misuse</h2>
 
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
@@ -84,7 +93,7 @@ export function ReportMisuse() {
         <button className="btn" onClick={exportCsv}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => window.print()}>
+        <button className="btn" onClick={() => requestPrint(fileName('Phoneme misuse', [scope.scopeSlug], scope.scopeDate))}>
           Print / Save PDF
         </button>
       </div>

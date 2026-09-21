@@ -21,8 +21,9 @@ import { TestPicker } from '../components/TestPicker'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
 import { scaleColor, scaleInk } from '../components/Legend'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import type { Student } from '../state/types'
 
 /**
@@ -139,11 +140,21 @@ function ErrorList({
 export function StudentProfile() {
   const { project } = useStore()
   const names = useStudentNames()
+  const { requestDownload, requestPrint } = useDownloads()
+  const fileName = useFileName()
   const { notation } = project.settings
   const [who, setWho] = useState<string>('all')
 
   // A profile is a whole picture by default; the picker narrows it.
   const scope = useSelectedTests('all')
+
+  /*
+   * A profile is filed under whose it is, so the student comes first in the
+   * name. It goes through names(), which means a profile downloaded with
+   * student names hidden is called "Student 3" on disk too.
+   */
+  const profileFileName = () =>
+    fileName('Student profile', [who === 'all' ? 'All students' : names(who), scope.scopeSlug], scope.scopeDate)
 
   const reports = useMemo(
     () => buildReportsAcross(project, scope.sources),
@@ -184,7 +195,12 @@ export function StudentProfile() {
         ])
       }
     }
-    download(exportName('student-profiles', 'summary'), toCsv(rows), 'text/csv')
+    requestDownload({
+      name: profileFileName(),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(rows),
+    })
   }
 
   if (project.students.length === 0 || scope.tests.every((t) => t.words.length === 0)) {
@@ -222,7 +238,7 @@ export function StudentProfile() {
         <button className="btn" onClick={exportCsv} disabled={scope.sources.length === 0}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => window.print()}>
+        <button className="btn" onClick={() => requestPrint(profileFileName())}>
           Print / Save PDF
         </button>
       </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { cellKey, type AnalysisResult } from '../state/useAnalysis'
@@ -9,8 +10,9 @@ import { assignLanes, type PatternMatch } from '../engine/patterns'
 import { patternUnitRange, unitResults, type GraphemeUnit, type UnitResult } from '../engine/units'
 import { PhonemePicker } from '../components/PhonemePicker'
 import { CategoryDot, CategoryTag } from '../components/CategoryTag'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import { Legend } from '../components/Legend'
 
 interface EditTarget {
@@ -29,6 +31,8 @@ const CATEGORY_ORDER = new Map(CATEGORIES.map((c, i) => [c.id, i]))
  * marks — with the sound or sounds each one makes shown underneath.
  */
 export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
+  const { requestDownload, requestPrint } = useDownloads()
+  const fileName = useFileName()
   const { project, test, dispatch } = useStore()
   const names = useStudentNames()
   const { notation } = project.settings
@@ -101,7 +105,12 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
         }
       }
     }
-    download(exportName(test.name, 'grapheme-analysis'), toCsv(rows), 'text/csv')
+    requestDownload({
+      name: fileName('Grapheme analysis', [test.name], test.date),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(rows),
+    })
   }
 
   if (test.words.length === 0 || project.students.length === 0) {
@@ -115,10 +124,10 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
 
   return (
     <section className="panel">
-      <span className="print-title">
+      <PrintTitle>
         {test.name} · {test.date} · Grapheme analysis
         {focus !== 'all' && ` · ${category(focus).label}`}
-      </span>
+      </PrintTitle>
       <h2>Grapheme analysis</h2>
       <p className="hint">
         Each column is one spelling unit of the target word — a grapheme, or a chunk taught whole
@@ -169,7 +178,10 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
         <button className="btn" onClick={exportCsv}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => window.print()}>
+        <button
+          className="btn"
+          onClick={() => requestPrint(fileName('Grapheme analysis', [test.name], test.date))}
+        >
           Print / Save PDF
         </button>
       </div>

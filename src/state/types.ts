@@ -55,6 +55,15 @@ export interface Settings {
 
 export interface Project {
   version: 1
+  /**
+   * What the teacher calls this group — "Block 2A", "Period 4", "Reading group".
+   *
+   * One project file is one class, so this is the label that makes a downloaded
+   * report mean something in a Downloads folder full of them. It goes into every
+   * exported file name and onto every printout. Optional, so project files
+   * written before it existed still load.
+   */
+  className?: string
   students: Student[]
   /**
    * Students taken off the roster whose spellings are still sitting in a test.

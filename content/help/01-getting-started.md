@@ -9,7 +9,23 @@ If you would rather poke at a finished example than start from scratch, press
 eight students tested every two weeks for six months, so every report has
 something in it. **Clear data** empties it again.
 
-![The toolbar: choose a test, start a new one, delete one, save and open files, and load the demo class](images/toolbar.webp)
+![The toolbar: name the class, choose a test, start or delete one, and save and open files](images/toolbar.webp)
+
+## Name the class
+
+The box next to the app title is the name of this class — **Block 2A**,
+**Period 4**, **Reading group**, whatever you call them. 
+
+This will be used to help automatically name files and reports you download, and make them easier to organize.
+
+```
+Block 2A - 3 tests - Accuracy by grapheme - 2026-09-20.csv
+Block 2A - Sam W. - 13 tests - Student profile - 2026-09-20.csv
+Block 4B - Test 7 Long vowels - Spelling test - 2026-05-18.csv
+```
+
+One file is one class, so if you teach several, keep a file for each and give
+each one its own name here.
 
 ## Name the test
 
@@ -131,13 +147,20 @@ This is deliberate. Your data should not be stuck in a tool.
 
 ## Getting results out
 
+Every download asks you to check the name first. It comes ready filled in —
+class, then what the export covers, then which report, then the date — so most
+of the time you glance at it and press Enter. Change it there if you want
+something else, and it is saved under that name. The date is the test's own date
+when the export covers a single test, and today's date when it pools several.
+
 Every tab has two buttons in its toolbar:
 
 - **Download CSV** saves that tab's table exactly as shown, ready to open in
   Excel or Google Sheets, or to paste into a report. The drill-down windows have
   their own **Download CSV** too, so you can export just the examples behind one
   number.
-- **Print / Save PDF** opens your browser's print dialog. Choose *Save as PDF*
+- **Print / Save PDF** asks for a name the same way, then opens your browser's
+  print dialog. Choose *Save as PDF*
   as the destination to get a file you can email or attach to an IEP. The
   toolbar, tab strip and buttons are left out of the printed version, and the
   colours are kept.
