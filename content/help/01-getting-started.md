@@ -67,35 +67,28 @@ You can reorder spelling words by **Drag them by the ⠿ handle** on the left of
 
 ![Dragging a word up the list. The blue line shows where it will land](images/word-drag.webp)
 
-The spellings already recorded against a word travel with it, so a test you have
-half marked can be reordered without losing anything.
-
-Working from the keyboard instead? <kbd>Tab</kbd> to a word's handle and press
-<kbd>↑</kbd> or <kbd>↓</kbd> to move it one row at a time.
+The spellings already recorded against a word travel with it.
 
 The ✕ deletes a word. If it already has spellings recorded against it, it asks
 first and tells you how many you are about to throw away.
 
 ### Locking the list
 
-Once the words are right, you can press **🔓 Lock word list** to prevent accidental editing via misclick or typing.
-
-Locking puts the word column out of reach — no handle, no ✕, and the words
-themselves cannot be retyped or re-ticked as nonsense. The answer cells carry on
-working exactly as before.
+Once the words are right, you can press **🔓 Lock word list** to prevent accidental editing.
 
 ![The same list locked: the words read as plain text and the answer cells carry on working](images/word-locked.webp)
 
-Press **🔒 Word list locked** to unlock it again. The setting is remembered, so a
-list you locked is still locked next time you open the app.
+Press **🔒 Word list locked** to unlock it again.
 
 ## Add the students
 
 Type each name into **Add a student** and press Enter.
 
 Your class is shared across every test, so you only do this once. Making a new
-test does not mean re-entering the roster — everyone is already on it, and a
-student who missed that day simply has an empty column.
+test does not mean re-entering the roster. 
+A student who missed that day simply has an empty column. This student won't 
+have any grapheme's marked incorrect for those words, though their score
+for that test on this page will show as 0% with all blanks noted.
 
 If you removed someone and want them back, an **Add from an earlier test**
 button appears next to *Add student*. Their old spellings were kept, so they
