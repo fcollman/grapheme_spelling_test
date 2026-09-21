@@ -308,7 +308,9 @@ kbd {
 
 .entry-grid {
   --c1: 212px;
-  --c2: 66px;
+  /* Wide enough for two ticks: a second pinned column would have meant a c3 arm
+     in six rules here and would have taken more width from the students. */
+  --c2: 112px;
 }
 
 .analysis-grid {
@@ -1740,4 +1742,27 @@ ul.errorlist em {
   background: var(--wrong-bg);
   border-color: var(--wrong-line);
   color: var(--wrong-ink);
+/* The two per-word flags, sharing one pinned column. */
+.flagcol {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.flagcol input {
+  margin: 0;
+}
+
+thead .flagcol span {
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+
+/* The red-word badge on a word block. Distinct from the scoring colours, which
+   say how an answer went rather than what kind of word it is. */
+.tag.red-word {
+  background: hsl(345 70% 96%);
+  border-color: hsl(345 55% 84%);
+  color: hsl(345 55% 38%);
 }

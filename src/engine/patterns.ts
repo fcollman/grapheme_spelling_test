@@ -1,4 +1,5 @@
 import type { PhonemeId } from '../data/phonemes'
+import { isIrregular } from '../data/irregular'
 import { get, isVowel } from '../data/phonemes'
 import { VOWEL_CATEGORY, type CategoryId } from '../data/categories'
 import {
@@ -50,6 +51,13 @@ function isDoubledLetter(grapheme: string): boolean {
  * fact about letters rather than about the sound itself.
  */
 export function slotCategory(phoneme: PhonemeId, grapheme: string): SlotTag {
+  // Checked before anything else, because the whole point of a red word is that
+  // the usual rules do not apply to it. Note this has to come ahead of the vowel
+  // branch, which returns on the phoneme alone and never looks at the letters —
+  // and the letters are the entire difference between the ai in said and the
+  // ai in rain.
+  if (isIrregular(grapheme.toLowerCase(), [phoneme])) return { category: 'red-word' }
+
   if (isVowel(phoneme)) {
     return { category: VOWEL_CATEGORY[phoneme] ?? 'other-vowel' }
   }

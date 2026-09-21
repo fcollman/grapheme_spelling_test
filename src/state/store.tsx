@@ -27,7 +27,7 @@ export type Action =
   | { type: 'removeTest'; id: string }
   | { type: 'addWord'; text: string }
   | { type: 'addWords'; texts: string[] }
-  | { type: 'updateWord'; id: string; text?: string; nonsense?: boolean }
+  | { type: 'updateWord'; id: string; text?: string; nonsense?: boolean; redWord?: boolean }
   | { type: 'removeWord'; id: string }
   | { type: 'moveWord'; id: string; delta: number }
   | { type: 'moveWordTo'; id: string; index: number }
@@ -180,6 +180,7 @@ export function reducer(project: Project, action: Action): Project {
                 ...w,
                 text: action.text ?? w.text,
                 nonsense: action.nonsense ?? w.nonsense,
+                redWord: action.redWord ?? w.redWord,
               }
             : w,
         ),

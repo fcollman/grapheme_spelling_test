@@ -72,6 +72,17 @@ A version of this is deployed to github pages at
    | Red | Wrong sound |
    | Grey | Left out |
 
+   Letters that make a sound they do not usually make — the `ai` in *said*, the
+   `eir` in *their* — are tagged **Red word (irregular)** rather than the phonics
+   category they would otherwise fall in. So `their` → `thar` credits the `th`
+   digraph, records a red-word miss, and leaves r-controlled vowels out of it: a
+   low red-word score means practise these words, a low r-controlled score still
+   means reteach bossy R. It is the letters that are red, not the word — the `ai`
+   in *rain* is an ordinary long vowel. The list is in
+   [PHONEME-CATEGORIES.md](PHONEME-CATEGORIES.md) under **Red words**, and the
+   **Red** tick on the spelling test tab labels a word without changing how it is
+   marked. The **By sound** tabs deliberately still count the sound error.
+
    Every column is tagged with what kind of unit it is (consonant digraph, short
    vowel, r-controlled…). Use the **Pattern** menu to show only the words
    containing one kind, and **Order → Grouped by kind** to bring them together.

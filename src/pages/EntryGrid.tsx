@@ -233,17 +233,21 @@ export function EntryGrid() {
   }
 
   const exportCsv = () => {
-    const rows: string[][] = [['Word', 'Type', ...project.students.map((s) => names(s.id))]]
+    const rows: string[][] = [
+      ['Word', 'Type', 'Red word', ...project.students.map((s) => names(s.id))],
+    ]
     for (const w of test.words) {
       rows.push([
         w.text,
         w.nonsense ? 'nonsense' : 'real',
+        w.redWord ? 'red word' : '',
         ...project.students.map((s) => test.responses[w.id]?.[s.id] ?? ''),
       ])
     }
     // The same grading row that closes the grid on screen.
     rows.push([
       'Words correct',
+      '',
       '',
       ...project.students.map((s) => {
         const { correct, total } = scoreFor(s.id)
@@ -349,7 +353,8 @@ export function EntryGrid() {
       <p className="hint">
         Add the words you dictated and the students who took the test, then type what each student
         actually wrote. A cell turns green when the spelling matches the word exactly. Mark a word as
-        nonsense if it was made up to test encoding without sight-word memory.
+        nonsense if it was made up to test encoding without sight-word memory, and red if it has a
+        part that has to be remembered rather than sounded out.
         <br />
         Working from one student's paper: press <kbd>Enter</kbd> to drop to the next word down the
         column, and again at the bottom to jump to the top of the next student. <kbd>Shift</kbd>+
@@ -452,7 +457,12 @@ export function EntryGrid() {
             <thead>
               <tr>
                 <th className="c1">Word</th>
-                <th className="num no-print c2">Nonsense</th>
+                <th className="num no-print c2">
+                  <span className="flagcol">
+                    <span title="A made-up word, to test encoding without sight-word memory">Nonsense</span>
+                    <span title="A word with a part that has to be remembered rather than sounded out">Red</span>
+                  </span>
+                </th>
                 {project.students.map((s) => (
                   <th key={s.id}>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -562,13 +572,22 @@ export function EntryGrid() {
                     </div>
                   </th>
                   <td className="num no-print c2">
-                    <input
-                      type="checkbox"
-                      checked={w.nonsense}
-                      disabled={locked}
-                      aria-label={`${w.text} is a nonsense word`}
-                      onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
-                    />
+                    <span className="flagcol">
+                      <input
+                        type="checkbox"
+                        checked={w.nonsense}
+                        disabled={locked}
+                        aria-label={`${w.text} is a nonsense word`}
+                        onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
+                      />
+                      <input
+                        type="checkbox"
+                        checked={!!w.redWord}
+                        disabled={locked}
+                        aria-label={`${w.text} is a red word`}
+                        onChange={(e) => dispatch({ type: 'updateWord', id: w.id, redWord: e.target.checked })}
+                      />
+                    </span>
                   </td>
                   {project.students.map((s, studentIndex) => {
                     const value = test.responses[w.id]?.[s.id] ?? ''

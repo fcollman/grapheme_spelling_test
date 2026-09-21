@@ -61,6 +61,18 @@ because a student who writes `frittle` correctly has actually decoded it, while
 analyze them the same way, but the tick reminds you which is which when you are
 reading a student's results.
 
+Tick **red** next to a word you teach as a red word — one with a part that has to
+be remembered rather than sounded out, like *said* or *their*. The tick labels
+the word wherever it appears, so you can see at a glance which of these a student
+is missing.
+
+The marking of red words does not wait for the tick. The app already knows which
+letters in a word are irregular and scores them separately, so a miss on the
+`eir` in *their* never counts against r-controlled vowels. **Checking the
+analysis** shows what that looks like. What the tick adds is a
+label, and a warning when you mark a word red and the app finds no irregular part
+in it, which usually means that spelling is one it has not been taught yet.
+
 ### Putting the words in order
 
 You can reorder spelling words by **Drag them by the ⠿ handle** on the left of the row and drop it where it belongs. The blue line shows where it will land.
@@ -109,7 +121,7 @@ the next student's. <kbd>Shift</kbd>+<kbd>Enter</kbd> goes back up, and
 Type exactly what the student wrote, misspellings and all. A cell turns green when the spelling matches the target word exactly and
 red when it does not.
 
-With a big class the grid scrolls sideways, but the word and nonsense columns
+With a big class the grid scrolls sideways, but the word and tick columns
 stay pinned to the left so you can always see what was dictated.
 
 The **Words correct** row at the bottom gives each student a plain score out of

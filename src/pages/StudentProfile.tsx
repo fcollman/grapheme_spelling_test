@@ -468,7 +468,10 @@ function Profile({
                       <td className={`cell ${state}`} style={{ fontFamily: 'var(--mono)', cursor: 'default' }}>
                         {a?.attempted ? a.attempt : '—'}
                       </td>
-                      <td style={{ color: 'var(--muted)' }}>{w.nonsense ? 'nonsense' : 'real'}</td>
+                      <td style={{ color: 'var(--muted)' }}>
+                        {w.nonsense ? 'nonsense' : 'real'}
+                        {w.redWord && <span className="keyword">red word</span>}
+                      </td>
                     </tr>
                   )
                 })}

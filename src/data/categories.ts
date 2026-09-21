@@ -29,6 +29,7 @@ export type CategoryId =
   | 'velar-nasal'
   | 'kind-old'
   | 'consonant-le'
+  | 'red-word'
 
 export interface Category {
   id: CategoryId
@@ -137,6 +138,17 @@ export const CATEGORIES: Category[] = [
     kind: 'span',
     hue: 15,
     description: 'A final stable syllable of consonant + le: -ble, -cle, -dle, -fle, -gle, -kle, -ple, -tle, -zle.',
+  },
+  {
+    id: 'red-word',
+    label: 'Red word (irregular)',
+    kind: 'slot',
+    // The one tag that leans toward the scoring colours on purpose: teachers
+    // call these red words, so a dot from another family would read as wrong.
+    // Kept off pure red so it cannot be mistaken for a "wrong sound" cell.
+    hue: 345,
+    description:
+      'Letters making a sound they do not usually make, so the word has to be remembered rather than sounded out: the ai in said, the eir in their, the o in come.',
   },
 ]
 

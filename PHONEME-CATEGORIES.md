@@ -15,6 +15,7 @@ rather than quietly mis-tagging student work.
 
 Jump to: [Categories](#categories) · [Every sound](#every-sound-and-its-category) ·
 [Consonant digraphs](#consonant-digraphs) · [Multi-sound patterns](#multi-sound-patterns) ·
+[Red words](#red-words) ·
 [Needs your review](#needs-your-review)
 
 ## Categories
@@ -44,6 +45,7 @@ velar nasal unit and the "-nk" ending blend.
 | **Velar nasal unit** | a run of sounds | yes — marked as a chunk | The vowel changes before /ng/, so these are taught whole rather than sounded out: -ang, -ing, -ong, -ung, -ank, -ink, -onk, -unk. |
 | **Kind / old word** | a run of sounds | no — tag across columns | The vowel goes long even though the syllable looks closed: -ind, -ild, -old, -olt, -ost, -oll. |
 | **Consonant-le** | a run of sounds | yes — marked as a chunk | A final stable syllable of consonant + le: -ble, -cle, -dle, -fle, -gle, -kle, -ple, -tle, -zle. |
+| **Red word (irregular)** | one sound | — | Letters making a sound they do not usually make, so the word has to be remembered rather than sounded out: the ai in said, the eir in their, the o in come. |
 
 ### What becomes one column in the marking grid
 
@@ -368,6 +370,50 @@ Any consonant cluster of two or more sounds that no listed blend covers is still
 tagged as a blend, marked **unlisted** in the app. Those are the ones worth adding
 to the table if they keep turning up in your word lists.
 
+## Red words
+
+Letters that make a sound they do not usually make, so the word has to be
+remembered rather than sounded out. These are tagged **Red word (irregular)**
+instead of the phonics category they would otherwise fall in, so a student who
+misses one does not lose credit for a skill they may well have: in *their*, a
+miss on the `eir` no longer counts against r-controlled vowels, and the `th`
+beside it still counts as a consonant digraph.
+
+What is listed is a **grapheme, not a word**, which is why `ai` appears here for
+*said* while the `ai` in *rain* is an ordinary long vowel — they make different
+sounds, so they were already different entries.
+
+The list does not have to be complete. A pair that is missing simply behaves as
+it did before, so add to it as words come up in real tests.
+
+| Letters | Sound(s) | As in | Also |
+| --- | --- | --- | --- |
+| `ai` | /e/ | *said* | *again* |
+| `ie` | /e/ | *friend* |  |
+| `a` | /e/ | *any* | *many* |
+| `ea` | /e/ | *head* | *bread*, *dead*, *breath*, *weather* |
+| `o` | /u/ | *come* | *some*, *done*, *love*, *front*, *month* |
+| `a` | /u/ | *was* | *what* |
+| `oe` | /u/ | *does* |  |
+| `ou` | /u/ | *enough* | *country*, *young*, *touch* |
+| `ee` | /i/ | *been* |  |
+| `u` | /i/ | *busy* | *build* |
+| `eo` | /ē/ | *people* |  |
+| `ey` | /ā/ | *they* | *grey*, *obey* |
+| `ough` | /ō/ | *though* |  |
+| `ough` | /oo/ | *through* |  |
+| `eye` | /ī/ | *eye* |  |
+| `wo` | /oo/ | *two* |  |
+| `o` | /oo/ | *who* | *do*, *to* |
+| `ou` | /ŏŏ/ | *could* | *would*, *should* |
+| `au` | /a/ | *laugh* |  |
+| `eir` | /air/ | *their* |  |
+| `ere` | /air/ | *there* | *where* |
+| `our` | /or/ | *four* | *pour*, *court* |
+| `f` | /v/ | *of* |  |
+| `o` | /w/ | *one* |  |
+| `o` | /w/ + /u/ | *once* |  |
+
 ## Needs your review
 
 Judgement calls made while building this. Each one is a one-line change to fix.
@@ -387,7 +433,10 @@ Judgement calls made while building this. Each one is a one-line change to fix.
 | `ssi` → /sh/ (mission) | Usually taught as a suffix spelling (-ssion), not as a consonant digraph. |
 | -oll (roll) | Some programs teach -oll with the kind/old family, others with the floss rule. Included here. |
 | -nk (pink) | Also covered by the velar nasal units; both tags apply. |
+| `ea` → /e/ (head) as a red word | Some programs teach ea/e as a second sound of the ea team rather than as a red word. There are enough of these words that tagging them all red may overstate it — say the word and this line comes out. |
+| `ey` → /ā/ (they) as a red word | ey/ā is regular enough in they, grey and obey that some programs teach it as a vowel team. Kept because "they" is on every red-word list. |
+| `our` → /or/ (four) as a red word | our/or turns up in a whole family (four, pour, court, your), so it could reasonably be taught as an r-controlled team instead of word by word. |
 
 ---
 
-_45 sounds · 29 digraph spellings · 61 listed multi-sound patterns · 13 categories._
+_45 sounds · 29 digraph spellings · 61 listed multi-sound patterns · 25 red-word spellings · 14 categories._

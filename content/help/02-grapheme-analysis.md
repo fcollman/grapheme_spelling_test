@@ -51,6 +51,40 @@ A student who writes `fun` for `phone` has not. Those two need
 differently — and why the by-sound reports later on let you decide whether amber
 should count as correct or not.
 
+## Red words
+
+Some letters make a sound they simply do not usually make, and no amount of
+sounding out gets you there — the `ai` in *said*, the `eir` in *their*, the `o`
+in *come*. Those columns are tagged **Red word (irregular)** instead of the
+phonics category they would otherwise fall in.
+
+That tag is doing real work. Without it, a student who writes `thar` for *their*
+looks like they cannot do r-controlled vowels, when what they actually cannot do
+is remember one word. With it:
+
+- the `th` still counts as a **consonant digraph**, and it counts as *correct*,
+  because they got it right;
+- the `eir` counts as a **red word**, and nothing else;
+- r-controlled vowels are left out of it entirely — that skill was never really
+  tested by this word.
+
+So a low red-word score means *practise these particular words*, and a low
+r-controlled score still means *reteach bossy R*. They no longer contaminate
+each other.
+
+**It is the letters that are red, not the word.** The `ai` in *said* is tagged
+red; the `ai` in *rain* is an ordinary long vowel. They make different sounds, so
+the app was already treating them as different things.
+
+This happens automatically, from an internal list.  Ticking the **Red** box next to a word on the spelling test
+tab does not change the marking — it labels the word for you throughout the app,
+and tells you if the app does *not* recognise an irregular part in a word you
+think has one.  Provide feedback to the app on the github page (see about) section if you find some examples that are missing persistently. 
+
+The **By sound** tabs are deliberately left out of this. They ask whether the
+student heard the sound, which is a fair question about a red word too: `thar`
+for *their* really is /ar/ where /air/ was wanted, and that still shows up there.
+
 ## Check it, then correct it
 
 The app works out pronunciations with a real speech engine rather than a list of

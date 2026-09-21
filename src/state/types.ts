@@ -11,6 +11,18 @@ export interface Word {
   text: string
   /** Nonsense words test encoding without letting sight-word memory help. */
   nonsense: boolean
+  /**
+   * A word the teacher teaches as a red word — one with a part that has to be
+   * remembered rather than sounded out.
+   *
+   * This is a label, not the mechanism. Which letters are irregular is decided
+   * by the table in `data/irregular.ts`, and that applies whether or not the tick
+   * is set: `said` is irregular either way. The tick marks the word wherever it
+   * appears, and flags up a word the table does not yet know about.
+   *
+   * Optional, so project files written before it existed still load.
+   */
+  redWord?: boolean
 }
 
 export interface SlotOverrideData {

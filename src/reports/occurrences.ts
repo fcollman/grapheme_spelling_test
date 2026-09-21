@@ -54,6 +54,8 @@ export interface Occurrence {
   studentId: string
   word: string
   nonsense: boolean
+  /** The teacher's red-word tick, shown beside the word in the drill-down. */
+  redWord: boolean
   /** The whole word as the student wrote it. */
   attempt: string
   /** The letters the target word uses for this unit. */
@@ -98,6 +100,7 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
           studentId: student.id,
           word: word.text,
           nonsense: word.nonsense,
+          redWord: !!word.redWord,
           attempt: a.attempt,
         }
 

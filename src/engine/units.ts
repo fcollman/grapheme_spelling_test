@@ -1,4 +1,5 @@
 import type { PhonemeId } from '../data/phonemes'
+import { isIrregular } from '../data/irregular'
 import { isVowel } from '../data/phonemes'
 import { COLLAPSING_CATEGORIES, type CategoryId } from '../data/categories'
 import { MULTI_SOUND_GRAPHEMES } from '../data/patterns'
@@ -67,6 +68,10 @@ function matchesMultiSound(graphemes: string[], phonemes: PhonemeId[], start: nu
  * the spelling decides, exactly as it does for a single sound.
  */
 function unitCategory(letters: string, phonemes: PhonemeId[]): CategoryId {
+  // The unit's whole sound sequence, not the lead sound slotCategory would use:
+  // the o in "once" says /w/ + /u/ together, and only the pair is irregular.
+  if (isIrregular(letters.toLowerCase(), phonemes)) return 'red-word'
+
   const first = phonemes.find((p) => !isVowel(p)) ?? phonemes[0]
   // A vowel unit is categorised by its vowel, not by a consonant beside it.
   const lead = isVowel(phonemes[0]) ? phonemes[0] : first
