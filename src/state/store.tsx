@@ -14,6 +14,7 @@ import { load, save } from './persist'
 
 export type Action =
   | { type: 'replaceProject'; project: Project }
+  | { type: 'setClassName'; name: string }
   | { type: 'addStudent'; name: string }
   | { type: 'renameStudent'; id: string; name: string }
   | { type: 'removeStudent'; id: string }
@@ -56,6 +57,9 @@ export function reducer(project: Project, action: Action): Project {
   switch (action.type) {
     case 'replaceProject':
       return normalize(action.project)
+
+    case 'setClassName':
+      return { ...project, className: action.name }
 
     case 'addStudent': {
       const name = action.name.trim()

@@ -2,8 +2,9 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { cleanWord } from '../engine/phonemize'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import { exampleProject } from '../state/example'
 import { Fraction, percentOf } from '../components/Fraction'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -16,6 +17,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 export function EntryGrid() {
   const { project, test, dispatch } = useStore()
   const names = useStudentNames()
+  const { requestDownload } = useDownloads()
+  const fileName = useFileName()
   const [wordDraft, setWordDraft] = useState('')
   const [studentDraft, setStudentDraft] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{
@@ -182,7 +185,12 @@ export function EntryGrid() {
         return pct ? `${correct}/${total} (${pct})` : `${correct}/${total}`
       }),
     ])
-    download(exportName(test.name, 'responses'), toCsv(rows), 'text/csv')
+    requestDownload({
+      name: fileName('Spelling test', [test.name], test.date),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(rows),
+    })
   }
 
   return (

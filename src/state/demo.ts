@@ -355,6 +355,8 @@ export function demoProject(): Project {
 
   return {
     version: 1,
+    // Named, so the demo also shows what a class name does to file names and printouts.
+    className: 'Block 2A',
     students,
     tests,
     activeTestId: tests[tests.length - 1].id,

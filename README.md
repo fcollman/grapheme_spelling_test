@@ -129,7 +129,20 @@ students, what they wrote for that one unit, and whether each counted. The list 
 produced by walking the same answers the report counted, so it always adds up to
 the number you clicked. Escape or **Close** dismisses it, and it exports to CSV too.
 
-Every tab has **Download CSV** and **Print / Save PDF**.
+**Name the class** in the box beside the title — "Block 2A", "Period 4". It goes
+in front of every downloaded file name and at the top of every printout, which is
+what makes a Downloads folder full of reports navigable:
+
+```
+Block 2A - 3 tests - Accuracy by grapheme - 2026-09-20.csv
+Block 2A - Sam W. - 13 tests - Student profile - 2026-09-20.csv
+```
+
+Every tab has **Download CSV** and **Print / Save PDF**. Both ask you to check
+the name first, pre-filled as *class · what it covers · which report · date*, so
+Enter accepts it and anything else can be typed over it. Names follow the privacy
+toggle too: with **Hide student names** on, a profile saves as "Student 3".
+Printing names the PDF the same way, by way of the document title.
 
 **Hide student names** at the top swaps every name for "Student 1", "Student 2" …
 everywhere at once, including printouts and CSVs, so you can show one family where

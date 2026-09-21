@@ -1577,3 +1577,29 @@ ul.errorlist em {
     max-width: none;
   }
 }
+
+/* ------------------------------------------------------- download name ---- */
+
+/*
+ * The extension sits outside the input so it cannot be deleted by accident —
+ * a .csv saved as "Block 2A - Test 5" opens in the wrong thing.
+ */
+.filename-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.filename-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.filename-ext {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+}

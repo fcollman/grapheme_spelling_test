@@ -35,10 +35,6 @@ export function load(): Project | null {
   }
 }
 
-function slug(text: string): string {
-  return text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
-}
-
 export function download(filename: string, content: string, mime: string) {
   const blob = new Blob([content], { type: `${mime};charset=utf-8` })
   const url = URL.createObjectURL(blob)
@@ -49,15 +45,6 @@ export function download(filename: string, content: string, mime: string) {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
-export function saveProjectFile(project: Project) {
-  const date = new Date().toISOString().slice(0, 10)
-  download(`grapheme-spelling-test-${date}.json`, JSON.stringify(project, null, 2), 'application/json')
-}
-
-export function exportName(testName: string, suffix: string): string {
-  return `${slug(testName)}-${suffix}.csv`
 }
 
 /** Reads a .json project the teacher picks. Rejects anything not shaped like a project. */

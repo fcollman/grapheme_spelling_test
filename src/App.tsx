@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import { useStore } from './state/store'
 import { useAnalysis } from './state/useAnalysis'
-import { readProjectFile, saveProjectFile } from './state/persist'
+import { readProjectFile } from './state/persist'
+import { useFileName } from './state/filename'
+import { DownloadProvider, useDownloads } from './components/DownloadProvider'
 import { demoProject, DEMO_STUDENT_COUNT } from './state/demo'
 import { emptyProject } from './state/types'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -34,7 +36,17 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'] | 'help'
 
 export function App() {
+  return (
+    <DownloadProvider>
+      <Workspace />
+    </DownloadProvider>
+  )
+}
+
+function Workspace() {
   const { project, test, dispatch } = useStore()
+  const { requestDownload } = useDownloads()
+  const fileName = useFileName()
   const analysis = useAnalysis(project, test)
   const [tab, setTab] = useState<TabId>('entry')
   const [message, setMessage] = useState<string | null>(null)
@@ -86,6 +98,19 @@ export function App() {
       <header className="topbar no-print">
         <div className="group">
           <h1>Grapheme Spelling Test</h1>
+          {/*
+            One project file is one class. Naming it here is what puts "Block 2A"
+            at the front of every file this class exports and on every printout.
+          */}
+          <input
+            type="text"
+            value={project.className ?? ''}
+            placeholder="Class or block"
+            aria-label="Class or block"
+            title="Goes into the name of every file you download and onto every printout"
+            style={{ width: 130 }}
+            onChange={(e) => dispatch({ type: 'setClassName', name: e.target.value })}
+          />
           <select
             value={test.id}
             onChange={(e) => dispatch({ type: 'selectTest', id: e.target.value })}
@@ -115,7 +140,17 @@ export function App() {
         </div>
 
         <div className="group">
-          <button className="btn" onClick={() => saveProjectFile(project)}>
+          <button
+            className="btn"
+            onClick={() =>
+              requestDownload({
+                name: fileName('Grapheme Spelling Test'),
+                extension: 'json',
+                mime: 'application/json',
+                build: () => JSON.stringify(project, null, 2),
+              })
+            }
+          >
             Save file
           </button>
           <button className="btn" onClick={() => fileInput.current?.click()}>

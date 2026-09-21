@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
@@ -9,8 +10,9 @@ import { category, type CategoryId } from '../data/categories'
 import { scaleColor, scaleInk } from '../components/Legend'
 import { CategoryDot } from '../components/CategoryTag'
 import { Fraction, percentOf } from '../components/Fraction'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
 
@@ -22,6 +24,8 @@ import type { Drill } from '../reports/occurrences'
 export function ReportGraphemeAccuracy() {
   const { project, dispatch } = useStore()
   const scope = useSelectedTests('active')
+  const { requestDownload, requestPrint } = useDownloads()
+  const fileName = useFileName()
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
   const { notation } = project.settings
@@ -63,7 +67,12 @@ export function ReportGraphemeAccuracy() {
         ])
       }
     }
-    download(exportName(scope.scopeSlug, 'accuracy-by-grapheme'), toCsv(rows), 'text/csv')
+    requestDownload({
+      name: fileName('Accuracy by grapheme', [scope.scopeSlug], scope.scopeDate),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(rows),
+    })
   }
 
   if (scope.loading || reports.graphemes.length === 0) {
@@ -85,9 +94,9 @@ export function ReportGraphemeAccuracy() {
 
   return (
     <section className="panel">
-      <span className="print-title">
+      <PrintTitle>
         {scope.scopeLabel} · Accuracy by grapheme
-      </span>
+      </PrintTitle>
       <h2>Accuracy by grapheme</h2>
 
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
@@ -112,7 +121,7 @@ export function ReportGraphemeAccuracy() {
         <button className="btn" onClick={exportCsv}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => window.print()}>
+        <button className="btn" onClick={() => requestPrint(fileName('Accuracy by grapheme', [scope.scopeSlug], scope.scopeDate))}>
           Print / Save PDF
         </button>
       </div>

@@ -22,8 +22,13 @@ export interface SelectedTests {
   sources: ReportSource[]
   /** "Unit 4 · 2026-01-10", or "3 tests · 2026-01-10 to 2026-03-10". */
   scopeLabel: string
-  /** A short form for file names. */
+  /** A short form for file names: one test's name, or "3 tests". */
   scopeSlug: string
+  /**
+   * The date to file this export under: the test's own date when it covers a
+   * single test, which is what a teacher will look for it by, otherwise today.
+   */
+  scopeDate: string
 }
 
 /**
@@ -65,7 +70,8 @@ export function useSelectedTests(defaultTo: 'active' | 'all'): SelectedTests {
         ? `${sources[0].test.name} · ${sources[0].test.date}`
         : `${sources.length} tests · ${sources[0].test.date} to ${sources[sources.length - 1].test.date}`
 
-  const scopeSlug = sources.length === 1 ? sources[0].test.name : `${sources.length}-tests`
+  const scopeSlug = sources.length === 1 ? sources[0].test.name : `${sources.length} tests`
+  const scopeDate = sources.length === 1 ? sources[0].test.date : new Date().toISOString().slice(0, 10)
 
   return {
     loading: all.loading,
@@ -76,5 +82,6 @@ export function useSelectedTests(defaultTo: 'active' | 'all'): SelectedTests {
     sources,
     scopeLabel,
     scopeSlug,
+    scopeDate,
   }
 }

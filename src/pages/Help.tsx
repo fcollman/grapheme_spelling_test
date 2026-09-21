@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { GUIDE_LENGTH, HELP_SECTIONS } from '../content/help'
+import { useDownloads } from '../components/DownloadProvider'
+import { buildFileName } from '../state/filename'
 
 /**
  * Help: a how-to guide plus the About page, both written as Markdown in
@@ -10,6 +12,7 @@ import { GUIDE_LENGTH, HELP_SECTIONS } from '../content/help'
  * on one report jumps straight to that section from the list on the left.
  */
 export function Help() {
+  const { requestPrint } = useDownloads()
   const [index, setIndex] = useState(0)
   const top = useRef<HTMLDivElement>(null)
   const section = HELP_SECTIONS[index]
@@ -53,7 +56,11 @@ export function Help() {
           ))}
         </ul>
 
-        <button className="btn no-print" onClick={() => window.print()}>
+        {/* The guide is the same for everyone, so no class name here. */}
+        <button
+          className="btn no-print"
+          onClick={() => requestPrint(buildFileName(['Grapheme Spelling Test', section.title]))}
+        >
           Print / Save PDF
         </button>
       </aside>
