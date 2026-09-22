@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from './state/store'
 import { useAnalysis } from './state/useAnalysis'
 import { readProjectFile } from './state/persist'
-import { useFileName } from './state/filename'
-import { DownloadProvider, useDownloads } from './components/DownloadProvider'
+import { DownloadProvider } from './components/DownloadProvider'
+import { ProjectFileProvider, useProjectFile } from './state/ProjectFileProvider'
 import { demoProject, DEMO_STUDENT_COUNT } from './state/demo'
 import { emptyProject } from './state/types'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -38,15 +38,16 @@ type TabId = (typeof TABS)[number]['id'] | 'help'
 export function App() {
   return (
     <DownloadProvider>
-      <Workspace />
+      <ProjectFileProvider>
+        <Workspace />
+      </ProjectFileProvider>
     </DownloadProvider>
   )
 }
 
 function Workspace() {
   const { project, test, dispatch } = useStore()
-  const { requestDownload } = useDownloads()
-  const fileName = useFileName()
+  const file = useProjectFile()
   const analysis = useAnalysis(project, test)
   const [tab, setTab] = useState<TabId>('entry')
   const [message, setMessage] = useState<string | null>(null)
@@ -57,6 +58,10 @@ function Workspace() {
     project.students.length > 0 || project.tests.some((t) => t.words.length > 0)
 
   const loadDemo = () => {
+    // Detached deliberately. Otherwise the next Save writes the demo class over
+    // the teacher's real file, which is the one thing this feature could do
+    // that the old download flow never could.
+    file.disconnect()
     dispatch({ type: 'replaceProject', project: demoProject() })
     setTab('entry')
     setPending(null)
@@ -77,15 +82,38 @@ function Workspace() {
   }
 
   const clearAll = () => {
+    file.disconnect()
     dispatch({ type: 'replaceProject', project: emptyProject() })
     setTab('entry')
     setPending(null)
   }
 
-  async function onOpenFile(file: File | undefined) {
-    if (!file) return
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        // Beats the browser's own "save this page" dialog, which from file://
+        // would offer to save the app rather than the teacher's work.
+        e.preventDefault()
+        void file.save()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [file])
+
+  useEffect(() => {
+    // Only a nudge: the work is already in localStorage, so this is about the
+    // file being behind, not about losing anything.
+    if (!file.dirty || file.state.kind === 'none') return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [file.dirty, file.state.kind])
+
+  async function onOpenFile(f: File | undefined) {
+    if (!f) return
     try {
-      const loaded = await readProjectFile(file)
+      const loaded = await readProjectFile(f)
       dispatch({ type: 'replaceProject', project: loaded })
       setMessage(null)
     } catch (e) {
@@ -141,21 +169,28 @@ function Workspace() {
 
         <div className="group">
           <button
-            className="btn"
-            onClick={() =>
-              requestDownload({
-                name: fileName('Grapheme Spelling Test'),
-                extension: 'json',
-                mime: 'application/json',
-                build: () => JSON.stringify(project, null, 2),
-              })
-            }
+            className={`btn ${file.dirty && file.state.kind !== 'none' ? 'primary' : ''}`}
+            title={file.label.detail}
+            onClick={() => void file.save()}
           >
-            Save file
+            Save
           </button>
-          <button className="btn" onClick={() => fileInput.current?.click()}>
+          {file.supported && (
+            <button className="btn" title="Write to a different file" onClick={() => void file.saveAs()}>
+              Save a copy
+            </button>
+          )}
+          <button
+            className="btn"
+            onClick={() => (file.supported ? void file.open() : fileInput.current?.click())}
+          >
             Open file
           </button>
+          {file.state.kind !== 'none' && (
+            <span className={`filechip ${file.label.tone}`} title={file.label.detail}>
+              {file.label.label}
+            </span>
+          )}
           <button
             className="btn"
             title="Replace everything with a made-up class and six months of tests"
@@ -203,6 +238,21 @@ function Workspace() {
           />
         </div>
       </header>
+
+      {file.problem && (
+        <div className="error no-print" role="alert">
+          {file.problem}{' '}
+          <button className="btn" onClick={() => void file.saveAs()}>
+            Save a copy
+          </button>{' '}
+          <button className="btn" onClick={file.downloadCopy}>
+            Download instead
+          </button>{' '}
+          <button className="icon" onClick={file.dismissProblem} aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
 
       {message && (
         <div className="error no-print" role="alert">

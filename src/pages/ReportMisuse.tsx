@@ -54,6 +54,7 @@ export function ReportMisuse() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(out),
+      folder: 'Phoneme misuse',
     })
   }
 

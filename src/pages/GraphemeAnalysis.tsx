@@ -110,6 +110,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(rows),
+      folder: 'Grapheme analysis',
     })
   }
 

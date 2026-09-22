@@ -1,6 +1,16 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import { download } from '../state/persist'
+import { exportPath, type ReportFolder } from '../export/folders'
+import {
+  fileAccessSupported,
+  forgetHandle,
+  pickExportsFolder,
+  recallHandle,
+  rememberHandle,
+  writeIntoFolder,
+} from '../state/fileAccess'
+import { classifyError } from '../state/saveMachine'
 
 /**
  * Every download and every print goes through one dialog that shows the name
@@ -23,18 +33,35 @@ export interface DownloadRequest {
   mime: string
   /** Built only if the teacher goes through with it. */
   build: () => string
+  /**
+   * Which subfolder this export belongs in, when a folder has been chosen.
+   *
+   * A literal from `REPORT_FOLDERS`, never anything derived from the file name
+   * — that name carries the class and often a student, and a folder is a far
+   * more visible place for a real child's name than a file is. See the note in
+   * `export/folders.ts`.
+   */
+  folder?: ReportFolder
 }
 
 interface Pending {
   name: string
   extension?: string
-  onConfirm: (name: string) => void
+  folder?: ReportFolder
+  onConfirm: (name: string) => void | Promise<void>
 }
 
 interface Downloads {
   requestDownload: (request: DownloadRequest) => void
   /** Opens the browser's print dialog with `name` as the suggested PDF name. */
   requestPrint: (name: string) => void
+}
+
+/** Where CSVs go: a chosen folder, or the browser's downloads. */
+interface Destination {
+  folder: FileSystemDirectoryHandle | null
+  choose: () => Promise<void>
+  clear: () => void
 }
 
 const DownloadContext = createContext<Downloads | null>(null)
@@ -47,12 +74,72 @@ export function useDownloads(): Downloads {
 
 export function DownloadProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<Pending | null>(null)
+  const [exportsFolder, setExportsFolder] = useState<FileSystemDirectoryHandle | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+
+  // Restored silently; writing to it still needs permission, which is asked
+  // for on the first export rather than when the page opens.
+  useEffect(() => {
+    let cancelled = false
+    if (!fileAccessSupported()) return
+    recallHandle<FileSystemDirectoryHandle>('exports').then((h) => {
+      if (!cancelled && h) setExportsFolder(h)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const destination: Destination = {
+    folder: exportsFolder,
+    choose: async () => {
+      try {
+        const handle = await pickExportsFolder()
+        if (!handle) return
+        await rememberHandle('exports', handle)
+        setExportsFolder(handle)
+      } catch (e) {
+        if (classifyError(e) !== 'cancelled') setNote('Could not use that folder.')
+      }
+    },
+    clear: () => {
+      forgetHandle('exports')
+      setExportsFolder(null)
+    },
+  }
 
   const requestDownload = (request: DownloadRequest) =>
     setPending({
       name: request.name,
       extension: request.extension,
-      onConfirm: (name) => download(`${name}.${request.extension}`, request.build(), request.mime),
+      folder: request.folder,
+      onConfirm: async (name) => {
+        const fileName = `${name}.${request.extension}`
+        const text = request.build()
+
+        if (!exportsFolder || !request.folder) {
+          download(fileName, text, request.mime)
+          return
+        }
+        try {
+          const written = await writeIntoFolder(
+            exportsFolder,
+            exportPath(request.folder, fileName),
+            text,
+          )
+          setNote(
+            written === fileName
+              ? `Saved to ${request.folder} in ${exportsFolder.name}.`
+              : `Saved to ${request.folder} in ${exportsFolder.name} as “${written}” — a file of that name was already there.`,
+          )
+        } catch (e) {
+          // Never lose the export because the folder misbehaved.
+          if (classifyError(e) !== 'cancelled') {
+            download(fileName, text, request.mime)
+            setNote('Could not write to your exports folder, so it was downloaded instead.')
+          }
+        }
+      },
     })
 
   const requestPrint = (name: string) => setPending({ name, onConfirm: printAs })
@@ -63,6 +150,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       {pending && (
         <NameDialog
           pending={pending}
+          destination={destination}
           onClose={() => setPending(null)}
           onConfirm={(name) => {
             const act = pending.onConfirm
@@ -80,6 +168,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
             act(name)
           }}
         />
+      )}
+      {note && (
+        <div className="savenote no-print" role="status" onClick={() => setNote(null)}>
+          {note}
+        </div>
       )}
     </DownloadContext.Provider>
   )
@@ -109,10 +202,12 @@ function printAs(name: string) {
 
 function NameDialog({
   pending,
+  destination,
   onConfirm,
   onClose,
 }: {
   pending: Pending
+  destination: Destination
   onConfirm: (name: string) => void
   onClose: () => void
 }) {
@@ -158,6 +253,37 @@ function NameDialog({
           />
           {pending.extension && <span className="filename-ext">.{pending.extension}</span>}
         </div>
+
+        {/*
+          Where it goes, said before it goes there. A teacher who has set a
+          folder should not have to guess whether this particular export
+          honoured it.
+        */}
+        {pending.folder && fileAccessSupported() && (
+          <p className="sub destination">
+            {destination.folder ? (
+              <>
+                Saves into <strong>{destination.folder.name}</strong> ›{' '}
+                <strong>{pending.folder}</strong>.{' '}
+                <button className="linkish" onClick={destination.choose}>
+                  Change folder
+                </button>{' '}
+                <button className="linkish" onClick={destination.clear}>
+                  Use downloads instead
+                </button>
+              </>
+            ) : (
+              <>
+                Goes to your downloads.{' '}
+                <button className="linkish" onClick={destination.choose}>
+                  Choose a folder instead
+                </button>{' '}
+                — pick one your school's Drive or OneDrive keeps in sync and your
+                reports file themselves.
+              </>
+            )}
+          </p>
+        )}
 
         <footer>
           <span className="spacer" />

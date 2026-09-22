@@ -72,6 +72,7 @@ export function ReportGraphemeAccuracy() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(rows),
+      folder: 'Accuracy by grapheme',
     })
   }
 

@@ -59,6 +59,7 @@ export function ReportGraphemeConfusion() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(out),
+      folder: 'Grapheme confusion',
     })
   }
 

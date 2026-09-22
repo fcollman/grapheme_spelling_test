@@ -57,6 +57,7 @@ export function ReportConfusion() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(out),
+      folder: 'Phoneme confusion',
     })
   }
 
