@@ -1663,3 +1663,14 @@ ul.errorlist em {
   background: var(--accent-soft);
   color: var(--accent);
 }
+
+/*
+ * No dialog ever reaches paper. A modal is on screen to be acted on, never to be
+ * printed, and one left open would otherwise cover the page it is sitting over —
+ * which is exactly how the name dialog once ended up being the PDF.
+ */
+@media print {
+  .backdrop {
+    display: none !important;
+  }
+}

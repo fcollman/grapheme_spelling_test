@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { download } from '../state/persist'
 
 /**
@@ -64,8 +65,19 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           pending={pending}
           onClose={() => setPending(null)}
           onConfirm={(name) => {
-            pending.onConfirm(name)
-            setPending(null)
+            const act = pending.onConfirm
+            /*
+             * The dialog has to be out of the DOM before the action runs, not
+             * merely scheduled for removal.
+             *
+             * window.print() snapshots the page synchronously, so closing the
+             * dialog with a plain setState left the backdrop still covering the
+             * report and the PDF came out as a picture of this dialog. flushSync
+             * commits the unmount first; a plain state update would not have
+             * landed until after print() had already read the page.
+             */
+            flushSync(() => setPending(null))
+            act(name)
           }}
         />
       )}
