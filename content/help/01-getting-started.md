@@ -61,16 +61,20 @@ because a student who writes `frittle` correctly has actually decoded it, while
 analyze them the same way, but the tick reminds you which is which when you are
 reading a student's results.
 
-The **red** column is not something you fill in — the app fills it in. A ◆ appears
-beside any word containing a spelling that has to be remembered rather than
-sounded out, like the `ai` in *said* or the `eir` in *their*, so you can see at a
-glance which words on your list are red words.
+Tick **red word** for a word you are assessing as a taught Red Word — one with a
+part that has to be remembered rather than sounded out, like *said* or *their*.
 
-It is doing more than labelling. A miss on that part of the word is scored as a
-red-word error and stops counting against the phonics skill it would otherwise
-blame, so a wrong `eir` never looks like a problem with r-controlled vowels.
-**Checking the analysis** covers this, including how to overrule the app when you
-disagree with it.
+The tick is your statement, not the app's guess: nothing is treated as
+irregular until you set it. That is deliberate, because whether a spelling
+counts as unexpected depends on where your class has got to in its scope and
+sequence — a pattern that is unexpected in October may be explicitly taught by
+March. Since the tick lives on the word *in that test*, the same word can be a
+Red Word on an early test and ordinary phonics on a later one.
+
+Once it is ticked, the app suggests which letters are the unexpected part, and
+you confirm or change that on the **Grapheme analysis** tab. A miss on those
+letters is then scored as a Red Word error rather than counting against the
+phonics skill it would otherwise blame.
 
 ### Putting the words in order
 

@@ -373,18 +373,27 @@ to the table if they keep turning up in your word lists.
 ## Red words
 
 Letters that make a sound they do not usually make, so the word has to be
-remembered rather than sounded out. These are tagged **Red word (irregular)**
-instead of the phonics category they would otherwise fall in, so a student who
-misses one does not lose credit for a skill they may well have: in *their*, a
-miss on the `eir` no longer counts against r-controlled vowels, and the `th`
-beside it still counts as a consonant digraph.
+remembered rather than sounded out.
+
+**This list only suggests.** Nothing is classified as a Red Word until the
+teacher ticks the word as one, because whether a spelling counts as unexpected
+depends on where the class has reached in its scope and sequence — a pattern
+that is unexpected in October may be explicitly taught by March. All this table
+does is pre-select which letters the teacher probably means, and they confirm
+or change it per word.
+
+Once confirmed, those letters are tagged **Red word (irregular)** instead of the
+phonics category they would otherwise fall in, so a student who misses one does
+not lose credit for a skill they may well have: in *their*, a miss on the `eir`
+no longer counts against r-controlled vowels, and the `th` beside it still
+counts as a consonant digraph.
 
 What is listed is a **grapheme, not a word**, which is why `ai` appears here for
 *said* while the `ai` in *rain* is an ordinary long vowel — they make different
 sounds, so they were already different entries.
 
-The list does not have to be complete. A pair that is missing simply behaves as
-it did before, so add to it as words come up in real tests.
+The list does not have to be complete. A spelling that is missing just means the
+teacher picks the column themselves, so add to it as words come up in real tests.
 
 | Letters | Sound(s) | As in | Also |
 | --- | --- | --- | --- |

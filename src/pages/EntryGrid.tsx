@@ -19,18 +19,20 @@ export function EntryGrid({ analysis }: { analysis: AnalysisResult }) {
   const { project, test, dispatch } = useStore()
 
   /*
-   * Which words contain a spelling the app treats as a red word.
+   * Which Red Words the app could not find an unexpected spelling in.
    *
-   * Derived, never stored. A tick the teacher sets and a tick the app sets look
-   * identical on screen, so having both was a way to give two different answers
-   * to the same question: the demo arrived with words ticked that an identical
-   * word typed by hand would not tick. The app already knows, so it says so, and
-   * the teacher's say is exercised where the spellings are actually visible —
-   * on the Grapheme analysis tab, one spelling at a time.
+   * The tick is the teacher's statement that a word is being assessed as a taught
+   * Red Word; the app only suggests WHICH letters are the unexpected part. When
+   * it has no suggestion the word still counts, but nothing in it is marked, so
+   * it says so here rather than looking as though the tick did nothing.
    */
-  const redWords = new Set(
+  const unresolvedRedWords = new Set(
     test.words
-      .filter((w) => (analysis.unitsByWord.get(w.id) ?? []).some((u) => u.category === 'red-word'))
+      .filter(
+        (w) =>
+          w.redWord &&
+          !(analysis.unitsByWord.get(w.id) ?? []).some((u) => u.category === 'red-word'),
+      )
       .map((w) => w.id),
   )
   const names = useStudentNames()
@@ -257,7 +259,7 @@ export function EntryGrid({ analysis }: { analysis: AnalysisResult }) {
       rows.push([
         w.text,
         w.nonsense ? 'nonsense' : 'real',
-        redWords.has(w.id) ? 'red word' : '',
+        w.redWord ? 'red word' : '',
         ...project.students.map((s) => test.responses[w.id]?.[s.id] ?? ''),
       ])
     }
@@ -370,8 +372,8 @@ export function EntryGrid({ analysis }: { analysis: AnalysisResult }) {
       <p className="hint">
         Add the words you dictated and the students who took the test, then type what each student
         actually wrote. A cell turns green when the spelling matches the word exactly. Mark a word as
-        nonsense if it was made up to test encoding without sight-word memory. The red mark is filled
-        in for you when a word contains a spelling that has to be remembered rather than sounded out.
+        nonsense if it was made up to test encoding without sight-word memory, and red if you are
+        assessing it as a taught Red Word.
         <br />
         Working from one student's paper: press <kbd>Enter</kbd> to drop to the next word down the
         column, and again at the bottom to jump to the top of the next student. <kbd>Shift</kbd>+
@@ -477,8 +479,8 @@ export function EntryGrid({ analysis }: { analysis: AnalysisResult }) {
                 <th className="num no-print c2">
                   <span className="flagcol">
                     <span title="A made-up word, to test encoding without sight-word memory">Nonsense</span>
-                    <span title="Found to contain a spelling that has to be remembered rather than sounded out. Set on the Grapheme analysis tab, not here.">
-                      Red
+                    <span title="Assess this word as a taught Red Word. The app suggests which letters are the unexpected part; confirm or change that on the Grapheme analysis tab.">
+                      Red word
                     </span>
                   </span>
                 </th>
@@ -599,22 +601,19 @@ export function EntryGrid({ analysis }: { analysis: AnalysisResult }) {
                         aria-label={`${w.text} is a nonsense word`}
                         onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
                       />
-                      <span
-                        className={`redflag ${redWords.has(w.id) ? 'on' : ''}`}
-                        role="img"
-                        aria-label={
-                          redWords.has(w.id)
-                            ? `${w.text} contains a red-word spelling`
-                            : `${w.text} has no red-word spelling`
-                        }
+                      <input
+                        type="checkbox"
+                        checked={!!w.redWord}
+                        disabled={locked}
+                        aria-label={`${w.text} is a red word`}
                         title={
-                          redWords.has(w.id)
-                            ? `${w.text} contains a spelling that has to be remembered. Change that on the Grapheme analysis tab.`
-                            : ''
+                          unresolvedRedWords.has(w.id)
+                            ? `${w.text} is marked as a Red Word, but the app has no suggestion for which letters are the unexpected part. Pick them on the Grapheme analysis tab.`
+                            : `Assess ${w.text} as a taught Red Word`
                         }
-                      >
-                        {redWords.has(w.id) ? '◆' : ''}
-                      </span>
+                        className={unresolvedRedWords.has(w.id) ? 'unresolved' : ''}
+                        onChange={(e) => dispatch({ type: 'updateWord', id: w.id, redWord: e.target.checked })}
+                      />
                     </span>
                   </td>
                   {project.students.map((s, studentIndex) => {

@@ -1082,6 +1082,7 @@ td.classcol {
 }
 
 .profile .score span {
+  display: block;
   color: var(--muted);
   font-size: 11px;
 }

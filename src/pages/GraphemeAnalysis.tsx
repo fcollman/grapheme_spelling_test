@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { isIrregular } from '../data/irregular'
+import { suggestRedUnits } from '../engine/units'
 import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
@@ -235,6 +235,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
               wordId={word.id}
               text={word.text}
               nonsense={word.nonsense}
+              redWord={!!word.redWord}
               target={target}
               units={units}
               patterns={analysis.patternsByWord.get(word.id) ?? []}
@@ -242,18 +243,12 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
               analysis={analysis}
               onEditCell={setEditing}
               onEditWord={() => setEditingWord(word.id)}
-              onToggleRedWord={(u) =>
-                dispatch({
-                  type: 'setRedWord',
-                  key: u.key,
-                  // Back to the table's judgement when the teacher's decision
-                  // would have agreed with it anyway, so overrides do not pile
-                  // up recording things the app already knew.
-                  value: isIrregular(u.letters.toLowerCase(), u.phonemes) === (u.category !== 'red-word')
-                    ? null
-                    : u.category !== 'red-word',
-                })
-              }
+              onToggleRedWord={(u, units) => {
+                const chosen = new Set<number>(test.redUnits?.[word.id] ?? suggestRedUnits(units))
+                if (chosen.has(u.index)) chosen.delete(u.index)
+                else chosen.add(u.index)
+                dispatch({ type: 'setRedUnits', wordId: word.id, units: [...chosen].sort((a, b) => a - b) })
+              }}
             />
           )
         })}
@@ -297,6 +292,7 @@ function WordBlock({
   wordId,
   text,
   nonsense,
+  redWord,
   target,
   units,
   patterns,
@@ -309,6 +305,7 @@ function WordBlock({
   wordId: string
   text: string
   nonsense: boolean
+  redWord: boolean
   target: WordAnalysis
   units: GraphemeUnit[]
   patterns: PatternMatch[]
@@ -316,7 +313,7 @@ function WordBlock({
   analysis: AnalysisResult
   onEditCell: (t: EditTarget) => void
   onEditWord: () => void
-  onToggleRedWord: (unit: GraphemeUnit) => void
+  onToggleRedWord: (unit: GraphemeUnit, units: GraphemeUnit[]) => void
 }) {
   const { project, test } = useStore()
   const names = useStudentNames()
@@ -346,8 +343,14 @@ function WordBlock({
       <header>
         <span className="word">{text}</span>
         {nonsense && <span className="tag">nonsense</span>}
-        {units.some((u) => u.category === 'red-word') && (
-          <span className="tag red-word">red word</span>
+        {redWord && <span className="tag red-word">red word</span>}
+        {redWord && !units.some((u) => u.category === 'red-word') && (
+          <span
+            className="tag unlisted"
+            title="Marked as a Red Word, but the app has no suggestion for which letters are the unexpected part. Click the ◆ on the column you mean."
+          >
+            pick the unexpected part ?
+          </span>
         )}
         <span className="tag">
           {target.syllables.length} syllable{target.syllables.length === 1 ? '' : 's'}
@@ -399,16 +402,21 @@ function WordBlock({
                     outright, because a report row IS a spelling — see the note
                     in data/irregular.ts.
                   */}
-                  {u.letters !== '' && (
+                  {/*
+                    Only on a Red Word, and only about THIS word: the same
+                    spelling can be unexpected here and ordinary phonics in a
+                    later test, once it has been taught.
+                  */}
+                  {redWord && u.letters !== '' && u.patternId === undefined && (
                     <button
                       className={`redtoggle no-print ${u.category === 'red-word' ? 'on' : ''}`}
                       aria-pressed={u.category === 'red-word'}
                       title={
                         u.category === 'red-word'
-                          ? `"${u.letters}" spelling ${displayList(u.phonemes, notation)} counts as a red word. Click to treat it as ordinary phonics instead, in every word.`
-                          : `Click to count "${u.letters}" spelling ${displayList(u.phonemes, notation)} as a red word, in every word that uses it.`
+                          ? `"${u.letters}" is the unexpected part of ${text}. Click if it is expected here after all.`
+                          : `Click to mark "${u.letters}" as the unexpected part of ${text}.`
                       }
-                      onClick={() => onToggleRedWord(u)}
+                      onClick={() => onToggleRedWord(u, units)}
                     >
                       ◆
                     </button>

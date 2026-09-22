@@ -110,20 +110,14 @@ export const IRREGULAR_UNITS = new Set(
 )
 
 /**
- * The teacher's answer where they have given one, otherwise the table's.
+ * Whether this table expects these letters to make this sound.
  *
- * Overrides are keyed on the spelling, not on the word, because that is the
- * grain everything else uses: a report row IS a letters-and-sounds pair, so an
- * override attached to one word would leave the same row meaning two different
- * things depending on which word was counted last. Saying "ea spelling /e/ is
- * not a red word in my program" is also the claim a teacher actually wants to
- * make — it is true of *head* and *bread* together or of neither.
+ * A suggestion, never a verdict. Nothing is treated as a Red Word until the
+ * teacher marks the word as one, because "unexpected" is relative to what the
+ * class has been taught so far — the same spelling can be unexpected in October
+ * and explicitly taught by March. All this does is offer a starting point for
+ * which part of a word the teacher probably means.
  */
-export function isIrregular(
-  letters: string,
-  phonemes: PhonemeId[],
-  overrides: Record<string, boolean> = {},
-): boolean {
-  const key = `${letters || '∅'}|${phonemes.join('+')}`
-  return overrides[key] ?? IRREGULAR_UNITS.has(key)
+export function isIrregular(letters: string, phonemes: PhonemeId[]): boolean {
+  return IRREGULAR_UNITS.has(`${letters || '∅'}|${phonemes.join('+')}`)
 }

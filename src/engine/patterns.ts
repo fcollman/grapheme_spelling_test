@@ -1,5 +1,4 @@
 import type { PhonemeId } from '../data/phonemes'
-import { isIrregular } from '../data/irregular'
 import { get, isVowel } from '../data/phonemes'
 import { VOWEL_CATEGORY, type CategoryId } from '../data/categories'
 import {
@@ -50,19 +49,13 @@ function isDoubledLetter(grapheme: string): boolean {
  * Category of one sound. Consonants depend on spelling, because "digraph" is a
  * fact about letters rather than about the sound itself.
  */
-export function slotCategory(
-  phoneme: PhonemeId,
-  grapheme: string,
-  /** The teacher's red-word decisions, overriding the built-in table. */
-  redWords: Record<string, boolean> = {},
-): SlotTag {
-  // Checked before anything else, because the whole point of a red word is that
-  // the usual rules do not apply to it. Note this has to come ahead of the vowel
-  // branch, which returns on the phoneme alone and never looks at the letters —
-  // and the letters are the entire difference between the ai in said and the
-  // ai in rain.
-  if (isIrregular(grapheme.toLowerCase(), [phoneme], redWords)) return { category: 'red-word' }
-
+export function slotCategory(phoneme: PhonemeId, grapheme: string): SlotTag {
+  /*
+   * Deliberately knows nothing about Red Words. Whether a spelling is
+   * "unexpected" is a fact about the word and where the class has got to, not
+   * about the sound, so it is decided per word in units.ts where the teacher's
+   * answer is available.
+   */
   if (isVowel(phoneme)) {
     return { category: VOWEL_CATEGORY[phoneme] ?? 'other-vowel' }
   }

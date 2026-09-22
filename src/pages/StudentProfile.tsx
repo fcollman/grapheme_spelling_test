@@ -62,6 +62,22 @@ interface ErrorLine {
   mark: Mark
 }
 
+/** Whole Red Words spelled correctly, across the selected tests. */
+function redWordTotals(sources: ReportSource[], studentId: string) {
+  let correct = 0
+  let total = 0
+  for (const { test, analysis } of sources) {
+    for (const w of test.words) {
+      if (!w.redWord) continue
+      const a = analysis.byCell.get(cellKey(w.id, studentId))
+      if (!a?.attempted) continue
+      total += 1
+      if (a.spellingCorrect) correct += 1
+    }
+  }
+  return { correct, total }
+}
+
 function summarise(reports: Reports, studentId: string): CategorySummary[] {
   const totals = new Map<CategoryId, CategorySummary>()
   for (const g of reports.graphemes) {
@@ -170,6 +186,14 @@ export function StudentProfile() {
       ['Student', 'Section', 'Item', 'Sounds', 'Detail', 'Correct', 'Total', 'Percent'],
     ]
     for (const s of shown) {
+      const red = redWordTotals(scope.sources, s.id)
+      if (red.total > 0) {
+        rows.push([
+          names(s.id), 'Red words', 'Whole words spelled correctly', '', '',
+          String(red.correct), String(red.total),
+          `${Math.round((red.correct / red.total) * 100)}%`,
+        ])
+      }
       for (const c of summarise(reports, s.id)) {
         rows.push([
           names(s.id),
@@ -292,6 +316,17 @@ function Profile({
   const totalAttempted = perTest.reduce((n, t) => n + t.attempted, 0)
   const totalCorrect = perTest.reduce((n, t) => n + t.correct, 0)
 
+  /*
+   * Red Word mastery: whole words, spelled right or not.
+   *
+   * Deliberately a different number from the Red word row in the category table
+   * below, which scores only the unexpected letters. Both are worth having and
+   * they say different things — a student can get the tricky part of *their*
+   * right and still misspell the word, and the instructional answer is not the
+   * same in the two cases.
+   */
+  const redWordScore = redWordTotals(sources, student.id)
+
   const secure = summary.filter((c) => c.total > 0 && c.correct / c.total >= MASTERY)
   const needsWork = summary.filter((c) => c.total > 0 && c.correct / c.total < MASTERY)
   const notAssessed = summary.filter((c) => c.total === 0)
@@ -330,6 +365,12 @@ function Profile({
             words spelled correctly
             {totalAttempted > 0 && ` · ${Math.round((totalCorrect / totalAttempted) * 100)}%`}
           </span>
+          {redWordScore.total > 0 && (
+            <span title="Whole Red Words spelled correctly. The Red word row in the table below scores only the unexpected letters, which is a different question.">
+              of which Red Words: {redWordScore.correct}/{redWordScore.total} ·{' '}
+              {Math.round((redWordScore.correct / redWordScore.total) * 100)}%
+            </span>
+          )}
         </div>
       </header>
 

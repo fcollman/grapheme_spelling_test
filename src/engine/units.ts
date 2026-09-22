@@ -50,6 +50,24 @@ export function unitKey(letters: string, phonemes: PhonemeId[]): string {
   return `${letters || '∅'}|${phonemes.join('+')}`
 }
 
+/**
+ * Red-word rows are keyed per WORD, not per spelling.
+ *
+ * Two reasons. Instructionally it is the right grain: a low score here means
+ * "practise *said*", not "reteach ai". And it is what lets the same spelling be
+ * unexpected in one word and ordinary phonics in another, which a scope and
+ * sequence requires — without it, one report row would mean two different things
+ * depending on which word happened to be counted last.
+ */
+export function redUnitKey(word: string, letters: string, phonemes: PhonemeId[]): string {
+  return `red:${word}:${unitKey(letters, phonemes)}`
+}
+
+/** True for a report row that is one word's unexpected spelling. */
+export function isRedUnitKey(key: string): boolean {
+  return key.startsWith('red:')
+}
+
 function matchesMultiSound(graphemes: string[], phonemes: PhonemeId[], start: number) {
   for (const entry of MULTI_SOUND_GRAPHEMES) {
     const end = start + entry.phonemes.length
@@ -67,19 +85,24 @@ function matchesMultiSound(graphemes: string[], phonemes: PhonemeId[], start: nu
  * Chooses the category for a unit. A collapsed pattern keeps its own; otherwise
  * the spelling decides, exactly as it does for a single sound.
  */
-function unitCategory(
-  letters: string,
-  phonemes: PhonemeId[],
-  redWords: Record<string, boolean>,
-): CategoryId {
-  // The unit's whole sound sequence, not the lead sound slotCategory would use:
-  // the o in "once" says /w/ + /u/ together, and only the pair is irregular.
-  if (isIrregular(letters.toLowerCase(), phonemes, redWords)) return 'red-word'
-
+function unitCategory(letters: string, phonemes: PhonemeId[]): CategoryId {
   const first = phonemes.find((p) => !isVowel(p)) ?? phonemes[0]
   // A vowel unit is categorised by its vowel, not by a consonant beside it.
   const lead = isVowel(phonemes[0]) ? phonemes[0] : first
-  return slotCategory(lead, letters, redWords).category
+  return slotCategory(lead, letters).category
+}
+
+/**
+ * Which columns of a Red Word look like the unexpected part.
+ *
+ * Only ever a starting point for the teacher, who confirms or changes it. If
+ * nothing in the word matches the table, the answer is "none" rather than a
+ * guess — better to say so and let them pick than to blame an arbitrary column.
+ */
+export function suggestRedUnits(units: GraphemeUnit[]): number[] {
+  return units
+    .filter((u) => isIrregular(u.letters.toLowerCase(), u.phonemes))
+    .map((u) => u.index)
 }
 
 /**
@@ -92,8 +115,12 @@ function unitCategory(
 export function buildUnits(
   target: WordAnalysis,
   patterns: PatternMatch[],
-  /** The teacher's red-word decisions, overriding the built-in table. */
-  redWords: Record<string, boolean> = {},
+  /**
+   * Set when the teacher is assessing this word as a Red Word. `units` is their
+   * confirmed choice of unexpected columns; leaving it out takes the app's
+   * suggestion.
+   */
+  red?: { units?: number[] },
 ): GraphemeUnit[] {
   const phonemes = target.targetPhonemes
   const graphemes = target.targetGraphemes
@@ -139,7 +166,7 @@ export function buildUnits(
       phonemes: slice,
       startSlot: start,
       endSlot: end,
-      category: pattern ? pattern.category : unitCategory(letters, slice, redWords),
+      category: pattern ? pattern.category : unitCategory(letters, slice),
       patternId: pattern?.id,
       patternLabel: pattern?.label,
       key: unitKey(letters, slice),
@@ -147,7 +174,23 @@ export function buildUnits(
     start = end
   }
 
-  return units
+  if (!red) return units
+
+  // Applied after the units exist, because both the suggestion and the teacher's
+  // choice are expressed as column indices.
+  const unexpected = new Set(red.units ?? suggestRedUnits(units))
+  return units.map((u) =>
+    unexpected.has(u.index) && u.patternId === undefined
+      ? {
+          ...u,
+          category: 'red-word' as CategoryId,
+          key: redUnitKey(target.word, u.letters, u.phonemes),
+          // The word alone: report rows append the letters themselves where
+          // the label differs from them, so anything more reads as "said aiai".
+          patternLabel: target.word,
+        }
+      : u,
+  )
 }
 
 /** Rolls the per-sound marks inside a unit up into one mark for the unit. */

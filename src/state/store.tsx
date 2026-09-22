@@ -27,8 +27,8 @@ export type Action =
   | { type: 'removeTest'; id: string }
   | { type: 'addWord'; text: string }
   | { type: 'addWords'; texts: string[] }
-  | { type: 'updateWord'; id: string; text?: string; nonsense?: boolean }
-  | { type: 'setRedWord'; key: string; value: boolean | null }
+  | { type: 'updateWord'; id: string; text?: string; nonsense?: boolean; redWord?: boolean }
+  | { type: 'setRedUnits'; wordId: string; units: number[] | null }
   | { type: 'removeWord'; id: string }
   | { type: 'moveWord'; id: string; delta: number }
   | { type: 'moveWordTo'; id: string; index: number }
@@ -115,14 +115,6 @@ export function reducer(project: Project, action: Action): Project {
         archivedStudents: archived.filter((s) => !action.ids.includes(s.id)),
       }
     }
-    case 'setRedWord': {
-      // null puts the spelling back under the built-in table's judgement.
-      const next = { ...(project.redWordOverrides ?? {}) }
-      if (action.value === null) delete next[action.key]
-      else next[action.key] = action.value
-      return { ...project, redWordOverrides: next }
-    }
-
     case 'moveStudent':
       return { ...project, students: move(project.students, action.id, action.delta) }
 
@@ -189,6 +181,7 @@ export function reducer(project: Project, action: Action): Project {
                 ...w,
                 text: action.text ?? w.text,
                 nonsense: action.nonsense ?? w.nonsense,
+                redWord: action.redWord ?? w.redWord,
               }
             : w,
         ),
@@ -197,6 +190,11 @@ export function reducer(project: Project, action: Action): Project {
           action.text !== undefined
             ? Object.fromEntries(Object.entries(t.wordPhonemes).filter(([k]) => k !== action.id))
             : t.wordPhonemes,
+        // Column indices mean nothing once the letters change.
+        redUnits:
+          action.text !== undefined && t.redUnits
+            ? Object.fromEntries(Object.entries(t.redUnits).filter(([k]) => k !== action.id))
+            : t.redUnits,
       }))
     case 'removeWord':
       return withActiveTest(project, (t) => ({ ...t, words: t.words.filter((w) => w.id !== action.id) }))
@@ -241,6 +239,15 @@ export function reducer(project: Project, action: Action): Project {
             [action.wordId]: { ...forWord, [action.studentId]: forStudent },
           },
         }
+      })
+
+    case 'setRedUnits':
+      return withActiveTest(project, (t) => {
+        const next = { ...(t.redUnits ?? {}) }
+        // null hands the choice back to the app's suggestion.
+        if (action.units === null) delete next[action.wordId]
+        else next[action.wordId] = action.units
+        return { ...t, redUnits: next }
       })
 
     case 'clearOverridesForWord':

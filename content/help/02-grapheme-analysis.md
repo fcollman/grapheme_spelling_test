@@ -72,31 +72,31 @@ So a low red-word score means *practise these particular words*, and a low
 r-controlled score still means *reteach bossy R*. They no longer contaminate
 each other.
 
-**It is the letters that are red, not the word.** The `ai` in *said* is tagged
-red; the `ai` in *rain* is an ordinary long vowel. They make different sounds, so
-the app was already treating them as different things.
+**What gets marked is letters; what gets counted is words.** Only the unexpected
+part of the word is marked, so the rest still counts for its own phonics skills.
+But the score is per word — *said* gets its own row, separate from *again* — so
+the report tells you which words to practise rather than which spelling to
+reteach. The `ai` in *rain*, meanwhile, is just an ordinary long vowel.
 
-This happens automatically, from an internal list, which is why the **red** column
-on the spelling test tab fills itself in rather than waiting for you to tick it.
+**None of this happens until you tick a word as a Red Word** on the spelling test
+tab. The app has an internal list of spellings that are usually unexpected, but
+it only ever uses it to *suggest*, because "unexpected" is relative to what your
+class has been taught — the same spelling can be unexpected early in the year and
+explicitly taught later.
 
-**You have the final say.** Every column here carries a small ◆ next to its
-coloured dot. Click it to change your mind about that spelling: red where the app
-thought it was ordinary phonics, ordinary phonics where the app thought it was
-red. Your decision is remembered and the reports follow it immediately.
+**You confirm which letters are the unexpected part.** On a word you have ticked,
+every column carries a small ◆ beside its coloured dot. The app pre-selects what
+it thinks, and clicking changes it. Marking none of them is a real answer too:
+the word stays a Red Word, and nothing in it is scored as unexpected.
 
-Two things about that button worth knowing. It applies to the **spelling**, not to
-the word you clicked it in — marking `ea` saying /e/ as ordinary phonics changes
-*head* and *bread* together, because that is the claim you are really making, and
-because the reports group by spelling rather than by word. And clicking it back to
-where the app had it removes your override entirely rather than recording an
-opinion the app already held.
+It applies to **this word in this test**, so teaching a pattern later does not
+rewrite what an earlier test measured. And because the remediation for a Red Word
+is "practise this word", the reports give each one its own row — *said* and
+*again* are counted separately even though both hinge on `ai`.
 
-The likeliest one to want is `ea` saying /e/. It ships as a red word, but there
-are enough of those words that some programs teach it as a second sound of the
-`ea` team instead. If that is yours, one click settles it.
-
-Provide feedback on the github page (see about) if you find spellings that are
-missing persistently.
+If you tick a word and the app has no suggestion, it says **pick the unexpected
+part** rather than quietly doing nothing. Provide feedback on the github page
+(see about) if you find spellings that are missing persistently.
 
 The **By sound** tabs are deliberately left out of this. They ask whether the
 student heard the sound, which is a fair question about a red word too: `thar`

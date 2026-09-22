@@ -25,8 +25,15 @@ import { CATEGORIES } from '../data/categories'
 
 const students = [{ id: 's1', name: 'Ava' }]
 
-async function build(words: Array<{ text: string; wrote: string }>) {
-  const wordRows = words.map((w, i) => ({ id: `w${i}`, text: w.text, nonsense: false }))
+async function build(words: Array<{ text: string; wrote: string; red?: boolean }>) {
+  // red defaults to true: these tests are about words being assessed as Red
+  // Words, which is the only thing that turns the classification on.
+  const wordRows = words.map((w, i) => ({
+    id: `w${i}`,
+    text: w.text,
+    nonsense: false,
+    redWord: w.red ?? true,
+  }))
   const responses: Record<string, Record<string, string>> = {}
   words.forEach((w, i) => (responses[`w${i}`] = { s1: w.wrote }))
 
@@ -50,7 +57,7 @@ async function build(words: Array<{ text: string; wrote: string }>) {
     const patterns = findPatterns(target.targetPhonemes, target.targetGraphemes, target.syllables, target.word)
     byWord.set(w.id, target)
     patternsByWord.set(w.id, patterns)
-    unitsByWord.set(w.id, buildUnits(target, patterns))
+    unitsByWord.set(w.id, buildUnits(target, patterns, w.redWord ? {} : undefined))
   }
 
   const analysis: AnalysisResult = {
@@ -109,7 +116,7 @@ describe('said -> sed', () => {
 
 describe('the regular twin is untouched', () => {
   it('keeps ai/ā in rain on long vowels', async () => {
-    const { reports } = await build([{ text: 'rain', wrote: 'rane' }])
+    const { reports } = await build([{ text: 'rain', wrote: 'rane', red: false }])
     expect(categoryTally(reports, 'long-vowel').total).toBe(1)
     expect(categoryTally(reports, 'red-word')).toEqual({ correct: 0, total: 0 })
   })
