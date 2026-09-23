@@ -7,11 +7,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Needed by actions/deploy-pages to publish without a personal token.
+# pages/id-token are for actions/deploy-pages. contents:write and
+# pull-requests:write are for the PR preview below, which pushes the built file
+# to the `previews` branch and comments the link. No personal token involved.
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  pull-requests: write
 
 # Let a running deploy finish rather than cancelling it half-published.
 concurrency:
@@ -59,11 +62,88 @@ jobs:
           path: dist
 
       # So a PR build can be downloaded and opened locally without deploying.
-      - uses: actions/upload-artifact@v4
+      - id: artifact
+        uses: actions/upload-artifact@v4
         with:
           name: grapheme-spelling-test-html
           path: dist/index.html
           if-no-files-found: error
+
+      # ---- PR preview -------------------------------------------------------
+      #
+      # Reviewing a change used to mean opening the Actions run, finding the
+      # artifact, downloading a zip and unzipping it. Since the build is one
+      # self-contained file, it can just be published and linked instead.
+      #
+      # It goes to a `previews` branch rather than to Pages: a repo has one Pages
+      # site, published from `main`, and a second deploy would overwrite it.
+      #
+      # Skipped for pull requests from forks, where the token is read-only.
+      - name: Publish this build as a preview
+        id: preview
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          rm -rf .preview .existing
+          mkdir .preview
+          # Carry over the previews already published for other open pull
+          # requests; on the very first run there is no branch to carry over.
+          if git clone --quiet --depth 1 --branch previews "$remote" .existing 2>/dev/null; then
+            rm -rf .existing/.git
+            cp -R .existing/. .preview/
+          fi
+
+          mkdir -p ".preview/pr-${PR}"
+          cp dist/index.html ".preview/pr-${PR}/index.html"
+
+          # Built as a brand new single-commit repo and force-pushed, so a 2MB
+          # file on every push to every PR never accumulates in the history.
+          cd .preview
+          git init --quiet -b previews
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit --quiet -m "Preview builds"
+          git push --quiet --force "$remote" previews
+
+          echo "url=https://raw.githack.com/${GITHUB_REPOSITORY}/previews/pr-${PR}/index.html" >> "$GITHUB_OUTPUT"
+
+      - name: Link the preview from the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          marker='<!-- preview-link -->'
+          # No backticks anywhere in here: this heredoc expands variables, so a
+          # backtick would start a command substitution.
+          body="$(cat <<EOF
+          ${marker}
+          ### Preview this build
+
+          **[Open the app in your browser](${PREVIEW_URL})** — built from this branch, nothing to download.
+
+          Or **[download index.html](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID})** to open it offline. It is one self-contained file.
+
+          <sub>Rebuilt on every push to this pull request. Neither link touches the live site.</sub>
+          EOF
+          )"
+          # Rewritten in place on each push rather than adding another comment.
+          id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" \
+                --jq "[.[] | select(.body | startswith(\"${marker}\"))] | first | .id // empty")"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" -f body="$body" >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" -f body="$body" >/dev/null
+          fi
 
   deploy:
     # Only publish from main; pull requests just build and test.
