@@ -7,13 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# pages/id-token are for actions/deploy-pages. The PR preview job requests
-# additional write permissions at the job level so the untrusted PR build stays
-# read-only.
+# Build jobs stay read-only; deploy and preview jobs request write access at the
+# job level when they publish to the GitHub Pages branch.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Let a running deploy finish rather than cancelling it half-published.
 concurrency:
@@ -58,10 +55,6 @@ jobs:
       - name: Check the build is a single self-contained file
         run: npm run check:single
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
       # So a PR build can be downloaded and opened locally without deploying.
       - id: artifact
         uses: actions/upload-artifact@v4
@@ -97,47 +90,25 @@ jobs:
       # artifact, downloading a zip and unzipping it. Since the build is one
       # self-contained file, it can just be published and linked instead.
       #
-      # It goes to a `previews` branch rather than to Pages: a repo has one Pages
-      # site, published from `main`, and a second deploy would overwrite it.
-      #
-      # Skipped for pull requests from forks, where the token is read-only.
+      # It goes to a PR-specific directory on the GitHub Pages branch so the
+      # live site and other open PR previews stay intact.
       - name: Publish this build as a preview
-        id: preview
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          preview_branch="preview-pr-${PR}"
-
-          rm -rf .preview
-          mkdir .preview
-          cp dist/index.html .preview/index.html
-
-          # Built as a brand new single-commit repo and force-pushed, so a 2MB
-          # file on every push to every PR never accumulates in the history, and
-          # each PR gets its own preview ref so concurrent runs cannot overwrite
-          # another PR's published build.
-          cd .preview
-          git init --quiet -b "${preview_branch}"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit --quiet -m "Preview builds"
-          git push --quiet --force "$remote" "${preview_branch}"
-
-          echo "url=https://raw.githack.com/${GITHUB_REPOSITORY}/${preview_branch}/index.html" >> "$GITHUB_OUTPUT"
+        uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+        with:
+          branch: gh-pages
+          folder: dist
+          target-folder: pr-preview/pr-${{ github.event.pull_request.number }}
+          force: false
 
       - name: Link the preview from the pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
-          PREVIEW_URL: ${{ steps.preview.outputs.url }}
           ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
         run: |
           set -euo pipefail
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          preview_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/pr-preview/pr-${PR}/"
           marker='<!-- preview-link -->'
           # No backticks anywhere in here: this heredoc expands variables, so a
           # backtick would start a command substitution.
@@ -145,7 +116,7 @@ jobs:
           ${marker}
           ### Preview this build
 
-          **[Open the app in your browser](${PREVIEW_URL})** — built from this branch, nothing to download.
+          **[Open the app in your browser](${preview_url})** — built from this branch, nothing to download.
 
           Or **[download index.html](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID})** to open it offline. It is one self-contained file.
 
@@ -162,13 +133,21 @@ jobs:
           fi
 
   deploy:
-    # Only publish from main; pull requests just build and test.
+    # Only publish the live site from main; PRs publish under pr-preview/.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: write
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: grapheme-spelling-test-html
+          path: dist
+
+      - uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+        with:
+          branch: gh-pages
+          folder: dist
+          clean-exclude: pr-preview
+          force: false
