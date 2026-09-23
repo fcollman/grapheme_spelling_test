@@ -73,6 +73,7 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(out),
+      folder: 'Examples',
     })
   }
 

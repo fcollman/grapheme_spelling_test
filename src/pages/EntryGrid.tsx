@@ -256,6 +256,7 @@ export function EntryGrid() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(rows),
+      folder: 'Spelling test',
     })
   }
 

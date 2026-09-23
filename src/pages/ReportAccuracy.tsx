@@ -53,6 +53,7 @@ export function ReportAccuracy() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(rows),
+      folder: 'Accuracy by phoneme',
     })
   }
 

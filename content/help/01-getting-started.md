@@ -124,13 +124,55 @@ Your data saves automatically in the browser you opened the app in. That is
 convenient, but it is not a backup — clearing your browsing data erases it, and
 it does not follow you to another computer.
 
-- **Save file** writes everything — students, tests, words, spellings and your
-  corrections — to a single `.json` file wherever you keep your documents.
+- **Save** writes everything — students, tests, words, spellings and your
+  corrections — to a single `.json` file.
 - **Open file** loads one back.
 
 Nothing is ever sent anywhere. There is no account, no server and no upload; the
 file on your computer is the only copy, which is also why it is worth keeping
 one.
+
+### Saving to the same file every time
+
+The first time you press **Save**, your browser asks where to put the file. After
+that, **Save writes straight back to that same file** — no dialog, nothing
+landing in Downloads for you to move afterwards.
+
+The chip next to the buttons tells you where you stand, which is the bit that
+was missing before:
+
+| It says | It means |
+|---|---|
+| `Block 2A.json · saved` | The file matches what is on screen |
+| `Block 2A.json · unsaved changes` | You have done work the file does not have yet |
+| `Block 2A.json · not connected` | Press Save and allow your browser to write to it |
+
+<kbd>Ctrl</kbd>+<kbd>S</kbd> (or <kbd>Cmd</kbd>+<kbd>S</kbd>) saves too, and if you
+try to close the tab with unsaved work the browser will ask first.
+
+**Save a copy** writes to a different file and switches to it. **Load demo class**
+and **Clear data** deliberately disconnect the file first, so neither of them can
+write over your real one.
+
+This needs Chrome or Edge. In other browsers Save downloads a copy each time,
+exactly as it always did.
+
+### Putting that file in Google Drive or OneDrive
+
+This is the part that makes it stick. Save the file **into a folder your Drive or
+OneDrive already syncs**, and from then on every Save is backed up without you
+doing anything.
+
+- **On a Chromebook**, Google Drive is already in the save dialog. Just pick it.
+- **On Windows or a Mac**, you need **Google Drive for Desktop** (or the OneDrive
+  app, which is usually already there on a school Windows machine). Once it is
+  installed, Drive shows up as an ordinary folder in the save dialog, and files
+  you put there sync by themselves. Without it, Drive only exists in your web
+  browser, which is why moving files into it feels like a separate chore.
+
+Worth knowing: the page itself still sends nothing anywhere. It writes to a
+folder on your computer; the Drive or OneDrive program is what copies it to the
+cloud. See **About this tool** for what that means for student data.
 
 ### Using files to keep classes and years apart
 
@@ -176,8 +218,23 @@ Every tab has two buttons in its toolbar:
   Excel or Google Sheets, or to paste into a report. The drill-down windows have
   their own **Download CSV** too, so you can export just the examples behind one
   number.
+
+  In Chrome and Edge the naming box also offers **Choose a folder**. Pick one
+  once — a synced one, if you like — and every CSV files itself into a subfolder
+  by report type, instead of piling up in Downloads:
+
+  ```
+  Grapheme Spelling Test/
+    Accuracy by grapheme/  Block 2A - 3 tests - Accuracy by grapheme - 2026-09-20.csv
+    Student profile/       Block 2A - Sam W. - 13 tests - Student profile - 2026-09-20.csv
+  ```
+
+  Folder names are always the report type, never a class or student name — a
+  name is far more exposed as a folder than inside a file name.
 - **Print / Save PDF** asks for a name the same way, then opens your browser's
-  print dialog. Choose *Save as PDF*
+  print dialog. PDFs cannot be filed into your exports folder automatically —
+  printing is handled by the browser, and it does not tell the page where the
+  file went — so choose *Save as PDF* and pick the folder yourself. Choose *Save as PDF*
   as the destination to get a file you can email or attach to an IEP. The
   toolbar, tab strip and buttons are left out of the printed version, and the
   colours are kept.

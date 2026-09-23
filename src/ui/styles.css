@@ -1674,3 +1674,70 @@ ul.errorlist em {
     display: none !important;
   }
 }
+
+/* Where an export is about to go, shown in the naming dialog. */
+.destination {
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+.linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Confirmation that a report reached the folder, rather than leaving the
+   teacher to go and look. */
+.savenote {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 560px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 22%);
+  cursor: pointer;
+}
+
+/* Whether the file on disk matches what is on screen. The app used to give no
+   signal at all, which was half of "I have to get into a better rhythm". */
+.filechip {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filechip.ok {
+  background: var(--exact-bg);
+  border-color: var(--exact-line);
+  color: var(--exact-ink);
+}
+
+.filechip.warn {
+  background: var(--plausible-bg);
+  border-color: var(--plausible-line);
+  color: hsl(38 70% 28%);
+}
+
+.filechip.error {
+  background: var(--wrong-bg);
+  border-color: var(--wrong-line);
+  color: var(--wrong-ink);
+}

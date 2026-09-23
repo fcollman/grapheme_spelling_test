@@ -67,6 +67,7 @@ export function ReportProgress() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(out),
+      folder: 'Progress over time',
     })
   }
 

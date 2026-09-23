@@ -159,9 +159,26 @@ It is display only — the real names come straight back when you switch it off.
 ### Saving your work
 
 Your data saves automatically in the browser you opened the file in. That is
-convenient but not durable — clearing browsing data will erase it. Use **Save
-file** to keep a `.json` copy, and **Open file** to load it back or move it to
-another computer.
+convenient but not durable — clearing browsing data will erase it.
+
+**Save** keeps a `.json` copy. In Chrome and Edge you choose that file once and
+every later Save writes straight back to it — put it in a folder Google Drive or
+OneDrive syncs and your work is backed up without another thought. A chip beside
+the buttons says whether the file matches what is on screen, <kbd>Ctrl/Cmd</kbd>+
+<kbd>S</kbd> saves, and closing the tab with unsaved work asks first. **Load demo
+class** and **Clear data** disconnect the file first so neither can overwrite it.
+
+The naming box for a CSV also offers a folder to file exports into, in subfolders
+by report type. Folder names are always the report type, never a class or student
+name. PDFs are the exception: printing belongs to the browser, which does not
+tell the page where the file went.
+
+Other browsers download a copy each time, exactly as before — all of it is
+feature-detected.
+
+**This adds no network access.** The page writes to a local folder; if that
+folder is synced, the sync client is what uploads it, which
+[content/about.md](content/about.md) now says plainly.
 
 ### Things worth knowing
 

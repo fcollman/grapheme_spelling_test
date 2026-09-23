@@ -200,6 +200,7 @@ export function StudentProfile() {
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(rows),
+      folder: 'Student profile',
     })
   }
 
