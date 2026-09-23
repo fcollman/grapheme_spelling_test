@@ -7,11 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Needed by actions/deploy-pages to publish without a personal token.
+# Build jobs stay read-only; deploy and preview jobs request write access at the
+# job level when they publish to the GitHub Pages branch.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Let a running deploy finish rather than cancelling it half-published.
 concurrency:
@@ -20,6 +19,8 @@ concurrency:
 
 jobs:
   build:
+    outputs:
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,25 +55,97 @@ jobs:
       - name: Check the build is a single self-contained file
         run: npm run check:single
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
       # So a PR build can be downloaded and opened locally without deploying.
-      - uses: actions/upload-artifact@v4
+      - id: artifact
+        uses: actions/upload-artifact@v4
         with:
           name: grapheme-spelling-test-html
           path: dist/index.html
           if-no-files-found: error
 
+  preview:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'MEMBER' ||
+        github.event.pull_request.author_association == 'COLLABORATOR'
+      )
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4.1.3
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          merge-multiple: true
+          path: dist
+
+      # ---- PR preview -------------------------------------------------------
+      #
+      # Reviewing a change used to mean opening the Actions run, finding the
+      # artifact, downloading a zip and unzipping it. Since the build is one
+      # self-contained file, it can just be published and linked instead.
+      #
+      # It goes to a PR-specific directory on the GitHub Pages branch so the
+      # live site and other open PR previews stay intact.
+      - name: Publish this build as a preview
+        uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+        with:
+          branch: gh-pages
+          folder: dist
+          target-folder: pr-preview/pr-${{ github.event.pull_request.number }}
+          force: false
+
+      - name: Link the preview from the pull request
+        id: preview-comment
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          preview_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/pr-preview/pr-${PR}/"
+          {
+            echo "body<<EOF"
+            cat <<EOF
+          ### Preview this build
+
+          **[Open the app in your browser](${preview_url})** — built from this branch, nothing to download.
+
+          Or **[download index.html](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID})** to open it offline. It is one self-contained file.
+
+          <sub>Rebuilt on every push to this pull request. Neither link touches the live site.</sub>
+          EOF
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+        with:
+          header: preview-link
+          message: ${{ steps.preview-comment.outputs.body }}
+
   deploy:
-    # Only publish from main; pull requests just build and test.
+    # Only publish the live site from main; PRs publish under pr-preview/.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: write
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/download-artifact@v4.1.3
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          merge-multiple: true
+          path: dist
+
+      - uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+        with:
+          branch: gh-pages
+          folder: dist
+          clean-exclude: pr-preview
+          force: false
