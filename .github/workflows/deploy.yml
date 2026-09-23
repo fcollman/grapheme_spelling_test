@@ -101,19 +101,17 @@ jobs:
           force: false
 
       - name: Link the preview from the pull request
+        id: preview-comment
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
         run: |
           set -euo pipefail
           repo_name="${GITHUB_REPOSITORY#*/}"
           preview_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/pr-preview/pr-${PR}/"
-          marker='<!-- preview-link -->'
-          # No backticks anywhere in here: this heredoc expands variables, so a
-          # backtick would start a command substitution.
-          body="$(cat <<EOF
-          ${marker}
+          {
+            echo "body<<EOF"
+            cat <<EOF
           ### Preview this build
 
           **[Open the app in your browser](${preview_url})** — built from this branch, nothing to download.
@@ -122,16 +120,13 @@ jobs:
 
           <sub>Rebuilt on every push to this pull request. Neither link touches the live site.</sub>
           EOF
-          )"
-          # Rewritten in place on each push rather than adding another comment.
-          id="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments?per_page=100" \
-                --jq ".[] | select(.body | startswith(\"${marker}\")) | .id" \
-                | tail -n 1)"
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" -f body="$body" >/dev/null
-          else
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" -f body="$body" >/dev/null
-          fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+        with:
+          header: preview-link
+          message: ${{ steps.preview-comment.outputs.body }}
 
   deploy:
     # Only publish the live site from main; PRs publish under pr-preview/.
