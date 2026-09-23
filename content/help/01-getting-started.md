@@ -61,6 +61,21 @@ because a student who writes `frittle` correctly has actually decoded it, while
 analyze them the same way, but the tick reminds you which is which when you are
 reading a student's results.
 
+Tick **red word** for a word you are assessing as a taught Red Word — one with a
+part that has to be remembered rather than sounded out, like *said* or *their*.
+
+The tick is your statement, not the app's guess: nothing is treated as
+irregular until you set it. That is deliberate, because whether a spelling
+counts as unexpected depends on where your class has got to in its scope and
+sequence — a pattern that is unexpected in October may be explicitly taught by
+March. Since the tick lives on the word *in that test*, the same word can be a
+Red Word on an early test and ordinary phonics on a later one.
+
+Once it is ticked, the app suggests which letters are the unexpected part, and
+you confirm or change that on the **Grapheme analysis** tab. A miss on those
+letters is then scored as a Red Word error rather than counting against the
+phonics skill it would otherwise blame.
+
 ### Putting the words in order
 
 You can reorder spelling words by **Drag them by the ⠿ handle** on the left of the row and drop it where it belongs. The blue line shows where it will land.
@@ -109,7 +124,7 @@ the next student's. <kbd>Shift</kbd>+<kbd>Enter</kbd> goes back up, and
 Type exactly what the student wrote, misspellings and all. A cell turns green when the spelling matches the target word exactly and
 red when it does not.
 
-With a big class the grid scrolls sideways, but the word and nonsense columns
+With a big class the grid scrolls sideways, but the word and tick columns
 stay pinned to the left so you can always see what was dictated.
 
 The **Words correct** row at the bottom gives each student a plain score out of

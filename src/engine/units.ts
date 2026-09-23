@@ -1,4 +1,5 @@
 import type { PhonemeId } from '../data/phonemes'
+import { isIrregular } from '../data/irregular'
 import { isVowel } from '../data/phonemes'
 import { COLLAPSING_CATEGORIES, type CategoryId } from '../data/categories'
 import { MULTI_SOUND_GRAPHEMES } from '../data/patterns'
@@ -49,6 +50,24 @@ export function unitKey(letters: string, phonemes: PhonemeId[]): string {
   return `${letters || '∅'}|${phonemes.join('+')}`
 }
 
+/**
+ * Red-word rows are keyed per WORD, not per spelling.
+ *
+ * Two reasons. Instructionally it is the right grain: a low score here means
+ * "practise *said*", not "reteach ai". And it is what lets the same spelling be
+ * unexpected in one word and ordinary phonics in another, which a scope and
+ * sequence requires — without it, one report row would mean two different things
+ * depending on which word happened to be counted last.
+ */
+export function redUnitKey(word: string, letters: string, phonemes: PhonemeId[]): string {
+  return `red:${word}:${unitKey(letters, phonemes)}`
+}
+
+/** True for a report row that is one word's unexpected spelling. */
+export function isRedUnitKey(key: string): boolean {
+  return key.startsWith('red:')
+}
+
 function matchesMultiSound(graphemes: string[], phonemes: PhonemeId[], start: number) {
   for (const entry of MULTI_SOUND_GRAPHEMES) {
     const end = start + entry.phonemes.length
@@ -74,13 +93,35 @@ function unitCategory(letters: string, phonemes: PhonemeId[]): CategoryId {
 }
 
 /**
+ * Which columns of a Red Word look like the unexpected part.
+ *
+ * Only ever a starting point for the teacher, who confirms or changes it. If
+ * nothing in the word matches the table, the answer is "none" rather than a
+ * guess — better to say so and let them pick than to blame an arbitrary column.
+ */
+export function suggestRedUnits(units: GraphemeUnit[]): number[] {
+  return units
+    .filter((u) => isIrregular(u.letters.toLowerCase(), u.phonemes))
+    .map((u) => u.index)
+}
+
+/**
  * Groups a word's phoneme slots into grapheme units.
  *
  * Works by deciding, for each boundary between adjacent slots, whether the two
  * belong to the same unit — every merge rule is a contiguous range, so a simple
  * join-to-next flag is enough.
  */
-export function buildUnits(target: WordAnalysis, patterns: PatternMatch[]): GraphemeUnit[] {
+export function buildUnits(
+  target: WordAnalysis,
+  patterns: PatternMatch[],
+  /**
+   * Set when the teacher is assessing this word as a Red Word. `units` is their
+   * confirmed choice of unexpected columns; leaving it out takes the app's
+   * suggestion.
+   */
+  red?: { units?: number[] },
+): GraphemeUnit[] {
   const phonemes = target.targetPhonemes
   const graphemes = target.targetGraphemes
   const count = phonemes.length
@@ -133,7 +174,23 @@ export function buildUnits(target: WordAnalysis, patterns: PatternMatch[]): Grap
     start = end
   }
 
-  return units
+  if (!red) return units
+
+  // Applied after the units exist, because both the suggestion and the teacher's
+  // choice are expressed as column indices.
+  const unexpected = new Set(red.units ?? suggestRedUnits(units))
+  return units.map((u) =>
+    unexpected.has(u.index) && u.patternId === undefined
+      ? {
+          ...u,
+          category: 'red-word' as CategoryId,
+          key: redUnitKey(target.word, u.letters, u.phonemes),
+          // The word alone: report rows append the letters themselves where
+          // the label differs from them, so anything more reads as "said aiai".
+          patternLabel: target.word,
+        }
+      : u,
+  )
 }
 
 /** Rolls the per-sound marks inside a unit up into one mark for the unit. */

@@ -94,7 +94,10 @@ export function analyzeTest(
       target.word,
     )
     result.patternsByWord.set(w.id, patterns)
-    result.unitsByWord.set(w.id, buildUnits(target, patterns))
+    result.unitsByWord.set(
+      w.id,
+      buildUnits(target, patterns, w.redWord ? { units: test.redUnits?.[w.id] } : undefined),
+    )
 
     for (const s of project.students) {
       const attempt = cleanWord(test.responses[w.id]?.[s.id] ?? '')
@@ -119,6 +122,10 @@ function testSignature(project: Project, test: Test) {
     wordPhonemes: test.wordPhonemes,
     students: project.students.map((s) => s.id),
     lenientSchwa: project.settings.lenientSchwa,
+    // Marking a word as a Red Word, or changing which of its columns is the
+    // unexpected one, re-categorises those columns — so it has to re-run.
+    redWords: test.words.map((w) => (w.redWord ? 1 : 0)).join(''),
+    redUnits: test.redUnits,
   }
 }
 

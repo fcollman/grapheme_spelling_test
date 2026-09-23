@@ -34,10 +34,13 @@ type Skill =
   | 'long-vowel'
   | 'r-controlled'
   | 'consonant-le'
+  | 'red-word'
 
 interface BankWord {
   text: string
   nonsense?: boolean
+  /** Assessed as a taught Red Word, as the teacher would tick it. */
+  redWord?: boolean
   skills: Skill[]
 }
 
@@ -145,10 +148,27 @@ const UNITS: Array<{ name: string; words: BankWord[] }> = [
       { text: 'frittle', nonsense: true, skills: ['consonant-le', 'blend'] },
     ],
   },
+  {
+    // Red words, so the demo shows what an irregular spelling does to the
+    // reports: the regular parts of these words still count for their own
+    // skills, and only the memorised part lands under Red word.
+    name: 'Red words',
+    words: [
+      { text: 'said', redWord: true, skills: ['red-word'] },
+      { text: 'their', redWord: true, skills: ['red-word', 'digraph'] },
+      { text: 'come', redWord: true, skills: ['red-word'] },
+      { text: 'friend', redWord: true, skills: ['red-word', 'blend'] },
+      { text: 'one', redWord: true, skills: ['red-word'] },
+      { text: 'was', redWord: true, skills: ['red-word'] },
+      { text: 'been', redWord: true, skills: ['red-word'] },
+      { text: 'shed', skills: ['digraph', 'short-vowel'] },
+      { text: 'thrim', nonsense: true, skills: ['blend', 'digraph'] },
+    ],
+  },
 ]
 
 /** Which unit each of the 13 tests draws from, with review woven back in. */
-const SCHEDULE: number[] = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6]
+const SCHEDULE: number[] = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 7]
 
 /* ---------------- the class ---------------- */
 
@@ -176,7 +196,9 @@ const CLASS: Profile[] = [
   { name: 'Tyler B.', start: 0.42, growth: 0.4 },
   // Jordan is the one to notice: steady work, no movement.
   { name: 'Jordan P.', start: 0.55, growth: 0.02 },
-  { name: 'Aisha K.', start: 0.3, growth: 0.22 },
+  // Aisha sounds words out well and has not memorised the red words, which is a
+  // real profile and the one the red-word report exists to separate out.
+  { name: 'Aisha K.', start: 0.3, growth: 0.22, weak: { 'red-word': 0.3 } },
   { name: 'Diego M.', start: 0.25, growth: 0.04, weak: { 'short-vowel': 0.12 } },
   // Sam can hear vowels but not consonant teams, and only starts to shift late.
   { name: 'Sam W.', start: 0.6, growth: 0.15, weak: { digraph: 0.38, blend: 0.25 } },
@@ -310,6 +332,7 @@ export function demoProject(): Project {
       id: `demo_t${t}_w${i}`,
       text: w.text,
       nonsense: !!w.nonsense,
+      redWord: !!w.redWord,
     }))
 
     const responses: Record<string, Record<string, string>> = {}

@@ -50,6 +50,12 @@ function isDoubledLetter(grapheme: string): boolean {
  * fact about letters rather than about the sound itself.
  */
 export function slotCategory(phoneme: PhonemeId, grapheme: string): SlotTag {
+  /*
+   * Deliberately knows nothing about Red Words. Whether a spelling is
+   * "unexpected" is a fact about the word and where the class has got to, not
+   * about the sound, so it is decided per word in units.ts where the teacher's
+   * answer is available.
+   */
   if (isVowel(phoneme)) {
     return { category: VOWEL_CATEGORY[phoneme] ?? 'other-vowel' }
   }

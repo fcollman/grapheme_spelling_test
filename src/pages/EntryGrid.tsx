@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
+import type { AnalysisResult } from '../state/useAnalysis'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { cleanWord } from '../engine/phonemize'
@@ -14,8 +15,26 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
  * side, students across the top. Green/red here is whole-word correctness only;
  * the sound-by-sound breakdown lives on the analysis tab.
  */
-export function EntryGrid() {
+export function EntryGrid({ analysis }: { analysis: AnalysisResult }) {
   const { project, test, dispatch } = useStore()
+
+  /*
+   * Which Red Words the app could not find an unexpected spelling in.
+   *
+   * The tick is the teacher's statement that a word is being assessed as a taught
+   * Red Word; the app only suggests WHICH letters are the unexpected part. When
+   * it has no suggestion the word still counts, but nothing in it is marked, so
+   * it says so here rather than looking as though the tick did nothing.
+   */
+  const unresolvedRedWords = new Set(
+    test.words
+      .filter(
+        (w) =>
+          w.redWord &&
+          !(analysis.unitsByWord.get(w.id) ?? []).some((u) => u.category === 'red-word'),
+      )
+      .map((w) => w.id),
+  )
   const names = useStudentNames()
   const { requestDownload } = useDownloads()
   const fileName = useFileName()
@@ -233,17 +252,21 @@ export function EntryGrid() {
   }
 
   const exportCsv = () => {
-    const rows: string[][] = [['Word', 'Type', ...project.students.map((s) => names(s.id))]]
+    const rows: string[][] = [
+      ['Word', 'Type', 'Red word', ...project.students.map((s) => names(s.id))],
+    ]
     for (const w of test.words) {
       rows.push([
         w.text,
         w.nonsense ? 'nonsense' : 'real',
+        w.redWord ? 'red word' : '',
         ...project.students.map((s) => test.responses[w.id]?.[s.id] ?? ''),
       ])
     }
     // The same grading row that closes the grid on screen.
     rows.push([
       'Words correct',
+      '',
       '',
       ...project.students.map((s) => {
         const { correct, total } = scoreFor(s.id)
@@ -349,7 +372,8 @@ export function EntryGrid() {
       <p className="hint">
         Add the words you dictated and the students who took the test, then type what each student
         actually wrote. A cell turns green when the spelling matches the word exactly. Mark a word as
-        nonsense if it was made up to test encoding without sight-word memory.
+        nonsense if it was made up to test encoding without sight-word memory, and red if you are
+        assessing it as a taught Red Word.
         <br />
         Working from one student's paper: press <kbd>Enter</kbd> to drop to the next word down the
         column, and again at the bottom to jump to the top of the next student. <kbd>Shift</kbd>+
@@ -452,7 +476,14 @@ export function EntryGrid() {
             <thead>
               <tr>
                 <th className="c1">Word</th>
-                <th className="num no-print c2">Nonsense</th>
+                <th className="num no-print c2">
+                  <span className="flagcol">
+                    <span title="A made-up word, to test encoding without sight-word memory">Nonsense</span>
+                    <span title="Assess this word as a taught Red Word. The app suggests which letters are the unexpected part; confirm or change that on the Grapheme analysis tab.">
+                      Red word
+                    </span>
+                  </span>
+                </th>
                 {project.students.map((s) => (
                   <th key={s.id}>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -562,13 +593,28 @@ export function EntryGrid() {
                     </div>
                   </th>
                   <td className="num no-print c2">
-                    <input
-                      type="checkbox"
-                      checked={w.nonsense}
-                      disabled={locked}
-                      aria-label={`${w.text} is a nonsense word`}
-                      onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
-                    />
+                    <span className="flagcol">
+                      <input
+                        type="checkbox"
+                        checked={w.nonsense}
+                        disabled={locked}
+                        aria-label={`${w.text} is a nonsense word`}
+                        onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
+                      />
+                      <input
+                        type="checkbox"
+                        checked={!!w.redWord}
+                        disabled={locked}
+                        aria-label={`${w.text} is a red word`}
+                        title={
+                          unresolvedRedWords.has(w.id)
+                            ? `${w.text} is marked as a Red Word, but the app has no suggestion for which letters are the unexpected part. Pick them on the Grapheme analysis tab.`
+                            : `Assess ${w.text} as a taught Red Word`
+                        }
+                        className={unresolvedRedWords.has(w.id) ? 'unresolved' : ''}
+                        onChange={(e) => dispatch({ type: 'updateWord', id: w.id, redWord: e.target.checked })}
+                      />
+                    </span>
                   </td>
                   {project.students.map((s, studentIndex) => {
                     const value = test.responses[w.id]?.[s.id] ?? ''

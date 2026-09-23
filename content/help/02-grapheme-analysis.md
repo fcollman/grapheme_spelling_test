@@ -51,6 +51,57 @@ A student who writes `fun` for `phone` has not. Those two need
 differently — and why the by-sound reports later on let you decide whether amber
 should count as correct or not.
 
+## Red words
+
+Some letters make a sound they simply do not usually make, and no amount of
+sounding out gets you there — the `ai` in *said*, the `eir` in *their*, the `o`
+in *come*. Those columns are tagged **Red word (irregular)** instead of the
+phonics category they would otherwise fall in.
+
+That tag is doing real work. Without it, a student who writes `thar` for *their*
+looks like they cannot do r-controlled vowels, when what they actually cannot do
+is remember one word. With it:
+
+- the `th` still counts as a **consonant digraph**, and it counts as *correct*,
+  because they got it right;
+- the `eir` counts as a **red word**, and nothing else;
+- r-controlled vowels are left out of it entirely — that skill was never really
+  tested by this word.
+
+So a low red-word score means *practise these particular words*, and a low
+r-controlled score still means *reteach bossy R*. They no longer contaminate
+each other.
+
+**What gets marked is letters; what gets counted is words.** Only the unexpected
+part of the word is marked, so the rest still counts for its own phonics skills.
+But the score is per word — *said* gets its own row, separate from *again* — so
+the report tells you which words to practise rather than which spelling to
+reteach. The `ai` in *rain*, meanwhile, is just an ordinary long vowel.
+
+**None of this happens until you tick a word as a Red Word** on the spelling test
+tab. The app has an internal list of spellings that are usually unexpected, but
+it only ever uses it to *suggest*, because "unexpected" is relative to what your
+class has been taught — the same spelling can be unexpected early in the year and
+explicitly taught later.
+
+**You confirm which letters are the unexpected part.** On a word you have ticked,
+every column carries a small ◆ beside its coloured dot. The app pre-selects what
+it thinks, and clicking changes it. Marking none of them is a real answer too:
+the word stays a Red Word, and nothing in it is scored as unexpected.
+
+It applies to **this word in this test**, so teaching a pattern later does not
+rewrite what an earlier test measured. And because the remediation for a Red Word
+is "practise this word", the reports give each one its own row — *said* and
+*again* are counted separately even though both hinge on `ai`.
+
+If you tick a word and the app has no suggestion, it says **pick the unexpected
+part** rather than quietly doing nothing. Provide feedback on the github page
+(see about) if you find spellings that are missing persistently.
+
+The **By sound** tabs are deliberately left out of this. They ask whether the
+student heard the sound, which is a fair question about a red word too: `thar`
+for *their* really is /ar/ where /air/ was wanted, and that still shows up thar (sic pun, but we mean in the by sound reports).
+
 ## Check it, then correct it
 
 The app works out pronunciations with a real speech engine rather than a list of

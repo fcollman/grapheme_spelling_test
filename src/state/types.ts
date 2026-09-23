@@ -11,6 +11,23 @@ export interface Word {
   text: string
   /** Nonsense words test encoding without letting sight-word memory help. */
   nonsense: boolean
+  /**
+   * Assess this word as a taught Red Word.
+   *
+   * The teacher's statement, not the app's: it says "this word has been taught
+   * as one to be remembered, and I am testing it as one". Nothing is classified
+   * as irregular until it is set, because whether a spelling counts as
+   * unexpected depends on where the class has got to in its scope and sequence —
+   * a pattern that is unexpected in October may be explicitly taught by March.
+   *
+   * Per word and per test, so the same word can be a Red Word on an early test
+   * and ordinary phonics on a later one.
+   *
+   * Later: IMSE also has read-only Red Words, practised because they appear in
+   * decodable texts but never assessed. Those would want a third state here and
+   * to be left out of mastery entirely.
+   */
+  redWord?: boolean
 }
 
 export interface SlotOverrideData {
@@ -30,6 +47,17 @@ export interface Test {
   overrides: Record<string, Record<string, Record<number, SlotOverrideData>>>
   /** Teacher-confirmed phoneme breakdown for a target word, replacing the engine's. */
   wordPhonemes: Record<string, PhonemeId[]>
+  /**
+   * Which columns of a Red Word are the unexpected part, by unit index.
+   *
+   * Absent means "whatever the app suggests" — the suggestion is only ever a
+   * starting point, and this is where the teacher's correction of it lives.
+   * An empty array is a real answer too: "none of these is unexpected".
+   *
+   * Keyed per word inside a test for the same reason `redWord` is, and cleared
+   * when the word's text changes, exactly as `wordPhonemes` is.
+   */
+  redUnits?: Record<string, number[]>
 }
 
 export interface Settings {

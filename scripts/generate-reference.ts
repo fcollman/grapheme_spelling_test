@@ -8,6 +8,7 @@ import {
   type DigraphSubtype,
 } from '../src/data/patterns'
 import { PHONEMES, display, get } from '../src/data/phonemes'
+import { IRREGULAR } from '../src/data/irregular'
 
 /**
  * Regenerates PHONEME-CATEGORIES.md from the data files, so the document a
@@ -21,6 +22,7 @@ const w = (s = '') => lines.push(s)
 
 const sound = (id: string) => display(id, 'sound')
 const both = (id: string) => `${display(id, 'sound')} · ${display(id, 'ipa')}`
+const sounds = (ids: string[]) => ids.map(sound).join(' + ')
 
 w('# Phoneme and pattern categories')
 w()
@@ -39,6 +41,7 @@ w('rather than quietly mis-tagging student work.')
 w()
 w('Jump to: [Categories](#categories) · [Every sound](#every-sound-and-its-category) ·')
 w('[Consonant digraphs](#consonant-digraphs) · [Multi-sound patterns](#multi-sound-patterns) ·')
+w('[Red words](#red-words) ·')
 w('[Needs your review](#needs-your-review)')
 w()
 
@@ -242,6 +245,40 @@ w('tagged as a blend, marked **unlisted** in the app. Those are the ones worth a
 w('to the table if they keep turning up in your word lists.')
 w()
 
+/* ---------------- red words ---------------- */
+
+w('## Red words')
+w()
+w('Letters that make a sound they do not usually make, so the word has to be')
+w('remembered rather than sounded out.')
+w()
+w('**This list only suggests.** Nothing is classified as a Red Word until the')
+w('teacher ticks the word as one, because whether a spelling counts as unexpected')
+w('depends on where the class has reached in its scope and sequence — a pattern')
+w('that is unexpected in October may be explicitly taught by March. All this table')
+w('does is pre-select which letters the teacher probably means, and they confirm')
+w('or change it per word.')
+w()
+w('Once confirmed, those letters are tagged **Red word (irregular)** instead of the')
+w('phonics category they would otherwise fall in, so a student who misses one does')
+w('not lose credit for a skill they may well have: in *their*, a miss on the `eir`')
+w('no longer counts against r-controlled vowels, and the `th` beside it still')
+w('counts as a consonant digraph.')
+w()
+w('What is listed is a **grapheme, not a word**, which is why `ai` appears here for')
+w('*said* while the `ai` in *rain* is an ordinary long vowel — they make different')
+w('sounds, so they were already different entries.')
+w()
+w('The list does not have to be complete. A spelling that is missing just means the')
+w('teacher picks the column themselves, so add to it as words come up in real tests.')
+w()
+w('| Letters | Sound(s) | As in | Also |')
+w('| --- | --- | --- | --- |')
+for (const e of IRREGULAR) {
+  w(`| \`${e.letters}\` | ${sounds(e.phonemes)} | *${e.example}* | ${(e.also ?? []).map((x) => `*${x}*`).join(', ')} |`)
+}
+w()
+
 /* ---------------- review ---------------- */
 
 w('## Needs your review')
@@ -284,6 +321,9 @@ for (const d of CONSONANT_DIGRAPHS) {
 for (const p of SPAN_PATTERNS) {
   if (p.review) reviews.push([`${p.label} (${p.example})`, p.review])
 }
+for (const e of IRREGULAR) {
+  if (e.review) reviews.push([`\`${e.letters}\` → ${sounds(e.phonemes)} (${e.example}) as a red word`, e.review])
+}
 
 w('| Item | Why it is a judgement call |')
 w('| --- | --- |')
@@ -293,7 +333,7 @@ w()
 w('---')
 w()
 w(
-  `_${PHONEMES.length} sounds · ${CONSONANT_DIGRAPHS.length} digraph spellings · ${SPAN_PATTERNS.length} listed multi-sound patterns · ${CATEGORIES.length} categories._`,
+  `_${PHONEMES.length} sounds · ${CONSONANT_DIGRAPHS.length} digraph spellings · ${SPAN_PATTERNS.length} listed multi-sound patterns · ${IRREGULAR.length} red-word spellings · ${CATEGORIES.length} categories._`,
 )
 
 writeFileSync('PHONEME-CATEGORIES.md', lines.join('\n') + '\n')

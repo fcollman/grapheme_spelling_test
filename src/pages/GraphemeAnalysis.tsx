@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { suggestRedUnits } from '../engine/units'
 import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
@@ -74,7 +75,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
   const exportCsv = () => {
     const rows: string[][] = [
       [
-        'Test', 'Date', 'Word', 'Type', 'Student', 'Wrote', 'Spelling correct',
+        'Test', 'Date', 'Word', 'Type', 'Red word', 'Student', 'Wrote', 'Spelling correct',
         'Column', 'Syllable', 'Target letters', 'Target sound(s)', 'Category', 'Taught pattern',
         'Patterns covering', 'Student letters', 'Student sound(s)', 'Result', 'Teacher edited',
       ],
@@ -94,6 +95,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
             .map((p) => `${category(p.category).label}: ${p.label}${p.source === 'structural' ? ' (unlisted)' : ''}`)
           rows.push([
             test.name, test.date, w.text, w.nonsense ? 'nonsense' : 'real',
+            r.unit.category === 'red-word' ? 'red word' : '',
             names(s.id), a.attempt, a.spellingCorrect ? 'yes' : 'no',
             String(r.unit.index + 1), String(syllable + 1),
             r.unit.letters, displayList(r.unit.phonemes, notation),
@@ -233,6 +235,7 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
               wordId={word.id}
               text={word.text}
               nonsense={word.nonsense}
+              redWord={!!word.redWord}
               target={target}
               units={units}
               patterns={analysis.patternsByWord.get(word.id) ?? []}
@@ -240,6 +243,12 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
               analysis={analysis}
               onEditCell={setEditing}
               onEditWord={() => setEditingWord(word.id)}
+              onToggleRedWord={(u, units) => {
+                const chosen = new Set<number>(test.redUnits?.[word.id] ?? suggestRedUnits(units))
+                if (chosen.has(u.index)) chosen.delete(u.index)
+                else chosen.add(u.index)
+                dispatch({ type: 'setRedUnits', wordId: word.id, units: [...chosen].sort((a, b) => a - b) })
+              }}
             />
           )
         })}
@@ -283,6 +292,7 @@ function WordBlock({
   wordId,
   text,
   nonsense,
+  redWord,
   target,
   units,
   patterns,
@@ -290,10 +300,12 @@ function WordBlock({
   analysis,
   onEditCell,
   onEditWord,
+  onToggleRedWord,
 }: {
   wordId: string
   text: string
   nonsense: boolean
+  redWord: boolean
   target: WordAnalysis
   units: GraphemeUnit[]
   patterns: PatternMatch[]
@@ -301,6 +313,7 @@ function WordBlock({
   analysis: AnalysisResult
   onEditCell: (t: EditTarget) => void
   onEditWord: () => void
+  onToggleRedWord: (unit: GraphemeUnit, units: GraphemeUnit[]) => void
 }) {
   const { project, test } = useStore()
   const names = useStudentNames()
@@ -330,6 +343,15 @@ function WordBlock({
       <header>
         <span className="word">{text}</span>
         {nonsense && <span className="tag">nonsense</span>}
+        {redWord && <span className="tag red-word">red word</span>}
+        {redWord && !units.some((u) => u.category === 'red-word') && (
+          <span
+            className="tag unlisted"
+            title="Marked as a Red Word, but the app has no suggestion for which letters are the unexpected part. Click the ◆ on the column you mean."
+          >
+            pick the unexpected part ?
+          </span>
+        )}
         <span className="tag">
           {target.syllables.length} syllable{target.syllables.length === 1 ? '' : 's'}
         </span>
@@ -373,6 +395,32 @@ function WordBlock({
                   <span className="unitletters">{u.letters || '—'}</span>
                   <span className="unitsounds">{displayList(u.phonemes, notation)}</span>
                   <CategoryDot id={u.category} title={category(u.category).label} />
+                  {/*
+                    The teacher's say over the built-in table, exercised on the
+                    column where the spelling is actually visible. It applies to
+                    the spelling rather than to this word, which the title says
+                    outright, because a report row IS a spelling — see the note
+                    in data/irregular.ts.
+                  */}
+                  {/*
+                    Only on a Red Word, and only about THIS word: the same
+                    spelling can be unexpected here and ordinary phonics in a
+                    later test, once it has been taught.
+                  */}
+                  {redWord && u.letters !== '' && u.patternId === undefined && (
+                    <button
+                      className={`redtoggle no-print ${u.category === 'red-word' ? 'on' : ''}`}
+                      aria-pressed={u.category === 'red-word'}
+                      title={
+                        u.category === 'red-word'
+                          ? `"${u.letters}" is the unexpected part of ${text}. Click if it is expected here after all.`
+                          : `Click to mark "${u.letters}" as the unexpected part of ${text}.`
+                      }
+                      onClick={() => onToggleRedWord(u, units)}
+                    >
+                      ◆
+                    </button>
+                  )}
                 </th>
               ))}
             </tr>

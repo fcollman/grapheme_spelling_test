@@ -54,6 +54,8 @@ export interface Occurrence {
   studentId: string
   word: string
   nonsense: boolean
+  /** Whether the app found an irregular spelling in this word. */
+  redWord: boolean
   /** The whole word as the student wrote it. */
   attempt: string
   /** The letters the target word uses for this unit. */
@@ -98,6 +100,7 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
           studentId: student.id,
           word: word.text,
           nonsense: word.nonsense,
+          redWord: units.some((u) => u.category === 'red-word'),
           attempt: a.attempt,
         }
 

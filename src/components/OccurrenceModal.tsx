@@ -54,13 +54,14 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
 
   const exportCsv = () => {
     const out: string[][] = [
-      ['Test', 'Date', 'Student', 'Word', 'Type', 'Wrote', 'Needed', 'They wrote', 'Sounds', 'Result'],
+      ['Test', 'Date', 'Student', 'Word', 'Type', 'Red word', 'Wrote', 'Needed', 'They wrote', 'Sounds', 'Result'],
       ...rows.map((r) => [
         r.testName,
         r.testDate,
         names(r.studentId),
         r.word,
         r.nonsense ? 'nonsense' : 'real',
+        r.redWord ? 'red word' : '',
         r.attempt,
         r.targetLetters,
         r.wroteLetters || '—',
@@ -142,6 +143,7 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                     <td>
                       {r.word}
                       {r.nonsense && <span className="keyword">nonsense</span>}
+                      {r.redWord && <span className="keyword">red word</span>}
                     </td>
                     <td className="mono">{r.attempt || '—'}</td>
                     <td className="mono dim">{r.targetLetters || '—'}</td>

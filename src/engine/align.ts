@@ -120,6 +120,28 @@ function alignSequences(target: PhonemeId[], student: PhonemeId[]): number[][] {
 }
 
 /**
+ * Sound pairs that English spells one way, with nothing in the spelling to say
+ * which of the two you are looking at: `th` is unvoiced in *thin* and voiced in
+ * *this*, and no rule tells a speller apart.
+ *
+ * This matters because the engine decides the voicing from the whole string, not
+ * from the letters. A student writing "thar" for *their* wrote the word's own
+ * `th`, but "thar" reads with the unvoiced sound while "their" is voiced, so the
+ * digraph came out wrong — while "ther" for the same word comes out right. The
+ * verdict on a grapheme the student got right was being decided by the vowel
+ * beside it, which they got wrong and which is already marked wrong on its own
+ * slot. That is one mistake counted twice.
+ *
+ * Same reasoning as the silent-e accommodation below: forgive a slot whose error
+ * is really an echo of the error next door.
+ */
+const SAME_SPELLING_PAIRS: Array<[PhonemeId, PhonemeId]> = [['TH', 'DH']]
+
+function spelledTheSameWay(a: PhonemeId, b: PhonemeId): boolean {
+  return SAME_SPELLING_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x))
+}
+
+/**
  * A silent final 'e' belongs to the vowel slot conceptually, but the segmenter can
  * only take consecutive letters, so it lands on the trailing consonant ('ke' in
  * cake). Ignoring it here stops bike->"bik" scoring the /k/ as a spelling error
@@ -173,6 +195,17 @@ function markOf(
   if (single === target || schwaMatch) {
     return sameLetters ? 'exact' : 'plausible'
   }
+
+  /*
+   * They wrote this word's own letters for this sound, and the two sounds are
+   * ones those letters never distinguish. Deliberately narrow: it needs the
+   * letters to match exactly, so "hope" for *hop* still scores the vowel wrong
+   * even though both spell it `o` — that difference IS visible in the spelling.
+   */
+  if (single !== null && sameLetters && studentGrapheme !== '' && spelledTheSameWay(single, target)) {
+    return 'exact'
+  }
+
   return 'wrong'
 }
 
