@@ -88,30 +88,25 @@ jobs:
         run: |
           set -euo pipefail
           remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          preview_branch="preview-pr-${PR}"
 
-          rm -rf .preview .existing
+          rm -rf .preview
           mkdir .preview
-          # Carry over the previews already published for other open pull
-          # requests; on the very first run there is no branch to carry over.
-          if git clone --quiet --depth 1 --branch previews "$remote" .existing 2>/dev/null; then
-            rm -rf .existing/.git
-            cp -R .existing/. .preview/
-          fi
-
-          mkdir -p ".preview/pr-${PR}"
-          cp dist/index.html ".preview/pr-${PR}/index.html"
+          cp dist/index.html .preview/index.html
 
           # Built as a brand new single-commit repo and force-pushed, so a 2MB
-          # file on every push to every PR never accumulates in the history.
+          # file on every push to every PR never accumulates in the history, and
+          # each PR gets its own preview ref so concurrent runs cannot overwrite
+          # another PR's published build.
           cd .preview
-          git init --quiet -b previews
+          git init --quiet -b "${preview_branch}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit --quiet -m "Preview builds"
-          git push --quiet --force "$remote" previews
+          git push --quiet --force "$remote" "${preview_branch}"
 
-          echo "url=https://raw.githack.com/${GITHUB_REPOSITORY}/previews/pr-${PR}/index.html" >> "$GITHUB_OUTPUT"
+          echo "url=https://raw.githack.com/${GITHUB_REPOSITORY}/${preview_branch}/index.html" >> "$GITHUB_OUTPUT"
 
       - name: Link the preview from the pull request
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
