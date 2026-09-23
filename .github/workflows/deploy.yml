@@ -7,14 +7,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# pages/id-token are for actions/deploy-pages. contents:write and
-# pull-requests:write are for the PR preview below, which pushes the built file
-# to the `previews` branch and comments the link. No personal token involved.
+# pages/id-token are for actions/deploy-pages. The PR preview job requests
+# additional write permissions at the job level so the untrusted PR build stays
+# read-only.
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
-  pull-requests: write
 
 # Let a running deploy finish rather than cancelling it half-published.
 concurrency:
@@ -23,6 +22,8 @@ concurrency:
 
 jobs:
   build:
+    outputs:
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,6 +70,26 @@ jobs:
           path: dist/index.html
           if-no-files-found: error
 
+  preview:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'MEMBER' ||
+        github.event.pull_request.author_association == 'COLLABORATOR'
+      )
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: grapheme-spelling-test-html
+          path: dist
+
       # ---- PR preview -------------------------------------------------------
       #
       # Reviewing a change used to mean opening the Actions run, finding the
@@ -109,12 +130,11 @@ jobs:
           echo "url=https://raw.githack.com/${GITHUB_REPOSITORY}/${preview_branch}/index.html" >> "$GITHUB_OUTPUT"
 
       - name: Link the preview from the pull request
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
-          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
         run: |
           set -euo pipefail
           marker='<!-- preview-link -->'
