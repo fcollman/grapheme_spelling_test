@@ -145,16 +145,11 @@ jobs:
 
           cp dist/index.html "$site_dir/pr-preview/pr-${PR}/index.html"
 
-          {
-            for existing_pr in "${existing_previews[@]}"; do
-              printf '%s\n' "$existing_pr"
-            done
-            printf '%s\n' "$PR"
-          } | sort -n -u | python - "$site_dir/pr-preview/previews.json" <<'PY'
+          python - "$site_dir/pr-preview/previews.json" "${existing_previews[@]}" "$PR" <<'PY'
           import json
           import sys
-
-          prs = [int(line.strip()) for line in sys.stdin if line.strip()]
+          
+          prs = sorted({int(value) for value in sys.argv[2:] if value.strip()})
           with open(sys.argv[1], "w", encoding="utf-8") as f:
               json.dump({"pull_requests": prs}, f, indent=2)
               f.write("\n")
@@ -267,15 +262,11 @@ jobs:
             fi
           done
 
-          {
-            for existing_pr in "${kept_previews[@]}"; do
-              printf '%s\n' "$existing_pr"
-            done
-          } | sort -n -u | python - "$site_dir/pr-preview/previews.json" <<'PY'
+          python - "$site_dir/pr-preview/previews.json" "${kept_previews[@]}" <<'PY'
           import json
           import sys
-
-          prs = [int(line.strip()) for line in sys.stdin if line.strip()]
+          
+          prs = sorted({int(value) for value in sys.argv[2:] if value.strip()})
           with open(sys.argv[1], "w", encoding="utf-8") as f:
               json.dump({"pull_requests": prs}, f, indent=2)
               f.write("\n")
