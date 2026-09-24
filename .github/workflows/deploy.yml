@@ -105,6 +105,7 @@ jobs:
           manifest="$RUNNER_TEMP/pages-previews.json"
 
           rm -rf "$site_dir"
+          mkdir -p "$site_dir/pr-preview"
           mkdir -p "$site_dir/pr-preview/pr-${PR}"
 
           if ! curl --fail --silent --show-error --location \
