@@ -108,31 +108,51 @@ jobs:
           mkdir -p "$site_dir/pr-preview"
           mkdir -p "$site_dir/pr-preview/pr-${PR}"
 
+          has_live_root=true
           if ! curl --fail --silent --show-error --location \
             "${base_url}/" \
             --output "$site_dir/index.html"; then
-            echo "::warning::Could not fetch the live site, so this run will skip the Pages preview rather than replace the published root page."
-            echo "can-deploy=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            has_live_root=false
           fi
 
-          echo "can-deploy=true" >> "$GITHUB_OUTPUT"
-
+          found_manifest=false
           existing_previews=()
           if curl --fail --silent --show-error --location \
             "${base_url}/pr-preview/previews.json" \
             --output "$manifest"; then
+            found_manifest=true
             mapfile -t existing_previews < <(
               python - "$manifest" <<'PY'
           import json
           import sys
 
-          with open(sys.argv[1], encoding="utf-8") as f:
-              for pr in json.load(f).get("pull_requests", []):
-                  print(pr)
+          try:
+              with open(sys.argv[1], encoding="utf-8") as f:
+                  data = json.load(f)
+          except Exception:
+              data = {}
+
+          for pr in data.get("pull_requests", []):
+              try:
+                  print(int(pr))
+              except (TypeError, ValueError):
+                  pass
           PY
             )
           fi
+
+          if [ "$has_live_root" = false ] && [ "$found_manifest" = true ]; then
+            echo "::warning::Could not fetch the live site root, so this run will skip the Pages preview rather than republish an incomplete site snapshot."
+            echo "can-deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$has_live_root" = false ]; then
+            rm -f "$site_dir/index.html"
+            echo "::notice::No live Pages site is reachable yet, so this run will publish a preview-only Pages artifact."
+          fi
+
+          echo "can-deploy=true" >> "$GITHUB_OUTPUT"
 
           kept_previews=()
           for existing_pr in "${existing_previews[@]}"; do
@@ -268,9 +288,17 @@ jobs:
           import json
           import sys
 
-          with open(sys.argv[1], encoding="utf-8") as f:
-              for pr in json.load(f).get("pull_requests", []):
-                  print(pr)
+          try:
+              with open(sys.argv[1], encoding="utf-8") as f:
+                  data = json.load(f)
+          except Exception:
+              data = {}
+
+          for pr in data.get("pull_requests", []):
+              try:
+                  print(int(pr))
+              except (TypeError, ValueError):
+                  pass
           PY
             )
           fi
