@@ -90,16 +90,17 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: actions/configure-pages@v5
+      - id: pages
+        uses: actions/configure-pages@v5
 
       - id: assemble-preview
         name: Assemble the Pages site with this preview
         env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          repo_name="${GITHUB_REPOSITORY#*/}"
-          base_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}"
+          base_url="$BASE_URL"
           site_dir="$RUNNER_TEMP/pages-site"
           manifest="$RUNNER_TEMP/pages-previews.json"
 
@@ -241,13 +242,15 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: actions/configure-pages@v5
+      - id: pages
+        uses: actions/configure-pages@v5
 
       - name: Assemble the Pages site with the live build
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           set -euo pipefail
-          repo_name="${GITHUB_REPOSITORY#*/}"
-          base_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}"
+          base_url="$BASE_URL"
           site_dir="$RUNNER_TEMP/pages-site"
           manifest="$RUNNER_TEMP/pages-previews.json"
 
