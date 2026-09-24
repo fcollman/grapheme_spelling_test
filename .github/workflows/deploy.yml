@@ -74,9 +74,6 @@ jobs:
       )
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: read
       pages: write
@@ -92,7 +89,8 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      - name: Assemble the Pages site with this preview
+      - id: assemble-preview
+        name: Assemble the Pages site with this preview
         env:
           PR: ${{ github.event.pull_request.number }}
         run: |
@@ -108,9 +106,12 @@ jobs:
           if ! curl --fail --silent --show-error --location \
             "${base_url}/index.html" \
             --output "$site_dir/index.html"; then
-            echo "::warning::Could not fetch the live site; using this build as the root page until main deploy runs."
-            cp dist/index.html "$site_dir/index.html"
+            echo "::warning::Could not fetch the live site, so this run will skip the Pages preview rather than replace the published root page."
+            echo "can-deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          echo "can-deploy=true" >> "$GITHUB_OUTPUT"
 
           existing_previews=()
           if curl --fail --silent --show-error --location \
@@ -155,7 +156,8 @@ jobs:
               f.write("\n")
           PY
 
-      - uses: actions/upload-pages-artifact@v4
+      - if: steps.assemble-preview.outputs.can-deploy == 'true'
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ${{ runner.temp }}/pages-site
 
@@ -167,7 +169,8 @@ jobs:
       #
       # The workflow republishes the whole Pages artifact, keeping the current
       # live root plus every known PR preview directory.
-      - name: Deploy the updated Pages site
+      - if: steps.assemble-preview.outputs.can-deploy == 'true'
+        name: Deploy the updated Pages site
         id: deployment
         uses: actions/deploy-pages@v4
 
@@ -176,13 +179,15 @@ jobs:
         env:
           PR: ${{ github.event.pull_request.number }}
           ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+          CAN_DEPLOY: ${{ steps.assemble-preview.outputs.can-deploy }}
         run: |
           set -euo pipefail
           repo_name="${GITHUB_REPOSITORY#*/}"
           preview_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/pr-preview/pr-${PR}/"
           {
             echo "body<<EOF"
-            cat <<EOF
+            if [ "${CAN_DEPLOY}" = "true" ]; then
+              cat <<EOF
           ### Preview this build
 
           **[Open the app in your browser](${preview_url})** — built from this branch, nothing to download.
@@ -191,6 +196,17 @@ jobs:
 
           <sub>Rebuilt on every push to this pull request. The preview updates its own PR path without changing the published root page.</sub>
           EOF
+            else
+              cat <<EOF
+          ### Preview this build
+
+          The live Pages site is not reachable yet, so this run skipped the PR preview rather than replace the published root page.
+
+          **[Download index.html](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID})** to open it offline. It is one self-contained file.
+
+          <sub>After the main site has deployed once through GitHub Actions, later pushes to this pull request will also refresh its `/pr-preview/pr-${PR}/` Pages URL.</sub>
+          EOF
+            fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
