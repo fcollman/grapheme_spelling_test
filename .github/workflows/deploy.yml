@@ -107,7 +107,7 @@ jobs:
           mkdir -p "$site_dir/pr-preview/pr-${PR}"
 
           if ! curl --fail --silent --show-error --location \
-            "${base_url}/index.html" \
+            "${base_url}/" \
             --output "$site_dir/index.html"; then
             echo "::warning::Could not fetch the live site, so this run will skip the Pages preview rather than replace the published root page."
             echo "can-deploy=false" >> "$GITHUB_OUTPUT"
