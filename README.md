@@ -238,13 +238,14 @@ pictures are why `dist/index.html` is around 2.3MB rather than 1.6MB.
 
 ### Deployment
 
-Pushing to `main` builds and publishes to GitHub Pages via
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+Pushing to `main` builds and publishes to GitHub Pages via the GitHub Pages
+deployment API in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
 
 **https://fcollman.github.io/grapheme_spelling_test/**
 
-Pull requests run the same build and tests but do not deploy; they attach the
-built `index.html` as a downloadable artifact instead.
+Pull requests run the same build and tests, attach the built `index.html` as a
+downloadable artifact, and publish that file under a PR-specific
+`/pr-preview/pr-<number>/` path on the same Pages site.
 
 Before publishing, the workflow gates on four things:
 

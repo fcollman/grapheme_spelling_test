@@ -7,8 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Build jobs stay read-only; deploy and preview jobs request write access at the
-# job level when they publish to the GitHub Pages branch.
+# Build jobs stay read-only; deploy and preview jobs request the extra
+# permissions they need when they publish through GitHub Pages deployments.
 permissions:
   contents: read
 
@@ -74,18 +74,121 @@ jobs:
       )
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4.1.3
         with:
           artifact-ids: ${{ needs.build.outputs.artifact-id }}
           merge-multiple: true
           path: dist
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - id: assemble-preview
+        name: Assemble the Pages site with this preview
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          base_url="$BASE_URL"
+          site_dir="$RUNNER_TEMP/pages-site"
+          manifest="$RUNNER_TEMP/pages-previews.json"
+
+          rm -rf "$site_dir"
+          mkdir -p "$site_dir/pr-preview"
+          mkdir -p "$site_dir/pr-preview/pr-${PR}"
+
+          has_live_root=true
+          if ! curl --fail --silent --show-error --location \
+            "${base_url}/" \
+            --output "$site_dir/index.html"; then
+            has_live_root=false
+          fi
+
+          found_manifest=false
+          existing_previews=()
+          if curl --fail --silent --show-error --location \
+            "${base_url}/pr-preview/previews.json" \
+            --output "$manifest"; then
+            found_manifest=true
+            mapfile -t existing_previews < <(
+              python - "$manifest" <<'PY'
+          import json
+          import sys
+
+          try:
+              with open(sys.argv[1], encoding="utf-8") as f:
+                  data = json.load(f)
+          except Exception:
+              data = {}
+
+          for pr in data.get("pull_requests", []):
+              try:
+                  print(int(pr))
+              except (TypeError, ValueError):
+                  pass
+          PY
+            )
+          fi
+
+          if [ "$has_live_root" = false ] && [ "$found_manifest" = true ]; then
+            echo "::warning::Could not fetch the live site root, so this run will skip the Pages preview rather than republish an incomplete site snapshot."
+            echo "can-deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$has_live_root" = false ]; then
+            rm -f "$site_dir/index.html"
+            echo "::notice::No live Pages site is reachable yet, so this run will publish a preview-only Pages artifact."
+          fi
+
+          echo "can-deploy=true" >> "$GITHUB_OUTPUT"
+
+          kept_previews=()
+          for existing_pr in "${existing_previews[@]}"; do
+            if [ "$existing_pr" = "$PR" ]; then
+              continue
+            fi
+
+            target_dir="$site_dir/pr-preview/pr-${existing_pr}"
+            mkdir -p "$target_dir"
+            if ! curl --fail --silent --show-error --location \
+              "${base_url}/pr-preview/pr-${existing_pr}/index.html" \
+              --output "$target_dir/index.html"; then
+              echo "::warning::Skipping missing preview for PR #${existing_pr}."
+              rm -rf "$target_dir"
+            else
+              kept_previews+=("$existing_pr")
+            fi
+          done
+
+          cp dist/index.html "$site_dir/pr-preview/pr-${PR}/index.html"
+          kept_previews+=("$PR")
+
+          python - "$site_dir/pr-preview/previews.json" "${kept_previews[@]}" <<'PY'
+          import json
+          import sys
+          
+          prs = sorted({int(value) for value in sys.argv[2:] if value.strip()})
+          with open(sys.argv[1], "w", encoding="utf-8") as f:
+              json.dump({"pull_requests": prs}, f, indent=2)
+              f.write("\n")
+          PY
+
+      - if: steps.assemble-preview.outputs.can-deploy == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/pages-site
 
       # ---- PR preview -------------------------------------------------------
       #
@@ -93,36 +196,46 @@ jobs:
       # artifact, downloading a zip and unzipping it. Since the build is one
       # self-contained file, it can just be published and linked instead.
       #
-      # It goes to a PR-specific directory on the GitHub Pages branch so the
-      # live site and other open PR previews stay intact.
-      - name: Publish this build as a preview
-        uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
-        with:
-          branch: gh-pages
-          folder: dist
-          target-folder: pr-preview/pr-${{ github.event.pull_request.number }}
-          force: false
+      # The workflow republishes the whole Pages artifact, keeping the current
+      # live root plus every known PR preview directory.
+      - if: steps.assemble-preview.outputs.can-deploy == 'true'
+        name: Deploy the updated Pages site
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Link the preview from the pull request
         id: preview-comment
         env:
           PR: ${{ github.event.pull_request.number }}
           ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+          CAN_DEPLOY: ${{ steps.assemble-preview.outputs.can-deploy }}
         run: |
           set -euo pipefail
           repo_name="${GITHUB_REPOSITORY#*/}"
           preview_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/pr-preview/pr-${PR}/"
           {
             echo "body<<EOF"
-            cat <<EOF
+            if [ "${CAN_DEPLOY}" = "true" ]; then
+              cat <<EOF
           ### Preview this build
 
           **[Open the app in your browser](${preview_url})** — built from this branch, nothing to download.
 
           Or **[download index.html](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID})** to open it offline. It is one self-contained file.
 
-          <sub>Rebuilt on every push to this pull request. Neither link touches the live site.</sub>
+          <sub>Rebuilt on every push to this pull request. The preview updates its own PR path without changing the published root page.</sub>
           EOF
+            else
+              cat <<EOF
+          ### Preview this build
+
+          The live Pages site is not reachable yet, so this run skipped the PR preview rather than replace the published root page.
+
+          **[Download index.html](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID})** to open it offline. It is one self-contained file.
+
+          <sub>After the main site has deployed once through GitHub Actions, later pushes to this pull request will also refresh its `/pr-preview/pr-${PR}/` Pages URL.</sub>
+          EOF
+            fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -136,20 +249,87 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4.1.3
         with:
           artifact-ids: ${{ needs.build.outputs.artifact-id }}
           merge-multiple: true
           path: dist
 
-      - uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble the Pages site with the live build
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          base_url="$BASE_URL"
+          site_dir="$RUNNER_TEMP/pages-site"
+          manifest="$RUNNER_TEMP/pages-previews.json"
+
+          rm -rf "$site_dir"
+          mkdir -p "$site_dir/pr-preview"
+          cp dist/index.html "$site_dir/index.html"
+
+          existing_previews=()
+          if curl --fail --silent --show-error --location \
+            "${base_url}/pr-preview/previews.json" \
+            --output "$manifest"; then
+            mapfile -t existing_previews < <(
+              python - "$manifest" <<'PY'
+          import json
+          import sys
+
+          try:
+              with open(sys.argv[1], encoding="utf-8") as f:
+                  data = json.load(f)
+          except Exception:
+              data = {}
+
+          for pr in data.get("pull_requests", []):
+              try:
+                  print(int(pr))
+              except (TypeError, ValueError):
+                  pass
+          PY
+            )
+          fi
+
+          kept_previews=()
+          for existing_pr in "${existing_previews[@]}"; do
+            target_dir="$site_dir/pr-preview/pr-${existing_pr}"
+            mkdir -p "$target_dir"
+            if curl --fail --silent --show-error --location \
+              "${base_url}/pr-preview/pr-${existing_pr}/index.html" \
+              --output "$target_dir/index.html"; then
+              kept_previews+=("$existing_pr")
+            else
+              echo "::warning::Skipping missing preview for PR #${existing_pr}."
+              rm -rf "$target_dir"
+            fi
+          done
+
+          python - "$site_dir/pr-preview/previews.json" "${kept_previews[@]}" <<'PY'
+          import json
+          import sys
+          
+          prs = sorted({int(value) for value in sys.argv[2:] if value.strip()})
+          with open(sys.argv[1], "w", encoding="utf-8") as f:
+              json.dump({"pull_requests": prs}, f, indent=2)
+              f.write("\n")
+          PY
+
+      - uses: actions/upload-pages-artifact@v4
         with:
-          branch: gh-pages
-          folder: dist
-          clean-exclude: pr-preview
-          force: false
+          path: ${{ runner.temp }}/pages-site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
