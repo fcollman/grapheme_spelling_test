@@ -74,9 +74,6 @@ jobs:
       )
     needs: build
     runs-on: ubuntu-latest
-    concurrency:
-      group: pages
-      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -135,6 +132,7 @@ jobs:
             )
           fi
 
+          kept_previews=()
           for existing_pr in "${existing_previews[@]}"; do
             if [ "$existing_pr" = "$PR" ]; then
               continue
@@ -147,12 +145,15 @@ jobs:
               --output "$target_dir/index.html"; then
               echo "::warning::Skipping missing preview for PR #${existing_pr}."
               rm -rf "$target_dir"
+            else
+              kept_previews+=("$existing_pr")
             fi
           done
 
           cp dist/index.html "$site_dir/pr-preview/pr-${PR}/index.html"
+          kept_previews+=("$PR")
 
-          python - "$site_dir/pr-preview/previews.json" "${existing_previews[@]}" "$PR" <<'PY'
+          python - "$site_dir/pr-preview/previews.json" "${kept_previews[@]}" <<'PY'
           import json
           import sys
           
@@ -226,9 +227,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
-    concurrency:
-      group: pages
-      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
