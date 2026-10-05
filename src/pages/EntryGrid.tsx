@@ -47,6 +47,22 @@ export function EntryGrid() {
   const inputs = useRef(new Map<string, HTMLInputElement | null>())
   const cellId = (wordIndex: number, studentIndex: number) => `${wordIndex}:${studentIndex}`
 
+  /**
+   * The cell the cursor is in, so only that one offers its suggestion.
+   *
+   * Most spellings on most tests are correct, and typing out a word the app
+   * already knows is pure transcription. So an empty cell shows the word that
+   * was dictated, and Enter takes it — an all-correct paper becomes a column of
+   * Enter presses.
+   *
+   * Deliberately shown rather than stored. Writing the word in on arrival would
+   * mean that merely passing through a cell marked it correct, which is exactly
+   * what happens on the way past an absent student, and the teacher would have
+   * no way to tell a real answer from one the app put there. Nothing reaches the
+   * data until Enter.
+   */
+  const [cursor, setCursor] = useState<string | null>(null)
+
   const focusCell = (wordIndex: number, studentIndex: number): boolean => {
     const el = inputs.current.get(cellId(wordIndex, studentIndex))
     if (!el) return false
@@ -72,12 +88,28 @@ export function EntryGrid() {
     focusCell(nextWord, nextStudent)
   }
 
-  const onCellKeyDown = (e: KeyboardEvent<HTMLInputElement>, wordIndex: number, studentIndex: number) => {
-    if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      const up = e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)
-      moveBy(wordIndex, studentIndex, up ? -1 : 1)
+  const onCellKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    wordIndex: number,
+    studentIndex: number,
+    word: { id: string; text: string },
+    studentId: string,
+  ) => {
+    if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+
+    /*
+     * Enter accepts the suggestion; the arrow keys do not. That is the whole
+     * rule, and it is what lets a teacher move through a column without
+     * filling anything in — past a student who was away, or a word that was
+     * skipped — rather than having to undo what the app assumed.
+     */
+    if (e.key === 'Enter' && e.currentTarget.value === '') {
+      dispatch({ type: 'setResponse', wordId: word.id, studentId, value: word.text })
     }
+
+    const up = e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)
+    moveBy(wordIndex, studentIndex, up ? -1 : 1)
   }
 
   const addWords = () => {
@@ -354,6 +386,11 @@ export function EntryGrid() {
         Working from one student's paper: press <kbd>Enter</kbd> to drop to the next word down the
         column, and again at the bottom to jump to the top of the next student. <kbd>Shift</kbd>+
         <kbd>Enter</kbd> goes back up, and <kbd>Tab</kbd> moves across the row.
+        <br />
+        An empty cell shows the word that was dictated. <strong>If the student spelled it right,
+        just press <kbd>Enter</kbd></strong> — so an all-correct paper is a run of
+        <kbd>Enter</kbd> presses. If they did not, type what they actually wrote. The arrow keys
+        move without filling anything in, for a word that was skipped or a student who was away.
       </p>
 
       <div className="group no-print" style={{ marginBottom: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -580,6 +617,14 @@ export function EntryGrid() {
                           type="text"
                           value={value}
                           aria-label={`${names(s.id)} wrote for ${w.text}`}
+                          // Only the cell under the cursor offers its word. On
+                          // every empty cell at once the grid would be a wall of
+                          // the same word repeated across every column.
+                          placeholder={
+                            value === '' && cursor === cellId(wordIndex, studentIndex)
+                              ? w.text
+                              : undefined
+                          }
                           autoComplete="off"
                           autoCapitalize="off"
                           autoCorrect="off"
@@ -587,7 +632,11 @@ export function EntryGrid() {
                           ref={(el) => {
                             inputs.current.set(cellId(wordIndex, studentIndex), el)
                           }}
-                          onKeyDown={(e) => onCellKeyDown(e, wordIndex, studentIndex)}
+                          onFocus={() => setCursor(cellId(wordIndex, studentIndex))}
+                          onBlur={() =>
+                            setCursor((at) => (at === cellId(wordIndex, studentIndex) ? null : at))
+                          }
+                          onKeyDown={(e) => onCellKeyDown(e, wordIndex, studentIndex, w, s.id)}
                           onChange={(e) =>
                             dispatch({
                               type: 'setResponse',

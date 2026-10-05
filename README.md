@@ -31,7 +31,11 @@ A version of this is deployed to github pages at
    real data, because nothing is stored anywhere but this browser.
 
 2. **Spelling test** tab — add your words and your students, then type what each
-   student wrote. Tick "nonsense" for made-up words. Cells turn green when the
+   student wrote. An empty cell shows the word that was dictated, so a correct
+   spelling is just <kbd>Enter</kbd> and an all-correct paper is a run of them;
+   typing replaces the suggestion, and the arrow keys move without filling
+   anything in, which is how you skip a missed word or an absent student.
+   Nothing is recorded until <kbd>Enter</kbd>. Tick "nonsense" for made-up words. Cells turn green when the
    spelling matches exactly. With a full class the grid scrolls sideways, but the
    word and nonsense columns stay pinned so you can always see what was dictated.
 
