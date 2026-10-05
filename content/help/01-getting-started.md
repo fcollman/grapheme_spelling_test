@@ -109,6 +109,28 @@ the next student's. <kbd>Shift</kbd>+<kbd>Enter</kbd> goes back up, and
 Type exactly what the student wrote, misspellings and all. A cell turns green when the spelling matches the target word exactly and
 red when it does not.
 
+### You only have to type the wrong ones
+
+Most spellings on most papers are right, and typing out a word the app already
+knows is wasted effort. So an empty cell shows the word that was dictated, in
+faint italics:
+
+**If the student spelled it correctly, just press <kbd>Enter</kbd>.** The word
+is filled in and the cursor drops to the next one. A paper with nothing wrong on
+it is a run of <kbd>Enter</kbd> presses and nothing else.
+
+**If they did not, start typing.** Whatever you type replaces the suggestion, so
+there is nothing to clear out of the way first.
+
+Two things worth knowing:
+
+- The faint word is only a suggestion until you press <kbd>Enter</kbd>. Nothing
+  is recorded just because the cursor passed through a cell.
+- **The arrow keys move without filling anything in.** Use <kbd>↓</kbd> instead
+  of <kbd>Enter</kbd> to skip a word a student left out, or to move down the
+  column of a student who was away, and those cells stay properly blank rather
+  than counting as correct.
+
 With a big class the grid scrolls sideways, but the word and nonsense columns
 stay pinned to the left so you can always see what was dictated.
 

@@ -1741,3 +1741,16 @@ ul.errorlist em {
   border-color: var(--wrong-line);
   color: var(--wrong-ink);
 }
+
+/*
+ * The word that was dictated, offered in the cell the cursor is in.
+ *
+ * Deliberately readable rather than faint: a teacher is meant to check it
+ * against the paper in front of her before pressing Enter, so it has to be easy
+ * to read — while still looking clearly unlike an answer that has been entered.
+ */
+.entry-cell input::placeholder {
+  color: var(--accent);
+  opacity: 0.55;
+  font-style: italic;
+}
