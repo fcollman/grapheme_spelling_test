@@ -173,6 +173,30 @@ function markOf(
   if (single === target || schwaMatch) {
     return sameLetters ? 'exact' : 'plausible'
   }
+
+  /*
+   * They wrote this word's own letters for this consonant, and the sound came
+   * out different only because of a letter beside it that they got wrong.
+   *
+   * The engine reads the whole string, so a misspelling anywhere can change how
+   * a neighbouring consonant is pronounced: "again" written "agen" has a
+   * perfectly good `g`, but `g` before `e` reads soft, so the consonant was
+   * being marked a wrong sound. The same thing hits `c` before a changed vowel
+   * ("cat" → "cyt"), and `th`, whose voicing the spelling never shows at all
+   * ("their" → "thar"). In every one of those the real error is the vowel, and
+   * the vowel is already marked wrong on its own slot — so counting the
+   * consonant as well charges one mistake twice, against a phonics skill the
+   * student demonstrated.
+   *
+   * Consonants only, deliberately. A vowel whose sound changed is usually the
+   * error itself rather than an echo of one: "hop" written "hope" spells the
+   * vowel with the same `o`, and the silent `e` that changed it is exactly what
+   * went wrong, so that must keep scoring as a vowel error.
+   */
+  if (single !== null && sameLetters && studentGrapheme !== '' && !isVowel(target)) {
+    return 'exact'
+  }
+
   return 'wrong'
 }
 
