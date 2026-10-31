@@ -47,6 +47,74 @@ describe('alignment fixtures', () => {
     expect(render(a.slots)).toBe(expected)
   })
 
+  /**
+   * Issue #25. A misspelling anywhere changes how the engine reads the letters
+   * around it, and a consonant the student got right was being charged for it.
+   *
+   * The teacher's own examples: in *again*, the `g` is a perfectly good `g` in
+   * every one of these attempts, but `g` before `e` reads soft, so it was coming
+   * back as a wrong sound. One mistake, counted twice, against a skill they
+   * demonstrated.
+   */
+  describe('a consonant the student spelled right is not charged for a neighbour', () => {
+    it.each([
+      ['again', 'agen'],
+      ['again', 'agian'],
+      ['again', 'agenia'],
+    ])('%s -> %s keeps the g', async (word, attempt) => {
+      const a = await analyzePair(word, attempt)
+      const g = a.slots.find((slot) => slot.targetGrapheme === 'g')
+      expect(g?.mark, render(a.slots)).toBe('exact')
+    })
+
+    it('keeps a th whose voicing the spelling never showed', async () => {
+      // "their" is voiced, "thar" is not, and nothing in the letters says which.
+      const a = await analyzePair('their', 'thar')
+      expect(a.slots[0].mark).toBe('exact')
+      // The vowel is the real error and still says so.
+      expect(a.slots[1].mark).toBe('wrong')
+    })
+
+    it('keeps a c that went soft because the vowel after it changed', async () => {
+      const a = await analyzePair('cat', 'cyt')
+      expect(a.slots[0].mark).toBe('exact')
+      expect(a.slots[1].mark).toBe('wrong')
+    })
+
+    it('works in the other direction too', async () => {
+      // Here the target is the soft one and the attempt reads hard.
+      const a = await analyzePair('giant', 'gant')
+      expect(a.slots[0].mark).toBe('exact')
+    })
+
+    /**
+     * The limit, and the reason this is consonants only. A vowel that changed
+     * sound is usually the error itself rather than an echo of one: "hope" for
+     * *hop* spells the vowel with the same `o`, and the silent `e` that changed
+     * it is precisely what went wrong.
+     */
+    it('still scores a vowel that changed sound, even with the same letter', async () => {
+      const hope = await analyzePair('hop', 'hope')
+      expect(hope.slots[1].mark, render(hope.slots)).toBe('wrong')
+
+      const bike = await analyzePair('bike', 'bik')
+      expect(bike.slots[1].mark, render(bike.slots)).toBe('wrong')
+    })
+
+    it('does not forgive a consonant the student actually spelled differently', async () => {
+      // Different letters, wrong sound: a real error, untouched.
+      const a = await analyzePair('ship', 'chip')
+      expect(a.slots[0].mark).toBe('wrong')
+    })
+
+    it('does not forgive letters that produced extra sounds', async () => {
+      // "nia" is not the word's `n`; it is three sounds, so the rule stays out.
+      const a = await analyzePair('again', 'agenia')
+      const n = a.slots[a.slots.length - 1]
+      expect(n.mark).toBe('wrong')
+    })
+  })
+
   it('produces one slot per target phoneme regardless of attempt', async () => {
     for (const attempt of ['', 'x', 'catcatcat', 'zzzz', 'cat']) {
       const a = await analyzePair('cat', attempt)
