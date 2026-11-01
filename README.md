@@ -140,6 +140,11 @@ students, what they wrote for that one unit, and whether each counted. The list 
 produced by walking the same answers the report counted, so it always adds up to
 the number you clicked. Escape or **Close** dismisses it, and it exports to CSV too.
 
+Every tab has **Download CSV** and **Print / Save PDF**. Printing is set up as
+landscape with half-inch margins, so nothing lands in the strip at the edge of
+the paper that most office printers cannot reach. A browser's own **Margins:
+None** setting overrides that, so check it if a PDF comes out edge to edge.
+
 **Name the class** in the box beside the title — "Block 2A", "Period 4". It goes
 in front of every downloaded file name and at the top of every printout, which is
 what makes a Downloads folder full of reports navigable:

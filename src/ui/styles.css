@@ -1281,9 +1281,23 @@ ul.errorlist em {
 
 /* ---------- print ---------- */
 
+/*
+ * Half an inch on every edge, which is what a PDF needs to survive an ordinary
+ * office printer: most of them cannot print within about a quarter inch of the
+ * paper, and a report with a column sitting in that strip comes out clipped.
+ *
+ * This has to be a @page margin rather than padding on the content. Padding
+ * applies once to the whole flow, so on a report running to three pages only
+ * the first would get a top margin and only the last a bottom one; @page
+ * applies to every sheet.
+ *
+ * A browser's own print dialog can still override this — Chrome's "Margins:
+ * None" wins over anything the page asks for — so the Help guide points at that
+ * setting for anyone who gets edge-to-edge output anyway.
+ */
 @page {
   size: landscape;
-  margin: 12mm;
+  margin: 0.5in;
 }
 
 @media print {
