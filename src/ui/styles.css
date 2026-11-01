@@ -252,8 +252,19 @@ kbd {
 
 /* ---------- tables ---------- */
 
+/*
+ * Tables scroll inside this box rather than taking the page with them.
+ *
+ * `overflow-x: auto` on its own already made this a scroll container in both
+ * directions — that is what the spec does when only one axis is given — but
+ * with no height limit it never actually scrolled vertically. The page scrolled
+ * instead, and the sticky header below was pinned to a box that never moved, so
+ * it slid away with everything else. Capping the height gives it something to
+ * stay put against.
+ */
 .scroll {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 160px);
 }
 
 /* ---------- columns that stay put while scrolling sideways ---------- */
@@ -306,6 +317,34 @@ kbd {
   background: #eef0f4;
 }
 
+/*
+ * The score row stays in view instead of waiting at the foot of a long word
+ * list. Reading a percentage is no use without the column heading that says
+ * whose it is, so both ends of the table are pinned and the rows scroll
+ * between them.
+ */
+.grid-sticky tfoot th,
+.grid-sticky tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  box-shadow: inset 0 1px 0 var(--line-strong);
+}
+
+/* The two corners sit where a pinned column meets a pinned row, so they carry
+   that column's divider as well as their own edge. */
+.grid-sticky thead th.c2 {
+  box-shadow:
+    1px 0 0 0 var(--line-strong),
+    inset 0 -1px 0 var(--line-strong);
+}
+
+.grid-sticky tfoot td.c2 {
+  box-shadow:
+    1px 0 0 0 var(--line-strong),
+    inset 0 1px 0 var(--line-strong);
+}
+
 .entry-grid {
   --c1: 212px;
   --c2: 66px;
@@ -343,7 +382,10 @@ kbd {
   .grid-sticky th.c1,
   .grid-sticky td.c1,
   .grid-sticky th.c2,
-  .grid-sticky td.c2 {
+  .grid-sticky td.c2,
+  thead th,
+  .grid-sticky tfoot th,
+  .grid-sticky tfoot td {
     position: static;
     box-shadow: none;
   }
@@ -371,6 +413,13 @@ thead th {
   letter-spacing: 0.04em;
   position: sticky;
   top: 0;
+  /* Over the pinned first columns, which the body gives z-index 2. */
+  z-index: 3;
+  /*
+   * Collapsed borders belong to the table, not to the cell, so the line under
+   * the header scrolls out from under it. This draws that edge back on.
+   */
+  box-shadow: inset 0 -1px 0 var(--line-strong);
 }
 
 th.rowhead {
@@ -1371,6 +1420,8 @@ ul.errorlist em {
 
   .scroll {
     overflow: visible;
+    /* A capped box would print one screenful and drop the rest. */
+    max-height: none;
   }
 }
 
