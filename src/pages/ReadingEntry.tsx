@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { cleanWord } from '../engine/phonemize'
@@ -7,6 +7,8 @@ import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { planKey } from './readingKeys'
+import { useReadingAudio } from '../state/useReadingAudio'
+import type { AudioMeta } from '../state/types'
 
 /**
  * Marking a passage read aloud.
@@ -34,6 +36,13 @@ export function ReadingEntry() {
   const locked = project.settings.lockWords
 
   const inputs = useRef(new Map<string, HTMLInputElement | null>())
+  const filePicker = useRef<HTMLInputElement>(null)
+
+  const onAttached = useCallback(
+    (meta: AudioMeta) => dispatch({ type: 'setAudioMeta', studentId, meta }),
+    [dispatch, studentId],
+  )
+  const audio = useReadingAudio(test.id, studentId, test.audioFiles?.[studentId], onAttached)
 
   /**
    * Moving between words.
@@ -94,7 +103,45 @@ export function ReadingEntry() {
       dispatch({ type: 'setOmitted', wordId: word.id, studentId, omitted: true })
     }
 
-    if (plan.move !== null) focusWord(plan.move)
+    /*
+     * The recording is stamped only here, when the teacher moves on — never
+     * from the media element's own progress events, which fire several times a
+     * second and would flood the reducer and the autosave with them.
+     *
+     * Moving forward records where the word being moved *to* begins, because
+     * the tap lands as that word is being said. Moving back seeks to the word
+     * being returned to, which is the whole point of keeping the times.
+     */
+    if (plan.move !== null) {
+      const target = words[plan.move]
+      const now = audio.at()
+      const forward = plan.move > index
+
+      if (forward && now !== null && audio.playing) {
+        dispatch({ type: 'setAudioTime', wordId: target.id, studentId, seconds: now })
+      } else if (!forward) {
+        const mark = test.audioTimes?.[target.id]?.[studentId]
+        if (mark !== undefined) {
+          audio.seek(mark)
+          audio.play()
+        }
+      }
+      focusWord(plan.move)
+    }
+  }
+
+  /*
+   * The first word is stamped when playback starts rather than on a Tab,
+   * because the teacher is already sitting on it when they press play — every
+   * other word is stamped by the keystroke that arrives at it.
+   */
+  const onPlaybackStart = () => {
+    audio.onPlay()
+    const first = words[0]
+    const now = audio.at()
+    if (first && now !== null && test.audioTimes?.[first.id]?.[studentId] === undefined) {
+      dispatch({ type: 'setAudioTime', wordId: first.id, studentId, seconds: now })
+    }
   }
 
   const commitPassage = (text: string) => {
@@ -215,6 +262,14 @@ export function ReadingEntry() {
             </button>
           </div>
 
+          <AudioBar
+            audio={audio}
+            picker={filePicker}
+            onPick={(file) => audio.attachFile(file)}
+            onPlayStart={onPlaybackStart}
+            onClearTimes={() => dispatch({ type: 'clearAudioTimes', studentId })}
+          />
+
           <p className="hint no-print">
             <kbd>Tab</kbd> marks a word read correctly and moves on. Type what the student said
             instead, then <kbd>Tab</kbd>. <kbd>Shift</kbd>+<kbd>Tab</kbd> steps back and offers what
@@ -249,6 +304,115 @@ export function ReadingEntry() {
         </>
       )}
     </section>
+  )
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  none: 'No recording attached',
+  ready: 'Recording attached',
+  reconnect: 'Click to reconnect the recording',
+  missing: 'That recording is no longer where it was',
+  different: 'This is not the file the times were made against',
+  unsupported: 'This browser cannot play that file — try .m4a or .mp3',
+}
+
+function clock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/**
+ * Playing a recording while marking.
+ *
+ * The media element is a `<video>` rather than an `<audio>`: a teacher records
+ * on a phone and gets a `.mov`, which `<audio>` will not decode even though
+ * there is nothing to watch. It is kept at zero size and driven entirely by
+ * these buttons.
+ */
+function AudioBar({
+  audio,
+  picker,
+  onPick,
+  onPlayStart,
+  onClearTimes,
+}: {
+  audio: ReturnType<typeof useReadingAudio>
+  picker: React.RefObject<HTMLInputElement>
+  onPick: (file: File) => void
+  onPlayStart: () => void
+  onClearTimes: () => void
+}) {
+  const [now, setNow] = useState(0)
+
+  return (
+    <div className="group no-print audiobar">
+      {/* Zero-sized on purpose: audio-only files play through it just the same. */}
+      <video
+        ref={audio.ref}
+        playsInline
+        style={{ width: 0, height: 0, position: 'absolute' }}
+        onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
+        onPlay={onPlayStart}
+        onPause={audio.onPause}
+      />
+
+      <button
+        className="btn"
+        onClick={() => (audio.canPick ? void audio.attach() : picker.current?.click())}
+      >
+        {audio.status === 'none' ? 'Attach recording' : 'Change recording'}
+      </button>
+      <input
+        ref={picker}
+        type="file"
+        accept="audio/*,video/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) onPick(file)
+          e.target.value = ''
+        }}
+      />
+
+      {audio.status !== 'none' && (
+        <>
+          <button className="btn" onClick={audio.toggle} title="Play or pause">
+            {audio.playing ? '❚❚' : '▶'}
+          </button>
+          <button
+            className="btn"
+            onClick={() => audio.seek(Math.max(0, now - 5 + 0.6))}
+            title="Back five seconds"
+          >
+            ↺ 5s
+          </button>
+          <label className="check">
+            Speed
+            <select value={audio.rate} onChange={(e) => audio.setRate(Number(e.target.value))}>
+              {[0.5, 0.75, 1, 1.25, 1.5].map((r) => (
+                <option key={r} value={r}>
+                  {r}×
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="keyword">{clock(now)}</span>
+        </>
+      )}
+
+      <span
+        className={`keyword audiostatus ${audio.status === 'ready' ? '' : 'warn'}`}
+        title={audio.name ?? undefined}
+      >
+        {audio.name && audio.status === 'ready' ? audio.name : STATUS_TEXT[audio.status]}
+      </span>
+
+      {audio.status === 'different' && (
+        <button className="btn danger" onClick={onClearTimes}>
+          Clear the old times
+        </button>
+      )}
+    </div>
   )
 }
 

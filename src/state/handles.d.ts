@@ -10,8 +10,10 @@
  * drift into claiming support for things that were never tested.
  */
 
+type FileSystemPermissionMode = 'read' | 'readwrite'
+
 interface FileSystemHandlePermissionDescriptor {
-  mode?: 'read' | 'readwrite'
+  mode?: FileSystemPermissionMode
 }
 
 interface FileSystemHandle {
@@ -35,7 +37,7 @@ interface FilePickerOptions {
 
 interface DirectoryPickerOptions {
   id?: string
-  mode?: 'read' | 'readwrite'
+  mode?: FileSystemPermissionMode
   startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads'
 }
 

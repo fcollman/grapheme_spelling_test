@@ -23,6 +23,13 @@ export interface Word {
   end?: number
 }
 
+/** Enough to recognise a recording again without storing any of it. */
+export interface AudioMeta {
+  name: string
+  size: number
+  lastModified: number
+}
+
 export interface SlotOverrideData {
   student?: PhonemeId[]
   mark?: Mark
@@ -49,6 +56,19 @@ export interface Test {
   wordPhonemes: Record<string, PhonemeId[]>
   /** Absent means 'spelling', so every project file written before this still loads. */
   kind?: TestKind
+  /**
+   * Where in a student's recording each word was marked, in seconds.
+   *
+   * Times only. The recording itself is never written into the project: it
+   * would be megabytes, and the whole project is serialised into localStorage
+   * on a timer that fails silently when it runs out of room.
+   */
+  audioTimes?: Record<string, Record<string, number>>
+  /**
+   * Which file a student's times were made against, so a different one can be
+   * spotted rather than quietly trusted.
+   */
+  audioFiles?: Record<string, AudioMeta>
   /** Reading tests: the passage as the teacher pasted it. `words` is derived from it. */
   passage?: string
   /**
