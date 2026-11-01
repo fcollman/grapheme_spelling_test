@@ -140,6 +140,30 @@ Althought, tt counts blanks as not correct, it also tells you how many
 blanks there were, so an absent student's low score is not mistaken for a
 struggling one's.
 
+### Starting a student's column over
+
+If a whole paper goes in against the wrong name, you do not have to clear
+twenty-five cells one at a time. The **⌫** button in a student's column heading
+empties that student's answers on the test you are looking at.
+
+![The icons in each student's heading: move left, move right, clear this student's answers, remove the student](images/student-clear-buttons.webp)
+
+It asks first, and tells you whose column, which test, and how many spellings
+you are about to lose.
+
+![The confirmation: it names the student and the test, and says the clearing cannot be undone](images/student-clear-confirm.webp)
+
+Two things to note:
+
+- **It only touches the test on screen.** The student stays in your class and
+  keeps their work on every other test. That is the difference between ⌫ and the
+  ✕ beside it, which takes the student out of the class altogether.
+- **It cannot be undone.** A removed student can be put back with their work
+  intact, but cleared answers are not kept anywhere, so use **Save** first if
+  you are not certain.
+
+The button is greyed out when that student has nothing recorded on this test.
+
 ## Saving your work
 
 Your data saves automatically in the browser you opened the app in. That is

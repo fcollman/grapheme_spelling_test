@@ -32,6 +32,7 @@ export type Action =
   | { type: 'moveWord'; id: string; delta: number }
   | { type: 'moveWordTo'; id: string; index: number }
   | { type: 'setResponse'; wordId: string; studentId: string; value: string }
+  | { type: 'clearStudentResponses'; studentId: string }
   | { type: 'setOverride'; wordId: string; studentId: string; slot: number; value: SlotOverrideData | null }
   | { type: 'clearOverridesForWord'; wordId: string }
   | { type: 'setWordPhonemes'; wordId: string; phonemes: string[] | null }
@@ -57,6 +58,20 @@ function moveTo<T extends { id: string }>(list: T[], id: string, index: number):
   if (to === from) return list
   rest.splice(to, 0, list[from])
   return rest
+}
+
+/** Drops one student's entry from a `[wordId][studentId]` map, word by word. */
+function withoutStudent<T>(
+  byWord: Record<string, Record<string, T>>,
+  studentId: string,
+): Record<string, Record<string, T>> {
+  return Object.fromEntries(
+    Object.entries(byWord).map(([wordId, byStudent]) => {
+      if (!(studentId in byStudent)) return [wordId, byStudent]
+      const { [studentId]: _gone, ...rest } = byStudent
+      return [wordId, rest]
+    }),
+  )
 }
 
 function move<T extends { id: string }>(list: T[], id: string, delta: number): T[] {
@@ -217,6 +232,26 @@ export function reducer(project: Project, action: Action): Project {
             Object.entries(t.overrides[action.wordId] ?? {}).filter(([sid]) => sid !== action.studentId),
           ),
         },
+      }))
+
+    case 'clearStudentResponses':
+      /*
+       * Empties one student's column on the active test, leaving the rest of
+       * the class and every other test alone.
+       *
+       * A whole paper entered against the wrong name used to mean clearing
+       * twenty-five cells by hand. This is the roster-safe version of that: the
+       * student stays in the class and keeps their work on every other test,
+       * which is what separates it from removing them.
+       *
+       * Their per-cell corrections go with the answers. An override is a
+       * judgement about a specific spelling, so keeping one after its answer is
+       * gone would silently re-apply it to whatever gets typed next.
+       */
+      return withActiveTest(project, (t) => ({
+        ...t,
+        responses: withoutStudent(t.responses, action.studentId),
+        overrides: withoutStudent(t.overrides, action.studentId),
       }))
 
     case 'setOverride':
