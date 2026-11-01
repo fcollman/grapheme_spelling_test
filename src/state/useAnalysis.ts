@@ -4,7 +4,7 @@ import { analyzeWords, cleanWord } from '../engine/phonemize'
 import { findPatterns, type PatternMatch } from '../engine/patterns'
 import { buildUnits, type GraphemeUnit } from '../engine/units'
 import type { NormalizedWord } from '../engine/normalize'
-import { isReading, type Project, type Test } from './types'
+import { isReading, testKind, type Project, type Test } from './types'
 
 /** Everything the reports need about one test. */
 export interface TestAnalysis {
@@ -40,22 +40,15 @@ export function emptyTestAnalysis(): TestAnalysis {
 
 const INITIAL: AnalysisResult = { ...emptyTestAnalysis(), loading: true, error: null }
 
-const NOT_ANALYSED: AnalysisResult = { ...emptyTestAnalysis(), loading: false, error: null }
-
 /**
- * Whether this engine knows how to score this test yet.
+ * How this test is scored.
  *
- * A reading test records what a student said, not what they wrote, and the
- * aligner decides `exact` against `plausible` by comparing letters — so running
- * a passage through it would score every correctly-read sound as a near miss.
- * Numbers that look right and are not are worse than none, so until decoding
- * scoring lands, reading tests are left alone rather than mis-scored.
- *
- * Skipping them is also what keeps the cost sane: a passage is a few hundred
- * words against a spelling test's twenty.
+ * A reading test is a transcription of what the student said, so the letters in
+ * it are the teacher's shorthand rather than the student's choice. The aligner
+ * needs telling, or it grades a passage as though it were a spelling.
  */
-export function analysisApplies(test: Test): boolean {
-  return !isReading(test)
+function modeOf(test: Test): AlignOptions['mode'] {
+  return isReading(test) ? 'decoding' : 'encoding'
 }
 
 /**
@@ -69,7 +62,6 @@ export async function collectNorms(
 ): Promise<Map<string, NormalizedWord>> {
   const strings: string[] = []
   for (const test of tests) {
-    if (!analysisApplies(test)) continue
     for (const w of test.words) {
       strings.push(cleanWord(w.text))
       for (const s of project.students) {
@@ -91,6 +83,9 @@ export function analyzeTest(
   options: AlignOptions,
 ): TestAnalysis {
   const result = emptyTestAnalysis()
+  // The test itself decides the direction; a caller cannot score a passage as
+  // though it were a spelling by passing the wrong mode.
+  const opts: AlignOptions = { ...options, mode: modeOf(test) }
 
   /** A teacher-confirmed breakdown replaces whatever the engine produced. */
   const targetNorm = (wordId: string, text: string): NormalizedWord => {
@@ -103,7 +98,7 @@ export function analyzeTest(
   for (const w of test.words) {
     const text = cleanWord(w.text)
     const tNorm = targetNorm(w.id, text)
-    const target = analyze(text, '', tNorm, EMPTY, {}, options)
+    const target = analyze(text, '', tNorm, EMPTY, {}, opts)
     result.byWord.set(w.id, target)
 
     const patterns = findPatterns(
@@ -120,7 +115,7 @@ export function analyzeTest(
       const overrides = test.overrides[w.id]?.[s.id] ?? {}
       result.byCell.set(
         cellKey(w.id, s.id),
-        analyze(text, attempt, tNorm, norms.get(attempt) ?? EMPTY, overrides, options),
+        analyze(text, attempt, tNorm, norms.get(attempt) ?? EMPTY, overrides, opts),
       )
     }
   }
@@ -138,6 +133,8 @@ function testSignature(project: Project, test: Test) {
     wordPhonemes: test.wordPhonemes,
     students: project.students.map((s) => s.id),
     lenientSchwa: project.settings.lenientSchwa,
+    // Not automatic: a new Test field only invalidates the memo if it is listed.
+    kind: testKind(test),
   }
 }
 
@@ -147,22 +144,14 @@ function testSignature(project: Project, test: Test) {
  */
 export function useAnalysis(project: Project, test: Test): AnalysisResult {
   const [result, setResult] = useState<AnalysisResult>(INITIAL)
-  // Worked out before the signature, because stringifying a whole passage's
-  // responses on every render is exactly the cost this avoids.
-  const applies = analysisApplies(test)
-  const signature = applies ? JSON.stringify(testSignature(project, test)) : ''
+  const signature = JSON.stringify(testSignature(project, test))
 
   useEffect(() => {
-    if (!applies) setResult(NOT_ANALYSED)
-  }, [applies])
-
-  useEffect(() => {
-    if (!applies) return
     let cancelled = false
 
     async function run() {
       try {
-        const options = { lenientSchwa: project.settings.lenientSchwa }
+        const options = { lenientSchwa: project.settings.lenientSchwa, mode: modeOf(test) }
         const norms = await collectNorms(project, [test])
         if (cancelled) return
         setResult({ ...analyzeTest(project, test, norms, options), loading: false, error: null })
@@ -176,7 +165,7 @@ export function useAnalysis(project: Project, test: Test): AnalysisResult {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, applies])
+  }, [signature])
 
   return result
 }
@@ -199,8 +188,9 @@ const ALL_INITIAL: AllTestsAnalysis = { loading: true, error: null, byTest: new 
  */
 export function useAllTests(project: Project, enabled: boolean): AllTestsAnalysis {
   const [result, setResult] = useState<AllTestsAnalysis>(ALL_INITIAL)
-  const scorable = project.tests.filter(analysisApplies)
-  const signature = JSON.stringify(enabled ? scorable.map((t) => testSignature(project, t)) : null)
+  const signature = JSON.stringify(
+    enabled ? project.tests.map((t) => testSignature(project, t)) : null,
+  )
 
   useEffect(() => {
     if (!enabled) return
@@ -208,11 +198,14 @@ export function useAllTests(project: Project, enabled: boolean): AllTestsAnalysi
 
     async function run() {
       try {
-        const options = { lenientSchwa: project.settings.lenientSchwa }
-        const norms = await collectNorms(project, scorable)
+        const lenientSchwa = project.settings.lenientSchwa
+        const norms = await collectNorms(project, project.tests)
         if (cancelled) return
         const byTest = new Map<string, TestAnalysis>()
-        for (const t of scorable) byTest.set(t.id, analyzeTest(project, t, norms, options))
+        // Each test is scored in its own direction, so one mixed pass is fine.
+        for (const t of project.tests) {
+          byTest.set(t.id, analyzeTest(project, t, norms, { lenientSchwa, mode: modeOf(t) }))
+        }
         setResult({ loading: false, error: null, byTest })
       } catch (e) {
         if (!cancelled) setResult({ loading: false, error: String(e), byTest: new Map() })
