@@ -1,3 +1,4 @@
+import { useStore } from '../state/store'
 import type { Test } from '../state/types'
 
 /**
@@ -8,6 +9,9 @@ import type { Test } from '../state/types'
  * annual review, one test for a specific lesson, or everything for a full
  * picture. Toggling individual tests covers all of those, and the shortcuts
  * cover the common ones in a click.
+ *
+ * The choice made here is shared by every report tab, so the span a teacher
+ * picks once follows them around the app.
  */
 export function TestPicker({
   tests,
@@ -19,6 +23,7 @@ export function TestPicker({
   selected: Set<string>
   onChange: (next: Set<string>) => void
 }) {
+  const { project } = useStore()
   const set = (ids: string[]) => onChange(new Set(ids))
 
   const toggle = (id: string) => {
@@ -32,6 +37,17 @@ export function TestPicker({
   const firstN = (n: number) => set(tests.slice(0, n).map((t) => t.id))
 
   const allSelected = selected.size === tests.length && tests.length > 0
+
+  /*
+   * Back to following the toolbar in one click.
+   *
+   * Before the selection was shared, a report tab reset itself to whichever
+   * test was chosen in the toolbar. Now that a deliberate choice sticks, this
+   * is how you get that behaviour back rather than hunting for the test in the
+   * list below.
+   */
+  const active = tests.find((t) => t.id === project.activeTestId)
+  const onlyActive = active !== undefined && selected.size === 1 && selected.has(active.id)
 
   return (
     <div className="testpicker no-print">
@@ -60,6 +76,14 @@ export function TestPicker({
         </button>
         <button className="btn" disabled={tests.length === 0} onClick={() => lastN(1)}>
           Most recent
+        </button>
+        <button
+          className="btn"
+          disabled={active === undefined || onlyActive}
+          title={active ? `Just ${active.name}, the test chosen in the toolbar` : undefined}
+          onClick={() => active && set([active.id])}
+        >
+          Current test
         </button>
       </div>
 

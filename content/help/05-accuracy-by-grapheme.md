@@ -17,9 +17,13 @@ they cover is correct.
 ## It pools across whatever tests you choose
 
 The test picker at the top works exactly as it does on the student profile. Click
-chips to add or remove tests, or use **Select all**, **Last 3**, **First 3** and
-**Most recent**.  More tests will add more data and make differences more 
-statistically valid, but averaging over larger time periods can obscure growth.
+chips to add or remove tests, or use **Select all**, **Last 3**, **First 3**,
+**Most recent** and **Current test**.  More tests will add more data and make
+differences more statistically valid, but averaging over larger time periods can
+obscure growth.
+
+Whatever you choose here is what every other report tab shows too, so you can
+carry the same span of tests across the reports without setting it up again.
 
 ## Counting amber
 
