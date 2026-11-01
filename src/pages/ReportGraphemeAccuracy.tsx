@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
@@ -15,6 +15,8 @@ import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
+import { SortHeader } from '../components/SortHeader'
+import { nextSort, sortRows, type SortState } from '../reports/sorting'
 
 /**
  * Accuracy for the thing the teacher actually marks: the spelling unit. Rows are
@@ -28,6 +30,7 @@ export function ReportGraphemeAccuracy() {
   const fileName = useFileName()
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
+  const [sort, setSort] = useState<SortState | null>(null)
   const { notation } = project.settings
   const reports = useMemo(
     () => buildReportsAcross(project, scope.sources),
@@ -44,6 +47,30 @@ export function ReportGraphemeAccuracy() {
     return [...map.entries()]
   }, [reports.graphemes])
 
+  /*
+   * Sorted, the sheet is one flat list.
+   *
+   * The category headings exist to show a spelling next to the ones it is
+   * taught with, which is a statement about the teaching order. Keeping them
+   * while sorting by score would only sort within each category, and the
+   * question sorting is asked to answer — what is worst — would still be
+   * scattered down the page. So a sort breaks the groups and each row carries
+   * its own category dot instead.
+   */
+  const sorted = useMemo(
+    () =>
+      sortRows(
+        reports.graphemes,
+        sort,
+        (g, col) => getGraphemeTally(reports, g.key, col),
+        (g) => g.patternLabel ?? g.letters,
+      ),
+    [reports, sort],
+  )
+
+  /** What the CSV and the printout follow: whatever is on screen. */
+  const rowsInOrder = sort === null ? groups.flatMap(([, members]) => members) : sorted
+
   // Whole class first: the summary is what a teacher reads to decide what to
   // reteach, and putting it left of the students means it needs no scrolling.
   const columns = [
@@ -53,19 +80,17 @@ export function ReportGraphemeAccuracy() {
 
   const exportCsv = () => {
     const rows: string[][] = [['Category', 'Spelling', 'Sound(s)', ...columns.map((c) => c.name)]]
-    for (const [cat, members] of groups) {
-      for (const g of members) {
-        rows.push([
-          category(cat).label,
-          g.patternLabel ?? g.letters,
-          displayList(g.phonemes, notation),
-          ...columns.map((c) => {
-            const t = getGraphemeTally(reports, g.key, c.id)
-            const pct = percentOf(t.correct, t.total)
-            return pct ? `${t.correct}/${t.total} (${pct})` : `${t.correct}/${t.total}`
-          }),
-        ])
-      }
+    for (const g of rowsInOrder) {
+      rows.push([
+        category(g.category).label,
+        g.patternLabel ?? g.letters,
+        displayList(g.phonemes, notation),
+        ...columns.map((c) => {
+          const t = getGraphemeTally(reports, g.key, c.id)
+          const pct = percentOf(t.correct, t.total)
+          return pct ? `${t.correct}/${t.total} (${pct})` : `${t.correct}/${t.total}`
+        }),
+      ])
     }
     requestDownload({
       name: fileName('Accuracy by grapheme', [scope.scopeSlug], scope.scopeDate),
@@ -92,6 +117,58 @@ export function ReportGraphemeAccuracy() {
       </section>
     )
   }
+
+  /** @param withCategory sorting breaks the category headings, so the row carries its own. */
+  const graphemeRow = (g: GraphemeRow, withCategory: boolean) => (
+    <tr key={g.key}>
+      <th className="rowhead phoneme c1">
+        {withCategory && <CategoryDot id={g.category} />}
+        {g.patternLabel ?? g.letters}
+        {/* Only worth repeating the letters when the label differs from them. */}
+        {g.patternLabel && g.patternLabel.replace(/^-/, '') !== g.letters && (
+          <span className="keyword">{g.letters}</span>
+        )}
+      </th>
+      <td className="phoneme c2" style={{ color: 'var(--muted)' }}>
+        {displayList(g.phonemes, notation)}
+      </td>
+      {columns.map((c) => {
+        const t = getGraphemeTally(reports, g.key, c.id)
+        const frac = t.total === 0 ? null : t.correct / t.total
+        return (
+          <td
+            key={c.id}
+            className={`num drillable ${c.id === CLASS ? 'classcol' : ''} ${
+              sort?.columnId === c.id ? 'sortedcol' : ''
+            }`}
+            onClick={() =>
+              setDrill({
+                kind: 'grapheme',
+                key: g.key,
+                label: g.patternLabel ?? g.letters,
+                sounds: g.phonemes,
+                studentId: c.id,
+                sources: scope.sources,
+                scopeLabel: scope.scopeLabel,
+              })
+            }
+            style={{
+              background: frac === null ? 'var(--none-bg)' : scaleColor(frac),
+              color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
+              fontWeight: c.id === CLASS ? 700 : 500,
+            }}
+            title={
+              frac === null
+                ? 'Did not come up'
+                : `${Math.round(frac * 100)}% correct — click to see every example`
+            }
+          >
+            <Fraction correct={t.correct} total={t.total} />
+          </td>
+        )
+      })}
+    </tr>
+  )
 
   return (
     <section className="panel">
@@ -134,71 +211,33 @@ export function ReportGraphemeAccuracy() {
               <th className="c1">Spelling</th>
               <th className="c2">Sound(s)</th>
               {columns.map((c) => (
-                <th key={c.id} className={`num ${c.id === CLASS ? 'classcol' : ''}`}>
-                  {c.name}
-                </th>
+                <SortHeader
+                  key={c.id}
+                  columnId={c.id}
+                  label={c.name}
+                  sort={sort}
+                  onSort={(id) => setSort((prev) => nextSort(prev, id))}
+                  naturalOrder="the scope and sequence order"
+                  className={`num ${c.id === CLASS ? 'classcol' : ''}`}
+                />
               ))}
             </tr>
           </thead>
           <tbody>
-            {groups.map(([cat, members]) => (
-              <>
-                <tr key={`h-${cat}`} className="grouphead">
-                  <th className="c1 grouplabel" colSpan={2 + columns.length}>
-                    <CategoryDot id={cat} />
-                    {category(cat).label}
-                    <span className="keyword">{members.length} in this test</span>
-                  </th>
-                </tr>
-                {members.map((g) => (
-                  <tr key={g.key}>
-                    <th className="rowhead phoneme c1">
-                      {g.patternLabel ?? g.letters}
-                      {/* Only worth repeating the letters when the label differs from them. */}
-                      {g.patternLabel && g.patternLabel.replace(/^-/, '') !== g.letters && (
-                        <span className="keyword">{g.letters}</span>
-                      )}
-                    </th>
-                    <td className="phoneme c2" style={{ color: 'var(--muted)' }}>
-                      {displayList(g.phonemes, notation)}
-                    </td>
-                    {columns.map((c) => {
-                      const t = getGraphemeTally(reports, g.key, c.id)
-                      const frac = t.total === 0 ? null : t.correct / t.total
-                      return (
-                        <td
-                          key={c.id}
-                          className={`num drillable ${c.id === CLASS ? 'classcol' : ''}`}
-                          onClick={() =>
-                            setDrill({
-                              kind: 'grapheme',
-                              key: g.key,
-                              label: g.patternLabel ?? g.letters,
-                              sounds: g.phonemes,
-                              studentId: c.id,
-                              sources: scope.sources,
-                              scopeLabel: scope.scopeLabel,
-                            })
-                          }
-                          style={{
-                            background: frac === null ? 'var(--none-bg)' : scaleColor(frac),
-                            color: frac === null ? 'var(--none-ink)' : scaleInk(frac),
-                            fontWeight: c.id === CLASS ? 700 : 500,
-                          }}
-                          title={
-                            frac === null
-                              ? 'Did not come up'
-                              : `${Math.round(frac * 100)}% correct — click to see every example`
-                          }
-                        >
-                          <Fraction correct={t.correct} total={t.total} />
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </>
-            ))}
+            {sort === null
+              ? groups.map(([cat, members]) => (
+                  <Fragment key={cat}>
+                    <tr className="grouphead">
+                      <th className="c1 grouplabel" colSpan={2 + columns.length}>
+                        <CategoryDot id={cat} />
+                        {category(cat).label}
+                        <span className="keyword">{members.length} in this test</span>
+                      </th>
+                    </tr>
+                    {members.map((g) => graphemeRow(g, false))}
+                  </Fragment>
+                ))
+              : sorted.map((g) => graphemeRow(g, true))}
           </tbody>
         </table>
       </div>
