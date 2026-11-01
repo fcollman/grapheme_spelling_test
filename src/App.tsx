@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from './state/store'
 import { useAnalysis } from './state/useAnalysis'
 import { readProjectFile } from './state/persist'
+import { isReading } from './state/types'
 import { DownloadProvider } from './components/DownloadProvider'
 import { ProjectFileProvider, useProjectFile } from './state/ProjectFileProvider'
 import { SelectedTestsProvider } from './state/useSelectedTests'
@@ -9,6 +10,7 @@ import { demoProject, DEMO_STUDENT_COUNT } from './state/demo'
 import { emptyProject } from './state/types'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { EntryGrid } from './pages/EntryGrid'
+import { ReadingEntry } from './pages/ReadingEntry'
 import { GraphemeAnalysis } from './pages/GraphemeAnalysis'
 import { StudentProfile } from './pages/StudentProfile'
 import { ReportProgress } from './pages/ReportProgress'
@@ -23,6 +25,7 @@ import './ui/styles.css'
 /** Marking first, then the spelling-level reports, then the sound-level ones. */
 const TABS = [
   { id: 'entry', label: 'Spelling test', group: 'Enter' },
+  { id: 'reading', label: 'Reading passage', group: 'Enter' },
   { id: 'analysis', label: 'Grapheme analysis', group: 'Enter' },
   { id: 'profile', label: 'Student profile', group: 'Per student' },
   { id: 'progress', label: 'Progress over time', group: 'Per student' },
@@ -53,6 +56,29 @@ function Workspace() {
   const file = useProjectFile()
   const analysis = useAnalysis(project, test)
   const [tab, setTab] = useState<TabId>('entry')
+
+  /*
+   * Both entry tabs mean "the page for marking the test you have selected", and
+   * only one of them can apply, so showing both would be a lie. The strip stays
+   * the same length either way.
+   */
+  const reading = isReading(test)
+  const visibleTabs = TABS.filter((t) =>
+    t.id === 'entry' ? !reading : t.id === 'reading' ? reading : true,
+  )
+
+  /*
+   * Follow the test, not the tab. Choosing a reading test while the spelling
+   * grid is open would otherwise leave the teacher on a page that has just
+   * vanished from the strip. Keyed on the test id alone so it never fights a
+   * deliberate click, and it leaves a report tab alone.
+   */
+  useEffect(() => {
+    setTab((current) =>
+      current === 'entry' && reading ? 'reading' : current === 'reading' && !reading ? 'entry' : current,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test.id])
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState<'demo' | 'clear' | 'deleteTest' | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -154,7 +180,10 @@ function Workspace() {
             ))}
           </select>
           <button className="btn" onClick={() => dispatch({ type: 'addTest' })}>
-            New test
+            New spelling test
+          </button>
+          <button className="btn" onClick={() => dispatch({ type: 'addTest', kind: 'reading' })}>
+            New reading test
           </button>
           {/*
             Mostly used for a test created by one click too many, or one started
@@ -267,9 +296,11 @@ function Workspace() {
       )}
 
       <nav className="tabs no-print">
-        {TABS.map((t, i) => (
+        {visibleTabs.map((t, i) => (
           <span key={t.id} style={{ display: 'contents' }}>
-            {i > 0 && TABS[i - 1].group !== t.group && <span className="tabgroup">{t.group}</span>}
+            {i > 0 && visibleTabs[i - 1].group !== t.group && (
+              <span className="tabgroup">{t.group}</span>
+            )}
             <button aria-current={tab === t.id} onClick={() => setTab(t.id)}>
               {t.label}
             </button>
@@ -342,6 +373,7 @@ function Workspace() {
 
       {tab === 'help' && <Help />}
       {tab === 'entry' && <EntryGrid />}
+      {tab === 'reading' && <ReadingEntry />}
       {tab === 'analysis' && <GraphemeAnalysis analysis={analysis} />}
       {/* Both of these span every test, so they analyse lazily on open. */}
       {tab === 'profile' && <StudentProfile />}

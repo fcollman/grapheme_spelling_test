@@ -2,14 +2,18 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 import {
   DEFAULT_SETTINGS,
   emptyProject,
+  emptyReadingTest,
   emptyTest,
   newId,
+  testKind,
   type Project,
   type Settings,
   type SlotOverrideData,
   type Student,
   type Test,
+  type TestKind,
 } from './types'
+import { reconcileWords, tokenizePassage } from './passage'
 import { load, save } from './persist'
 
 export type Action =
@@ -20,7 +24,7 @@ export type Action =
   | { type: 'removeStudent'; id: string }
   | { type: 'restoreStudents'; ids: string[] }
   | { type: 'moveStudent'; id: string; delta: number }
-  | { type: 'addTest' }
+  | { type: 'addTest'; kind?: TestKind }
   | { type: 'selectTest'; id: string }
   | { type: 'renameTest'; id: string; name: string }
   | { type: 'setTestDate'; id: string; date: string }
@@ -32,6 +36,8 @@ export type Action =
   | { type: 'moveWord'; id: string; delta: number }
   | { type: 'moveWordTo'; id: string; index: number }
   | { type: 'setResponse'; wordId: string; studentId: string; value: string }
+  | { type: 'setPassage'; text: string }
+  | { type: 'setOmitted'; wordId: string; studentId: string; omitted: boolean }
   | { type: 'clearStudentResponses'; studentId: string }
   | { type: 'setOverride'; wordId: string; studentId: string; slot: number; value: SlotOverrideData | null }
   | { type: 'clearOverridesForWord'; wordId: string }
@@ -58,6 +64,23 @@ function moveTo<T extends { id: string }>(list: T[], id: string, index: number):
   if (to === from) return list
   rest.splice(to, 0, list[from])
   return rest
+}
+
+/** Drops whole words from a `[wordId]` map, for words the passage no longer has. */
+function withoutWords<T>(byWord: Record<string, T>, drop: Set<string>): Record<string, T> {
+  if (drop.size === 0) return byWord
+  return Object.fromEntries(Object.entries(byWord).filter(([wordId]) => !drop.has(wordId)))
+}
+
+/** Empties one cell of a `[wordId][studentId]` map. */
+function withoutCell<T>(
+  byWord: Record<string, Record<string, T>>,
+  wordId: string,
+  studentId: string,
+): Record<string, Record<string, T>> {
+  if (byWord[wordId]?.[studentId] === undefined) return byWord
+  const { [studentId]: _gone, ...rest } = byWord[wordId]
+  return { ...byWord, [wordId]: rest }
 }
 
 /** Drops one student's entry from a `[wordId][studentId]` map, word by word. */
@@ -133,7 +156,12 @@ export function reducer(project: Project, action: Action): Project {
       return { ...project, students: move(project.students, action.id, action.delta) }
 
     case 'addTest': {
-      const test = emptyTest(`Spelling Test ${project.tests.length + 1}`)
+      // Numbered within their own kind, so a class with both does not read
+      // "Spelling Test 1, Reading Test 2".
+      const kind = action.kind ?? 'spelling'
+      const nth = project.tests.filter((t) => testKind(t) === kind).length + 1
+      const test =
+        kind === 'reading' ? emptyReadingTest(`Reading Test ${nth}`) : emptyTest(`Spelling Test ${nth}`)
       return { ...project, tests: [...project.tests, test], activeTestId: test.id }
     }
     case 'selectTest':
@@ -218,9 +246,68 @@ export function reducer(project: Project, action: Action): Project {
       return withActiveTest(project, (t) => ({ ...t, words }))
     }
 
+    case 'setPassage': {
+      /*
+       * The passage owns the word list, so editing it re-tokenises.
+       *
+       * What makes this safe to do more than once is that `reconcileWords` keeps
+       * the ids of words the edit did not touch. Everything it reports as
+       * changed or dropped loses what was recorded against it: a word that left
+       * the passage is unreachable, and a slot that now says something else must
+       * not keep a mark that was made about the word it used to say.
+       */
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active || (active.passage ?? '') === action.text) return project
+
+      const { words, changedIds, droppedIds } = reconcileWords(
+        active.words,
+        tokenizePassage(action.text),
+      )
+      const stale = new Set([...changedIds, ...droppedIds])
+
+      return withActiveTest(project, (t) => ({
+        ...t,
+        passage: action.text,
+        words,
+        responses: withoutWords(t.responses, stale),
+        overrides: withoutWords(t.overrides, stale),
+        wordPhonemes: withoutWords(t.wordPhonemes, stale),
+        omissions: t.omissions ? withoutWords(t.omissions, stale) : t.omissions,
+      }))
+    }
+
+    case 'setOmitted': {
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      const already = active?.omissions?.[action.wordId]?.[action.studentId] === true
+      if (!active || already === action.omitted) return project
+
+      return withActiveTest(project, (t) => {
+        const forWord = { ...(t.omissions?.[action.wordId] ?? {}) }
+        if (action.omitted) forWord[action.studentId] = true
+        else delete forWord[action.studentId]
+
+        return {
+          ...t,
+          omissions: { ...(t.omissions ?? {}), [action.wordId]: forWord },
+          // Saying nothing and saying something are mutually exclusive, so
+          // marking a word skipped clears whatever was typed for it.
+          responses: action.omitted
+            ? withoutCell(t.responses, action.wordId, action.studentId)
+            : t.responses,
+          overrides: action.omitted
+            ? withoutCell(t.overrides, action.wordId, action.studentId)
+            : t.overrides,
+        }
+      })
+    }
+
     case 'setResponse':
       return withActiveTest(project, (t) => ({
         ...t,
+        // Typing what a student said means they did not skip it after all.
+        omissions: t.omissions
+          ? withoutCell(t.omissions, action.wordId, action.studentId)
+          : t.omissions,
         responses: {
           ...t.responses,
           [action.wordId]: { ...(t.responses[action.wordId] ?? {}), [action.studentId]: action.value },

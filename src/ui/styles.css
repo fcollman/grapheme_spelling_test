@@ -821,6 +821,109 @@ th.focused {
   font-size: 15px;
 }
 
+/* ---------- reading passage ---------- */
+
+.passage-box {
+  width: 100%;
+  min-height: 180px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/*
+ * The passage reads as prose, not as a grid. `pre-wrap` is what keeps the
+ * paragraph breaks the teacher pasted, and the generous line height is for the
+ * respellings that sit under the words.
+ */
+.passage {
+  white-space: pre-wrap;
+  line-height: 2.6;
+  font-size: 15px;
+  padding: 4px 2px;
+}
+
+.pw {
+  position: relative;
+  white-space: nowrap;
+  border-radius: 4px;
+  padding: 1px 2px;
+}
+
+.pw-word {
+  /* Always visible: the teacher is reading along with the recording, so the
+     word must not disappear behind what they type about it. */
+  color: inherit;
+}
+
+/*
+ * The box is collapsed, not hidden, until it is needed.
+ *
+ * `display: none` would take it out of the tab order and out of reach of
+ * focus(), which is the entire keyboard model. Collapsing to nothing keeps the
+ * passage reading as prose while leaving every word one Tab away.
+ *
+ * Width comes through a custom property rather than an inline width, so the CSS
+ * can decide when to show it; an inline width would always win.
+ */
+input.pw-input {
+  border: none;
+  background: none;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  color: var(--wrong-ink);
+  font-weight: 600;
+}
+
+input.pw-input:focus,
+.pw.said input.pw-input {
+  width: var(--pw-width);
+  min-width: 2ch;
+  opacity: 1;
+  margin-left: 4px;
+}
+
+input.pw-input:focus {
+  outline: none;
+  border-bottom: 1px solid var(--accent);
+  color: var(--ink);
+}
+
+.pw:focus-within {
+  background: var(--accent-soft);
+}
+
+.pw.read .pw-word {
+  color: var(--exact-ink);
+}
+
+.pw.said .pw-word {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.pw.skipped .pw-word {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.pw-skip {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--wrong-ink);
+  font-weight: 700;
+  padding: 0 3px;
+}
+
 /* ---------- sortable column headings ---------- */
 
 /*

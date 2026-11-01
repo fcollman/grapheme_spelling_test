@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useStore } from './store'
-import { useAllTests } from './useAnalysis'
+import { analysisApplies, useAllTests } from './useAnalysis'
 import { testsInOrder, type ReportSource } from '../reports/aggregate'
 import type { Test } from './types'
 
@@ -75,7 +75,9 @@ export interface SelectedTests {
 export function useSelectedTests(defaultTo: 'active' | 'all'): SelectedTests {
   const { project } = useStore()
   const shared = useContext(SharedSelection)
-  const tests = useMemo(() => testsInOrder(project), [project])
+  // Only tests the reports can actually score. Offering a reading test here
+  // would put a chip in the picker that changes nothing when ticked.
+  const tests = useMemo(() => testsInOrder(project).filter(analysisApplies), [project])
   const all = useAllTests(project, true)
 
   // Recomputed rather than stored, so a page still on its default keeps step

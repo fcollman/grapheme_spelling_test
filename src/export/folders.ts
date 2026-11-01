@@ -16,6 +16,7 @@
 /** One folder per kind of export, matching the ten places that export a CSV. */
 export const REPORT_FOLDERS = [
   'Spelling test',
+  'Reading passage',
   'Grapheme analysis',
   'Student profile',
   'Progress over time',
