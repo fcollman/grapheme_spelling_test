@@ -27,6 +27,9 @@ that is quietly costing them marks across every test.
 
 ## The usual controls
 
+- **Hide rows and columns with no confusions** leaves only the sounds that were
+  actually swapped. Untick it to see every sound with a row and a column of its
+  own, which is the view where the correct answers run down the green diagonal.
 - The **test picker** at the top pools the count across any tests you select. 
 - **Click any number** to open the examples behind it.
 - **Download CSV** and **Print / Save PDF** work as they do everywhere else.
