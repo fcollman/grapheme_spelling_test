@@ -47,6 +47,11 @@ This means the results are **fast**, **100% deterministic** and **local**.
   another computer.
 - Printouts and CSV exports are generated in the browser and go straight to your
   own machine.
+- **Recordings attached to a reading test are never uploaded and never stored.**
+  The page plays the file from your own disk and keeps only the times you marked
+  — a few numbers per word. The recording itself is not written into your
+  project file, and no speech recognition is used: the kind built into browsers
+  sends the audio away, which is exactly what this page does not do.
 
 ### If you save into a Drive or OneDrive folder
 

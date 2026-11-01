@@ -924,6 +924,31 @@ input.pw-input:focus {
   padding: 0 3px;
 }
 
+.audiobar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--panel-sunk, #f7f8fb);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.audiostatus {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Anything other than "playing the file you expected" has to be noticed. */
+.audiostatus.warn {
+  color: var(--wrong-ink);
+  font-weight: 600;
+}
+
 /* ---------- sortable column headings ---------- */
 
 /*

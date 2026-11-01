@@ -30,6 +30,57 @@ Two things are worth knowing about how the text is broken into words:
 - **Hyphenated words count as two.** `well-known` is marked as `well` and
   `known`, because that is how it is read.
 
+## Play the recording while you mark
+
+If you recorded the student, attach the recording and work from it without
+leaving the keyboard. **Attach recording** takes `.mp3`, `.m4a`, `.wav` and the
+`.mov` files phones produce.
+
+![The transport bar above a passage being marked: change recording, play, back five seconds, speed, and the elapsed time](images/reading-audio.webp)
+
+**Speed** is the control that earns its place — most people mark comfortably at
+0.75×. **↺ 5s** jumps back five seconds.
+
+### It remembers where you were in the recording
+
+Each time you press <kbd>Tab</kbd>, the app notes where you are in the audio. So
+when you press <kbd>Shift</kbd>+<kbd>Tab</kbd> to go back a word, **the
+recording goes back with you** and plays that word again. Step back three words
+and it rewinds three words. You can listen to something twice without hunting
+for it on a scrubber.
+
+It starts playing slightly before the word, because you always tap a moment
+after a word begins.
+
+### The recording stays on your computer
+
+The app notes *where your file is*, not the file itself. Your project `.json`
+holds the times — a few numbers per word — and nothing else; a recording would
+be megabytes and would break the automatic save.
+
+That has one consequence worth knowing: **the recording is not carried inside
+your project file.** Open the file on another computer and the marks are all
+there, but you will be asked for the recording again. In Chrome and Edge the app
+remembers which file it was and reconnecting is one click.
+
+If you attach a *different* file from the one the times were made against, it
+says so rather than quietly seeking to the wrong places.
+
+### Why it cannot listen for you
+
+It would be better if the app could hear the recording and mark it itself. It
+cannot, for two reasons that are not going to change soon:
+
+- The smallest speech model worth using is about twice the size of this entire
+  application, which is one file you can email to someone.
+- The speech recognition built into browsers **sends the audio to a company's
+  servers**. That would break the promise on the About page that nothing you put
+  into this page ever leaves your computer — and a recording of a child reading
+  is the last thing that should.
+
+So the app plays, remembers your place, and keeps out of the way. You do the
+listening.
+
 ## Mark it while you listen
 
 Pick the student you are listening to, then work through the passage from the
