@@ -1591,3 +1591,180 @@ ul.errorlist em {
     max-width: none;
   }
 }
+
+/* ------------------------------------------------------- download name ---- */
+
+/*
+ * The extension sits outside the input so it cannot be deleted by accident —
+ * a .csv saved as "Block 2A - Test 5" opens in the wrong thing.
+ */
+.filename-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.filename-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.filename-ext {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------- word list dragging ---- */
+
+/*
+ * The arrows move a word one row at a time. Dragging is for the word that was
+ * left out and belongs eight rows up; the arrows stay for the keyboard and for
+ * touchscreens, where HTML drag and drop does not fire.
+ */
+.grip {
+  cursor: grab;
+  user-select: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 2px;
+  border-radius: 4px;
+}
+
+.grip:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+.entry-grid tr.dragging {
+  opacity: 0.4;
+}
+
+/*
+ * The line showing where the word would land. Drawn with box-shadow rather than
+ * a border so the row does not change height and shove the rest of the grid
+ * down as the pointer moves.
+ */
+.entry-grid tr.drop-above > *,
+.entry-grid tr.drop-below > * {
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+.entry-grid tr.drop-below > * {
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+/* A locked list still reads as a list, just not as something to type into. */
+.entry-grid tbody th.rowhead input[readonly] {
+  border-color: transparent;
+  background: none;
+  font-weight: 600;
+  cursor: default;
+}
+
+/* Focusable, because it is now the only way to reorder from a keyboard. */
+.grip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/*
+ * No dialog ever reaches paper. A modal is on screen to be acted on, never to be
+ * printed, and one left open would otherwise cover the page it is sitting over —
+ * which is exactly how the name dialog once ended up being the PDF.
+ */
+@media print {
+  .backdrop {
+    display: none !important;
+  }
+}
+
+/* Where an export is about to go, shown in the naming dialog. */
+.destination {
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+.linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Confirmation that a report reached the folder, rather than leaving the
+   teacher to go and look. */
+.savenote {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 560px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 22%);
+  cursor: pointer;
+}
+
+/* Whether the file on disk matches what is on screen. The app used to give no
+   signal at all, which was half of "I have to get into a better rhythm". */
+.filechip {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filechip.ok {
+  background: var(--exact-bg);
+  border-color: var(--exact-line);
+  color: var(--exact-ink);
+}
+
+.filechip.warn {
+  background: var(--plausible-bg);
+  border-color: var(--plausible-line);
+  color: hsl(38 70% 28%);
+}
+
+.filechip.error {
+  background: var(--wrong-bg);
+  border-color: var(--wrong-line);
+  color: var(--wrong-ink);
+}
+
+/*
+ * The word that was dictated, offered in the cell the cursor is in.
+ *
+ * Deliberately readable rather than faint: a teacher is meant to check it
+ * against the paper in front of her before pressing Enter, so it has to be easy
+ * to read — while still looking clearly unlike an answer that has been entered.
+ */
+.entry-cell input::placeholder {
+  color: var(--accent);
+  opacity: 0.55;
+  font-style: italic;
+}

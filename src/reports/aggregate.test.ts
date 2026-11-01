@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_SETTINGS } from '../state/types'
 import { analyzeMany, analyzePair } from '../engine/analyze'
 import { findPatterns } from '../engine/patterns'
 import { buildUnits } from '../engine/units'
@@ -36,7 +37,7 @@ async function build(overrides: Partial<Project['settings']> = {}) {
     students,
     tests: [test],
     activeTestId: 't',
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false, ...overrides },
+    settings: { ...DEFAULT_SETTINGS, ...overrides },
   }
 
   const pairs = words.flatMap((w) => students.map((s) => ({ word: w.text, attempt: responses[w.id][s.id] })))

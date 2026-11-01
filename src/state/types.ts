@@ -51,10 +51,28 @@ export interface Settings {
    * showing them the rest of the class by name. Display only.
    */
   anonymize: boolean
+  /**
+   * Stops the word list being edited while spellings are being typed in.
+   *
+   * Entering a test means a lot of tabbing and clicking around a grid whose row
+   * headers carry a text box, two arrows and a delete button. Locking puts those
+   * out of reach so a stray click cannot reorder or delete a word, and leaves
+   * the answer cells alone.
+   */
+  lockWords: boolean
 }
 
 export interface Project {
   version: 1
+  /**
+   * What the teacher calls this group — "Block 2A", "Period 4", "Reading group".
+   *
+   * One project file is one class, so this is the label that makes a downloaded
+   * report mean something in a Downloads folder full of them. It goes into every
+   * exported file name and onto every printout. Optional, so project files
+   * written before it existed still load.
+   */
+  className?: string
   students: Student[]
   /**
    * Students taken off the roster whose spellings are still sitting in a test.
@@ -75,6 +93,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lenientSchwa: true,
   amberCountsCorrect: false,
   anonymize: false,
+  lockWords: false,
 }
 
 /** crypto.randomUUID needs a secure context; file:// qualifies in Chrome but not everywhere. */

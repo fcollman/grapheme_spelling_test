@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_SETTINGS } from '../state/types'
 import { analyzeTest, collectNorms, type TestAnalysis } from '../state/useAnalysis'
 import {
   buildReportsAcross,
@@ -45,7 +46,7 @@ const project: Project = {
   students,
   tests: [test],
   activeTestId: 't1',
-  settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false },
+  settings: { ...DEFAULT_SETTINGS },
 }
 
 async function setup() {

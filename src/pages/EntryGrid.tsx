@@ -2,8 +2,9 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { cleanWord } from '../engine/phonemize'
-import { download, exportName } from '../state/persist'
 import { toCsv } from '../export/csv'
+import { useDownloads } from '../components/DownloadProvider'
+import { useFileName } from '../state/filename'
 import { exampleProject } from '../state/example'
 import { Fraction, percentOf } from '../components/Fraction'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -16,6 +17,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 export function EntryGrid() {
   const { project, test, dispatch } = useStore()
   const names = useStudentNames()
+  const { requestDownload } = useDownloads()
+  const fileName = useFileName()
   const [wordDraft, setWordDraft] = useState('')
   const [studentDraft, setStudentDraft] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{
@@ -24,6 +27,14 @@ export function EntryGrid() {
     name: string
     count: number
   } | null>(null)
+  /**
+   * With the word list locked, the row headers are read-only: no drag handle, no
+   * arrows, no delete, no renaming and no nonsense tick. Only the answer cells
+   * stay live, which is what you want once the list is settled and you are
+   * working down a pile of papers.
+   */
+  const locked = project.settings.lockWords
+
   /** Which archived students are ticked in the "add from an earlier test" dialog; null = closed. */
   const [restoring, setRestoring] = useState<Set<string> | null>(null)
 
@@ -35,6 +46,22 @@ export function EntryGrid() {
    */
   const inputs = useRef(new Map<string, HTMLInputElement | null>())
   const cellId = (wordIndex: number, studentIndex: number) => `${wordIndex}:${studentIndex}`
+
+  /**
+   * The cell the cursor is in, so only that one offers its suggestion.
+   *
+   * Most spellings on most tests are correct, and typing out a word the app
+   * already knows is pure transcription. So an empty cell shows the word that
+   * was dictated, and Enter takes it — an all-correct paper becomes a column of
+   * Enter presses.
+   *
+   * Deliberately shown rather than stored. Writing the word in on arrival would
+   * mean that merely passing through a cell marked it correct, which is exactly
+   * what happens on the way past an absent student, and the teacher would have
+   * no way to tell a real answer from one the app put there. Nothing reaches the
+   * data until Enter.
+   */
+  const [cursor, setCursor] = useState<string | null>(null)
 
   const focusCell = (wordIndex: number, studentIndex: number): boolean => {
     const el = inputs.current.get(cellId(wordIndex, studentIndex))
@@ -61,12 +88,28 @@ export function EntryGrid() {
     focusCell(nextWord, nextStudent)
   }
 
-  const onCellKeyDown = (e: KeyboardEvent<HTMLInputElement>, wordIndex: number, studentIndex: number) => {
-    if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      const up = e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)
-      moveBy(wordIndex, studentIndex, up ? -1 : 1)
+  const onCellKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    wordIndex: number,
+    studentIndex: number,
+    word: { id: string; text: string },
+    studentId: string,
+  ) => {
+    if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+
+    /*
+     * Enter accepts the suggestion; the arrow keys do not. That is the whole
+     * rule, and it is what lets a teacher move through a column without
+     * filling anything in — past a student who was away, or a word that was
+     * skipped — rather than having to undo what the app assumed.
+     */
+    if (e.key === 'Enter' && e.currentTarget.value === '') {
+      dispatch({ type: 'setResponse', wordId: word.id, studentId, value: word.text })
     }
+
+    const up = e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)
+    moveBy(wordIndex, studentIndex, up ? -1 : 1)
   }
 
   const addWords = () => {
@@ -129,6 +172,64 @@ export function EntryGrid() {
   }
 
   /**
+   * Dragging a word to a new place in the list.
+   *
+   * The arrows move a word one row at a time, which is fine for a slip and
+   * tedious for a word that was left out and belongs eight rows up. Dragging
+   * handles that case; the arrows stay because they work from the keyboard and
+   * on a touchscreen, where HTML drag and drop does not.
+   *
+   * `dragging` is the word being moved, `dropAt` the index it would land at,
+   * counting gaps between rows — so 0 is above the first word and words.length
+   * is below the last.
+   */
+  /*
+   * Held in refs as well as state. A drag is a burst of events that can arrive
+   * faster than React commits, and dragover has to know what is being dragged
+   * the moment it fires — `dataTransfer.getData` is deliberately unreadable
+   * during a drag, so the refs are the only synchronous answer. The state
+   * copies exist purely to redraw the row and the drop line.
+   */
+  const draggingRef = useRef<string | null>(null)
+  const dropAtRef = useRef<number | null>(null)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dropAt, setDropAt] = useState<number | null>(null)
+
+  const startDrag = (id: string) => {
+    draggingRef.current = id
+    setDragging(id)
+  }
+
+  const onRowDragOver = (e: React.DragEvent, index: number) => {
+    if (draggingRef.current === null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    // Above or below the row's midpoint decides which gap the word lands in.
+    const box = e.currentTarget.getBoundingClientRect()
+    const at = e.clientY < box.top + box.height / 2 ? index : index + 1
+    dropAtRef.current = at
+    setDropAt(at)
+  }
+
+  const endDrag = () => {
+    const id = draggingRef.current
+    const at = dropAtRef.current
+    if (id !== null && at !== null) dispatch({ type: 'moveWordTo', id, index: at })
+    draggingRef.current = null
+    dropAtRef.current = null
+    setDragging(null)
+    setDropAt(null)
+  }
+
+  /** Which edge of this row to draw the drop line on, if any. */
+  const dropEdge = (index: number): string => {
+    if (dropAt === null || dragging === null) return ''
+    if (dropAt === index) return ' drop-above'
+    if (dropAt === index + 1 && index === test.words.length - 1) return ' drop-below'
+    return ''
+  }
+
+  /**
    * Students who are no longer on the roster but still have spellings in a test.
    *
    * The roster is project-wide, so a new test already starts with everyone on
@@ -182,7 +283,13 @@ export function EntryGrid() {
         return pct ? `${correct}/${total} (${pct})` : `${correct}/${total}`
       }),
     ])
-    download(exportName(test.name, 'responses'), toCsv(rows), 'text/csv')
+    requestDownload({
+      name: fileName('Spelling test', [test.name], test.date),
+      extension: 'csv',
+      mime: 'text/csv',
+      build: () => toCsv(rows),
+      folder: 'Spelling test',
+    })
   }
 
   return (
@@ -279,20 +386,46 @@ export function EntryGrid() {
         Working from one student's paper: press <kbd>Enter</kbd> to drop to the next word down the
         column, and again at the bottom to jump to the top of the next student. <kbd>Shift</kbd>+
         <kbd>Enter</kbd> goes back up, and <kbd>Tab</kbd> moves across the row.
+        <br />
+        An empty cell shows the word that was dictated. <strong>If the student spelled it right,
+        just press <kbd>Enter</kbd></strong> — so an all-correct paper is a run of
+        <kbd>Enter</kbd> presses. If they did not, type what they actually wrote. The arrow keys
+        move without filling anything in, for a word that was skipped or a student who was away.
       </p>
 
       <div className="group no-print" style={{ marginBottom: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          placeholder="Add words (comma or newline separated)"
-          value={wordDraft}
-          style={{ minWidth: 280 }}
-          onChange={(e) => setWordDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addWords()}
-        />
-        <button className="btn primary" onClick={addWords}>
-          Add words
-        </button>
+        {!locked && (
+          <>
+            <input
+              type="text"
+              placeholder="Add words (comma or newline separated)"
+              value={wordDraft}
+              style={{ minWidth: 280 }}
+              onChange={(e) => setWordDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addWords()}
+            />
+            <button className="btn primary" onClick={addWords}>
+              Add words
+            </button>
+          </>
+        )}
+        {/*
+          Offered only once there is a list to protect. On an empty test it would
+          be a button that locks nothing.
+        */}
+        {test.words.length > 0 && (
+          <button
+            className={`btn ${locked ? 'primary' : ''}`}
+            title={
+              locked
+                ? 'Unlock the word list to add, rename, reorder or delete words'
+                : 'Lock the word list so typing in spellings cannot disturb it'
+            }
+            onClick={() => dispatch({ type: 'updateSettings', settings: { lockWords: !locked } })}
+          >
+            {locked ? '🔒 Word list locked' : '🔓 Lock word list'}
+          </button>
+        )}
 
         <input
           type="text"
@@ -334,23 +467,21 @@ export function EntryGrid() {
         </button>
       </div>
 
-      {test.words.length === 0 || project.students.length === 0 ? (
+      {/*
+        The grid appears as soon as there is anything to put in it, even half a
+        test. Hiding it until both words and students exist made the words a
+        teacher had just typed disappear, which reads as the app being broken
+        rather than as a prompt to carry on.
+      */}
+      {test.words.length === 0 && project.students.length === 0 ? (
         <div className="empty">
-          {test.words.length === 0 && project.students.length === 0 ? (
-            <>
-              <p style={{ marginTop: 0 }}>Add some words and students to get started.</p>
-              <button
-                className="btn"
-                onClick={() => dispatch({ type: 'replaceProject', project: exampleProject() })}
-              >
-                Or load an example test to look around
-              </button>
-            </>
-          ) : test.words.length === 0 ? (
-            'Add the words from the test.'
-          ) : (
-            'Add the students who took the test.'
-          )}
+          <p style={{ marginTop: 0 }}>Add some words and students to get started.</p>
+          <button
+            className="btn"
+            onClick={() => dispatch({ type: 'replaceProject', project: exampleProject() })}
+          >
+            Or load an example test to look around
+          </button>
         </div>
       ) : (
         <div className="scroll">
@@ -403,45 +534,75 @@ export function EntryGrid() {
             </thead>
             <tbody>
               {test.words.map((w, wordIndex) => (
-                <tr key={w.id}>
+                <tr
+                  key={w.id}
+                  className={`${dragging === w.id ? 'dragging' : ''}${dropEdge(wordIndex)}`}
+                  onDragOver={(e) => onRowDragOver(e, wordIndex)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    endDrag()
+                  }}
+                >
                   <th className="rowhead c1">
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      {!locked && (
+                        <span
+                          className="grip no-print"
+                          draggable
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Move ${w.text}. Drag, or use the up and down arrow keys.`}
+                          title="Drag to move this word, or focus it and use ↑ ↓"
+                          /*
+                           * The ▲▼ buttons this replaces were also how the list
+                           * was reordered from a keyboard, so the handle answers
+                           * to the arrow keys rather than leaving that behind.
+                           */
+                          onKeyDown={(e) => {
+                            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                            e.preventDefault()
+                            dispatch({ type: 'moveWord', id: w.id, delta: e.key === 'ArrowUp' ? -1 : 1 })
+                          }}
+                          onDragStart={(e) => {
+                            startDrag(w.id)
+                            e.dataTransfer.effectAllowed = 'move'
+                            // Some browsers cancel a drag with nothing in the payload.
+                            e.dataTransfer.setData('text/plain', w.id)
+                            // Drag the whole row, not the little handle glyph.
+                            const row = e.currentTarget.closest('tr')
+                            if (row) e.dataTransfer.setDragImage(row, 12, 12)
+                          }}
+                          onDragEnd={endDrag}
+                        >
+                          ⠿
+                        </span>
+                      )}
                       <input
                         type="text"
                         value={w.text}
                         aria-label={`Word ${w.text}`}
+                        readOnly={locked}
                         style={{ width: 130, padding: '2px 5px' }}
                         onChange={(e) => dispatch({ type: 'updateWord', id: w.id, text: e.target.value })}
                       />
-                      <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
-                        <button
-                          className="icon"
-                          title="Move up"
-                          onClick={() => dispatch({ type: 'moveWord', id: w.id, delta: -1 })}
-                        >
-                          ▲
-                        </button>
-                        <button
-                          className="icon"
-                          title="Move down"
-                          onClick={() => dispatch({ type: 'moveWord', id: w.id, delta: 1 })}
-                        >
-                          ▼
-                        </button>
-                        <button
-                          className="icon"
-                          title={`Remove ${w.text}`}
-                          onClick={() => removeWord(w)}
-                        >
-                          ✕
-                        </button>
-                      </span>
+                      {!locked && (
+                        <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
+                          <button
+                            className="icon"
+                            title={`Remove ${w.text}`}
+                            onClick={() => removeWord(w)}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      )}
                     </div>
                   </th>
                   <td className="num no-print c2">
                     <input
                       type="checkbox"
                       checked={w.nonsense}
+                      disabled={locked}
                       aria-label={`${w.text} is a nonsense word`}
                       onChange={(e) => dispatch({ type: 'updateWord', id: w.id, nonsense: e.target.checked })}
                     />
@@ -456,6 +617,14 @@ export function EntryGrid() {
                           type="text"
                           value={value}
                           aria-label={`${names(s.id)} wrote for ${w.text}`}
+                          // Only the cell under the cursor offers its word. On
+                          // every empty cell at once the grid would be a wall of
+                          // the same word repeated across every column.
+                          placeholder={
+                            value === '' && cursor === cellId(wordIndex, studentIndex)
+                              ? w.text
+                              : undefined
+                          }
                           autoComplete="off"
                           autoCapitalize="off"
                           autoCorrect="off"
@@ -463,7 +632,11 @@ export function EntryGrid() {
                           ref={(el) => {
                             inputs.current.set(cellId(wordIndex, studentIndex), el)
                           }}
-                          onKeyDown={(e) => onCellKeyDown(e, wordIndex, studentIndex)}
+                          onFocus={() => setCursor(cellId(wordIndex, studentIndex))}
+                          onBlur={() =>
+                            setCursor((at) => (at === cellId(wordIndex, studentIndex) ? null : at))
+                          }
+                          onKeyDown={(e) => onCellKeyDown(e, wordIndex, studentIndex, w, s.id)}
                           onChange={(e) =>
                             dispatch({
                               type: 'setResponse',
@@ -479,7 +652,8 @@ export function EntryGrid() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
+            {/* Nothing to total until there are words to be right about. */}
+            <tfoot hidden={test.words.length === 0}>
               <tr>
                 <th className="rowhead c1">Words correct</th>
                 <td className="num no-print c2" />
@@ -496,6 +670,19 @@ export function EntryGrid() {
             </tfoot>
           </table>
         </div>
+      )}
+
+      {/* Says what is still missing, now that the half-built grid says it is not broken. */}
+      {project.students.length === 0 && test.words.length > 0 && (
+        <p className="hint no-print">
+          That is the word list. Add the students who took the test and a column will appear for
+          each of them.
+        </p>
+      )}
+      {test.words.length === 0 && project.students.length > 0 && (
+        <p className="hint no-print">
+          That is the class. Add the words you dictated and a row will appear for each of them.
+        </p>
       )}
     </section>
   )

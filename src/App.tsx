@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from './state/store'
 import { useAnalysis } from './state/useAnalysis'
-import { readProjectFile, saveProjectFile } from './state/persist'
+import { readProjectFile } from './state/persist'
+import { DownloadProvider } from './components/DownloadProvider'
+import { ProjectFileProvider, useProjectFile } from './state/ProjectFileProvider'
 import { demoProject, DEMO_STUDENT_COUNT } from './state/demo'
 import { emptyProject } from './state/types'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -34,32 +36,84 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'] | 'help'
 
 export function App() {
+  return (
+    <DownloadProvider>
+      <ProjectFileProvider>
+        <Workspace />
+      </ProjectFileProvider>
+    </DownloadProvider>
+  )
+}
+
+function Workspace() {
   const { project, test, dispatch } = useStore()
+  const file = useProjectFile()
   const analysis = useAnalysis(project, test)
   const [tab, setTab] = useState<TabId>('entry')
   const [message, setMessage] = useState<string | null>(null)
-  const [pending, setPending] = useState<'demo' | 'clear' | null>(null)
+  const [pending, setPending] = useState<'demo' | 'clear' | 'deleteTest' | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const hasData =
     project.students.length > 0 || project.tests.some((t) => t.words.length > 0)
 
   const loadDemo = () => {
+    // Detached deliberately. Otherwise the next Save writes the demo class over
+    // the teacher's real file, which is the one thing this feature could do
+    // that the old download flow never could.
+    file.disconnect()
     dispatch({ type: 'replaceProject', project: demoProject() })
     setTab('entry')
     setPending(null)
   }
 
+  /** How much deleting the current test would throw away. */
+  const testWords = test.words.length
+  const testSpellings = Object.values(test.responses).reduce(
+    (n, byStudent) => n + Object.values(byStudent).filter((v) => v.trim() !== '').length,
+    0,
+  )
+  // A test with nothing on it is not worth a dialog — that is the misclick case.
+  const testIsEmpty = testWords === 0 && testSpellings === 0
+
+  const deleteTest = () => {
+    dispatch({ type: 'removeTest', id: test.id })
+    setPending(null)
+  }
+
   const clearAll = () => {
+    file.disconnect()
     dispatch({ type: 'replaceProject', project: emptyProject() })
     setTab('entry')
     setPending(null)
   }
 
-  async function onOpenFile(file: File | undefined) {
-    if (!file) return
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        // Beats the browser's own "save this page" dialog, which from file://
+        // would offer to save the app rather than the teacher's work.
+        e.preventDefault()
+        void file.save()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [file])
+
+  useEffect(() => {
+    // Only a nudge: the work is already in localStorage, so this is about the
+    // file being behind, not about losing anything.
+    if (!file.dirty || file.state.kind === 'none') return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [file.dirty, file.state.kind])
+
+  async function onOpenFile(f: File | undefined) {
+    if (!f) return
     try {
-      const loaded = await readProjectFile(file)
+      const loaded = await readProjectFile(f)
       dispatch({ type: 'replaceProject', project: loaded })
       setMessage(null)
     } catch (e) {
@@ -72,6 +126,19 @@ export function App() {
       <header className="topbar no-print">
         <div className="group">
           <h1>Grapheme Spelling Test</h1>
+          {/*
+            One project file is one class. Naming it here is what puts "Block 2A"
+            at the front of every file this class exports and on every printout.
+          */}
+          <input
+            type="text"
+            value={project.className ?? ''}
+            placeholder="Class or block"
+            aria-label="Class or block"
+            title="Goes into the name of every file you download and onto every printout"
+            style={{ width: 130 }}
+            onChange={(e) => dispatch({ type: 'setClassName', name: e.target.value })}
+          />
           <select
             value={test.id}
             onChange={(e) => dispatch({ type: 'selectTest', id: e.target.value })}
@@ -86,15 +153,44 @@ export function App() {
           <button className="btn" onClick={() => dispatch({ type: 'addTest' })}>
             New test
           </button>
+          {/*
+            Mostly used for a test created by one click too many, or one started
+            against the wrong class. Confirmed first, because unlike a student
+            there is nothing left behind to recover.
+          */}
+          <button
+            className="btn danger"
+            title={`Delete “${test.name}” and everything on it`}
+            onClick={() => (testIsEmpty ? deleteTest() : setPending('deleteTest'))}
+          >
+            Delete test
+          </button>
         </div>
 
         <div className="group">
-          <button className="btn" onClick={() => saveProjectFile(project)}>
-            Save file
+          <button
+            className={`btn ${file.dirty && file.state.kind !== 'none' ? 'primary' : ''}`}
+            title={file.label.detail}
+            onClick={() => void file.save()}
+          >
+            Save
           </button>
-          <button className="btn" onClick={() => fileInput.current?.click()}>
+          {file.supported && (
+            <button className="btn" title="Write to a different file" onClick={() => void file.saveAs()}>
+              Save a copy
+            </button>
+          )}
+          <button
+            className="btn"
+            onClick={() => (file.supported ? void file.open() : fileInput.current?.click())}
+          >
             Open file
           </button>
+          {file.state.kind !== 'none' && (
+            <span className={`filechip ${file.label.tone}`} title={file.label.detail}>
+              {file.label.label}
+            </span>
+          )}
           <button
             className="btn"
             title="Replace everything with a made-up class and six months of tests"
@@ -143,6 +239,21 @@ export function App() {
         </div>
       </header>
 
+      {file.problem && (
+        <div className="error no-print" role="alert">
+          {file.problem}{' '}
+          <button className="btn" onClick={() => void file.saveAs()}>
+            Save a copy
+          </button>{' '}
+          <button className="btn" onClick={file.downloadCopy}>
+            Download instead
+          </button>{' '}
+          <button className="icon" onClick={file.dismissProblem} aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
+
       {message && (
         <div className="error no-print" role="alert">
           {message}{' '}
@@ -182,6 +293,33 @@ export function App() {
           {project.tests.length === 1 ? '' : 's'} you have now with a made-up class of{' '}
           {DEMO_STUDENT_COUNT} tested every two weeks for six months. Nothing is kept anywhere else,
           so use <strong>Save file</strong> first if you want your data back.
+        </ConfirmDialog>
+      )}
+
+      {pending === 'deleteTest' && (
+        <ConfirmDialog
+          title={`Delete “${test.name}”?`}
+          confirmLabel="Delete test"
+          danger
+          onConfirm={deleteTest}
+          onCancel={() => setPending(null)}
+        >
+          This removes the test along with its {testWords} word
+          {testWords === 1 ? '' : 's'}
+          {testSpellings > 0 && (
+            <>
+              {' '}
+              and the {testSpellings} spelling{testSpellings === 1 ? '' : 's'} recorded on it
+            </>
+          )}
+          , and it takes this test out of every report. Unlike removing a student, nothing is kept
+          behind to put back — use <strong>Save file</strong> first if you are not sure.
+          {project.tests.length === 1 && (
+            <>
+              {' '}
+              This is your only test, so an empty one will be left in its place.
+            </>
+          )}
         </ConfirmDialog>
       )}
 

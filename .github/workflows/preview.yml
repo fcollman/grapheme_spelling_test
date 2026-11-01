@@ -1,0 +1,203 @@
+name: PR preview
+
+# Publishes a pull request's build to the Pages site under /pr-preview/pr-N/.
+#
+# This runs on `workflow_run` rather than on `pull_request`, and that is the
+# whole point of the file. The github-pages environment only permits `main` to
+# deploy, and a pull request build deploys as `refs/pull/N/merge` — which no
+# deployment branch policy can match, because policies match branches and a pull
+# request merge ref is not one. Tested: even a `*` policy rejects it.
+#
+# A `workflow_run` job runs in the default branch's context, so its ref really is
+# `refs/heads/main` and the existing policy allows it on its own terms. Nothing
+# about the protection is weakened, and the workflow that does the deploying is
+# always the copy on main rather than whatever a branch happens to contain.
+on:
+  workflow_run:
+    workflows: ['Build and deploy']
+    types: [completed]
+  # So this can be exercised on demand once it is on main, rather than finding
+  # out whether it works only when someone opens a pull request.
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'A completed "Build and deploy" run id from a pull request'
+        required: true
+
+permissions:
+  contents: read
+
+# Share the queue with the live deploy: both replace the whole Pages site, so
+# they must not overlap.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    # Same-repository pull requests only. A fork's build is untrusted and must
+    # never reach a job that can publish.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Work out which run and pull request this is for
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}")"
+          head_sha="$(jq -r '.head_sha' <<<"$run_json")"
+
+          # workflow_run carries the pull request for a same-repo branch, but it
+          # is empty often enough to be worth a fallback on the head commit.
+          pr="$(jq -r '.pull_requests[0].number // empty' <<<"$run_json")"
+          if [ -z "$pr" ]; then
+            pr="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}/pulls" \
+              --jq '.[0].number // empty' || true)"
+          fi
+          if [ -z "$pr" ]; then
+            echo "::error::Could not find a pull request for run ${RUN_ID} (${head_sha})."
+            exit 1
+          fi
+
+          echo "run-id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+          echo "pr=${pr}" >> "$GITHUB_OUTPUT"
+          echo "Previewing run ${RUN_ID} for PR #${pr} (${head_sha})."
+
+      - name: Take the build the pull request already produced
+        uses: actions/download-artifact@v4
+        with:
+          name: grapheme-spelling-test-html
+          path: dist
+          run-id: ${{ steps.source.outputs.run-id }}
+          github-token: ${{ github.token }}
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble the Pages site with this preview
+        id: assemble
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+          PR: ${{ steps.source.outputs.pr }}
+        run: |
+          set -euo pipefail
+          site="$RUNNER_TEMP/pages-site"
+          rm -rf "$site"
+          mkdir -p "$site/pr-preview/pr-${PR}"
+
+          # A Pages deploy replaces the entire site, so the live root and every
+          # other preview have to be carried over. If the root cannot be
+          # fetched, publishing anyway would replace the real page with nothing
+          # — so this stops instead.
+          if ! curl --fail --silent --show-error --location \
+            "${BASE_URL}/" --output "$site/index.html"; then
+            echo "::warning::The live site root could not be fetched, so this run will not republish the site."
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ ! -s "$site/index.html" ]; then
+            echo "::warning::The live site root came back empty, so this run will not republish the site."
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A plain read loop rather than `mapfile`, so the whole script can be
+          # run and checked on a developer machine; macOS still ships bash 3.2,
+          # where mapfile does not exist.
+          manifest="$RUNNER_TEMP/previews.json"
+          existing=''
+          if curl --fail --silent --show-error --location \
+            "${BASE_URL}/pr-preview/previews.json" --output "$manifest"; then
+            # `numbers` drops anything in the file that is not a number, so a
+            # corrupted manifest costs a preview rather than the whole deploy.
+            existing="$(jq -r '.pull_requests[]? | numbers' "$manifest" 2>/dev/null || true)"
+          fi
+
+          kept=()
+          while IFS= read -r other; do
+            [ -n "$other" ] || continue
+            [ "$other" = "$PR" ] && continue
+            mkdir -p "$site/pr-preview/pr-${other}"
+            if curl --fail --silent --show-error --location \
+              "${BASE_URL}/pr-preview/pr-${other}/index.html" \
+              --output "$site/pr-preview/pr-${other}/index.html"; then
+              kept+=("$other")
+            else
+              echo "::warning::Dropping the preview for PR #${other}; it could not be fetched."
+              rm -rf "$site/pr-preview/pr-${other}"
+            fi
+          done <<< "$existing"
+
+          cp dist/index.html "$site/pr-preview/pr-${PR}/index.html"
+          kept+=("$PR")
+
+          printf '%s\n' "${kept[@]}" | sort -n -u | jq -R 'tonumber' | jq -s '{pull_requests: .}' \
+            > "$site/pr-preview/previews.json"
+
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          echo "Publishing previews: ${kept[*]}"
+
+      - if: steps.assemble.outputs.deployed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/pages-site
+
+      - if: steps.assemble.outputs.deployed == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Link the preview from the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.source.outputs.pr }}
+          RUN_ID: ${{ steps.source.outputs.run-id }}
+          DEPLOYED: ${{ steps.assemble.outputs.deployed }}
+        run: |
+          set -euo pipefail
+          marker='<!-- preview-link -->'
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/pr-preview/pr-${PR}/"
+          artifact="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+
+          if [ "$DEPLOYED" = "true" ]; then
+            body="${marker}
+          ### Preview this build
+
+          **[Open the app in your browser](${url})** — built from this branch, nothing to download.
+
+          Or [download index.html](${artifact}) from the build to open it offline. It is one self-contained file.
+
+          <sub>Rebuilt on every push to this pull request.</sub>"
+          else
+            body="${marker}
+          ### Preview this build
+
+          The published site could not be read this time, so the preview was skipped rather than risk replacing the live page.
+
+          [Download index.html](${artifact}) from the build to open it offline. It is one self-contained file."
+          fi
+
+          id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" \
+            --jq "[.[] | select(.body | startswith(\"${marker}\"))] | first | .id // empty")"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" -f body="$body" >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" -f body="$body" >/dev/null
+          fi

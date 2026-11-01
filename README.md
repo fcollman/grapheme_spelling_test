@@ -31,15 +31,31 @@ A version of this is deployed to github pages at
    real data, because nothing is stored anywhere but this browser.
 
 2. **Spelling test** tab — add your words and your students, then type what each
-   student wrote. Tick "nonsense" for made-up words. Cells turn green when the
+   student wrote. An empty cell shows the word that was dictated, so a correct
+   spelling is just <kbd>Enter</kbd> and an all-correct paper is a run of them;
+   typing replaces the suggestion, and the arrow keys move without filling
+   anything in, which is how you skip a missed word or an absent student.
+   Nothing is recorded until <kbd>Enter</kbd>. Tick "nonsense" for made-up words. Cells turn green when the
    spelling matches exactly. With a full class the grid scrolls sideways, but the
    word and nonsense columns stay pinned so you can always see what was dictated.
+
+   Words are reordered by **dragging the ⠿ handle**, with their spellings
+   following them; focus a handle and press ↑ or ↓ to do the same from the
+   keyboard. **Lock word list** puts the word column out of reach — no handle, no
+   arrows, no ✕, no renaming — while leaving the answer cells live, so a long
+   session of typing cannot disturb a list that is already right. The lock is
+   remembered between sessions.
 
    Your class is shared across tests, so a new test already starts with everyone
    on it. Removing a student or a word asks first if there are spellings behind
    it, and says how many. A removed student's answers are kept, so **Add from an
    earlier test** puts them back with their old work and its analysis intact —
    the button only appears when there is someone to restore.
+
+   **Delete test** in the toolbar removes the test on screen. It confirms first
+   when there is anything on it, and deletes outright — a test has nowhere else
+   for its data to live, so nothing is kept back the way a student's answers are.
+   Deleting the only test leaves a fresh empty one behind.
 3. **Grapheme analysis** tab — the marking grid. Each column is one spelling unit
    of the target word, with the sound or sounds it makes underneath:
 
@@ -129,6 +145,21 @@ landscape with half-inch margins, so nothing lands in the strip at the edge of
 the paper that most office printers cannot reach. A browser's own **Margins:
 None** setting overrides that, so check it if a PDF comes out edge to edge.
 
+**Name the class** in the box beside the title — "Block 2A", "Period 4". It goes
+in front of every downloaded file name and at the top of every printout, which is
+what makes a Downloads folder full of reports navigable:
+
+```
+Block 2A - 3 tests - Accuracy by grapheme - 2026-09-20.csv
+Block 2A - Sam W. - 13 tests - Student profile - 2026-09-20.csv
+```
+
+Every tab has **Download CSV** and **Print / Save PDF**. Both ask you to check
+the name first, pre-filled as *class · what it covers · which report · date*, so
+Enter accepts it and anything else can be typed over it. Names follow the privacy
+toggle too: with **Hide student names** on, a profile saves as "Student 3".
+Printing names the PDF the same way, by way of the document title.
+
 **Hide student names** at the top swaps every name for "Student 1", "Student 2" …
 everywhere at once, including printouts and CSVs, so you can show one family where
 their child sits relative to the class without showing them the rest of the class.
@@ -137,9 +168,26 @@ It is display only — the real names come straight back when you switch it off.
 ### Saving your work
 
 Your data saves automatically in the browser you opened the file in. That is
-convenient but not durable — clearing browsing data will erase it. Use **Save
-file** to keep a `.json` copy, and **Open file** to load it back or move it to
-another computer.
+convenient but not durable — clearing browsing data will erase it.
+
+**Save** keeps a `.json` copy. In Chrome and Edge you choose that file once and
+every later Save writes straight back to it — put it in a folder Google Drive or
+OneDrive syncs and your work is backed up without another thought. A chip beside
+the buttons says whether the file matches what is on screen, <kbd>Ctrl/Cmd</kbd>+
+<kbd>S</kbd> saves, and closing the tab with unsaved work asks first. **Load demo
+class** and **Clear data** disconnect the file first so neither can overwrite it.
+
+The naming box for a CSV also offers a folder to file exports into, in subfolders
+by report type. Folder names are always the report type, never a class or student
+name. PDFs are the exception: printing belongs to the browser, which does not
+tell the page where the file went.
+
+Other browsers download a copy each time, exactly as before — all of it is
+feature-detected.
+
+**This adds no network access.** The page writes to a local folder; if that
+folder is synced, the sync client is what uploads it, which
+[content/about.md](content/about.md) now says plainly.
 
 ### Things worth knowing
 
@@ -199,13 +247,14 @@ pictures are why `dist/index.html` is around 2.3MB rather than 1.6MB.
 
 ### Deployment
 
-Pushing to `main` builds and publishes to GitHub Pages via
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+Pushing to `main` builds and publishes to GitHub Pages via the GitHub Pages
+deployment API in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
 
 **https://fcollman.github.io/grapheme_spelling_test/**
 
-Pull requests run the same build and tests but do not deploy; they attach the
-built `index.html` as a downloadable artifact instead.
+Pull requests run the same build and tests, attach the built `index.html` as a
+downloadable artifact, and publish that file under a PR-specific
+`/pr-preview/pr-<number>/` path on the same Pages site.
 
 Before publishing, the workflow gates on four things:
 

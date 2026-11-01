@@ -1,4 +1,5 @@
 import type { Project } from './types'
+import { DEFAULT_SETTINGS } from './types'
 
 /**
  * A small worked example so the app is not a blank page on first open.
@@ -44,6 +45,6 @@ export function exampleProject(): Project {
       },
     ],
     activeTestId: 'ex_test_1',
-    settings: { notation: 'sound', lenientSchwa: true, amberCountsCorrect: false, anonymize: false },
+    settings: { ...DEFAULT_SETTINGS },
   }
 }

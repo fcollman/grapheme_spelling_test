@@ -9,7 +9,23 @@ If you would rather poke at a finished example than start from scratch, press
 eight students tested every two weeks for six months, so every report has
 something in it. **Clear data** empties it again.
 
-![The toolbar: choose a test, start a new one, save and open files, and load the demo class](images/toolbar.webp)
+![The toolbar: name the class, choose a test, start or delete one, and save and open files](images/toolbar.webp)
+
+## Name the class
+
+The box next to the app title is the name of this class — **Block 2A**,
+**Period 4**, **Reading group**, whatever you call them. 
+
+This will be used to help automatically name files and reports you download, and make them easier to organize.
+
+```
+Block 2A - 3 tests - Accuracy by grapheme - 2026-09-20.csv
+Block 2A - Sam W. - 13 tests - Student profile - 2026-09-20.csv
+Block 4B - Test 7 Long vowels - Spelling test - 2026-05-18.csv
+```
+
+One file is one class, so if you teach several, keep a file for each and give
+each one its own name here.
 
 ## Name the test
 
@@ -23,6 +39,13 @@ exactly what was being taught that fortnight.
 
 The date matters too: it is what orders the tests, so set it to the day you gave
 the test rather than leaving whatever the box started with.
+
+**Delete test** removes the one you are looking at. Use it for the test created
+by one click too many, or one you started typing before realising it was the
+wrong class. It asks first if there is anything on it, and tells you how much —
+and unlike removing a student, a deleted test is gone for good, so use **Save
+file** first if you are not sure. Deleting your only test leaves a fresh empty
+one in its place.
 
 ## Add the words
 
@@ -38,17 +61,34 @@ because a student who writes `frittle` correctly has actually decoded it, while
 analyze them the same way, but the tick reminds you which is which when you are
 reading a student's results.
 
-The small arrows next to each word move it up or down, and the ✕ deletes it. If
-a word already has spellings recorded against it, the ✕ asks you first and tells
-you how many you are about to throw away.
+### Putting the words in order
+
+You can reorder spelling words by **Drag them by the ⠿ handle** on the left of the row and drop it where it belongs. The blue line shows where it will land.
+
+![Dragging a word up the list. The blue line shows where it will land](images/word-drag.webp)
+
+The spellings already recorded against a word travel with it.
+
+The ✕ deletes a word. If it already has spellings recorded against it, it asks
+first and tells you how many you are about to throw away.
+
+### Locking the list
+
+Once the words are right, you can press **🔓 Lock word list** to prevent accidental editing.
+
+![The same list locked: the words read as plain text and the answer cells carry on working](images/word-locked.webp)
+
+Press **🔒 Word list locked** to unlock it again.
 
 ## Add the students
 
 Type each name into **Add a student** and press Enter.
 
 Your class is shared across every test, so you only do this once. Making a new
-test does not mean re-entering the roster — everyone is already on it, and a
-student who missed that day simply has an empty column.
+test does not mean re-entering the roster. 
+A student who missed that day simply has an empty column. This student won't 
+have any grapheme's marked incorrect for those words, though their score
+for that test on this page will show as 0% with all blanks noted.
 
 If you removed someone and want them back, an **Add from an earlier test**
 button appears next to *Add student*. Their old spellings were kept, so they
@@ -69,6 +109,28 @@ the next student's. <kbd>Shift</kbd>+<kbd>Enter</kbd> goes back up, and
 Type exactly what the student wrote, misspellings and all. A cell turns green when the spelling matches the target word exactly and
 red when it does not.
 
+### You only have to type the wrong ones
+
+Most spellings on most papers are right, and typing out a word the app already
+knows is wasted effort. So an empty cell shows the word that was dictated, in
+faint italics:
+
+**If the student spelled it correctly, just press <kbd>Enter</kbd>.** The word
+is filled in and the cursor drops to the next one. A paper with nothing wrong on
+it is a run of <kbd>Enter</kbd> presses and nothing else.
+
+**If they did not, start typing.** Whatever you type replaces the suggestion, so
+there is nothing to clear out of the way first.
+
+Two things worth knowing:
+
+- The faint word is only a suggestion until you press <kbd>Enter</kbd>. Nothing
+  is recorded just because the cursor passed through a cell.
+- **The arrow keys move without filling anything in.** Use <kbd>↓</kbd> instead
+  of <kbd>Enter</kbd> to skip a word a student left out, or to move down the
+  column of a student who was away, and those cells stay properly blank rather
+  than counting as correct.
+
 With a big class the grid scrolls sideways, but the word and nonsense columns
 stay pinned to the left so you can always see what was dictated.
 
@@ -84,13 +146,55 @@ Your data saves automatically in the browser you opened the app in. That is
 convenient, but it is not a backup — clearing your browsing data erases it, and
 it does not follow you to another computer.
 
-- **Save file** writes everything — students, tests, words, spellings and your
-  corrections — to a single `.json` file wherever you keep your documents.
+- **Save** writes everything — students, tests, words, spellings and your
+  corrections — to a single `.json` file.
 - **Open file** loads one back.
 
 Nothing is ever sent anywhere. There is no account, no server and no upload; the
 file on your computer is the only copy, which is also why it is worth keeping
 one.
+
+### Saving to the same file every time
+
+The first time you press **Save**, your browser asks where to put the file. After
+that, **Save writes straight back to that same file** — no dialog, nothing
+landing in Downloads for you to move afterwards.
+
+The chip next to the buttons tells you where you stand, which is the bit that
+was missing before:
+
+| It says | It means |
+|---|---|
+| `Block 2A.json · saved` | The file matches what is on screen |
+| `Block 2A.json · unsaved changes` | You have done work the file does not have yet |
+| `Block 2A.json · not connected` | Press Save and allow your browser to write to it |
+
+<kbd>Ctrl</kbd>+<kbd>S</kbd> (or <kbd>Cmd</kbd>+<kbd>S</kbd>) saves too, and if you
+try to close the tab with unsaved work the browser will ask first.
+
+**Save a copy** writes to a different file and switches to it. **Load demo class**
+and **Clear data** deliberately disconnect the file first, so neither of them can
+write over your real one.
+
+This needs Chrome or Edge. In other browsers Save downloads a copy each time,
+exactly as it always did.
+
+### Putting that file in Google Drive or OneDrive
+
+This is the part that makes it stick. Save the file **into a folder your Drive or
+OneDrive already syncs**, and from then on every Save is backed up without you
+doing anything.
+
+- **On a Chromebook**, Google Drive is already in the save dialog. Just pick it.
+- **On Windows or a Mac**, you need **Google Drive for Desktop** (or the OneDrive
+  app, which is usually already there on a school Windows machine). Once it is
+  installed, Drive shows up as an ordinary folder in the save dialog, and files
+  you put there sync by themselves. Without it, Drive only exists in your web
+  browser, which is why moving files into it feels like a separate chore.
+
+Worth knowing: the page itself still sends nothing anywhere. It writes to a
+folder on your computer; the Drive or OneDrive program is what copies it to the
+cloud. See **About this tool** for what that means for student data.
 
 ### Using files to keep classes and years apart
 
@@ -124,13 +228,35 @@ This is deliberate. Your data should not be stuck in a tool.
 
 ## Getting results out
 
+Every download asks you to check the name first. It comes ready filled in —
+class, then what the export covers, then which report, then the date — so most
+of the time you glance at it and press Enter. Change it there if you want
+something else, and it is saved under that name. The date is the test's own date
+when the export covers a single test, and today's date when it pools several.
+
 Every tab has two buttons in its toolbar:
 
 - **Download CSV** saves that tab's table exactly as shown, ready to open in
   Excel or Google Sheets, or to paste into a report. The drill-down windows have
   their own **Download CSV** too, so you can export just the examples behind one
   number.
-- **Print / Save PDF** opens your browser's print dialog. Choose *Save as PDF*
+
+  In Chrome and Edge the naming box also offers **Choose a folder**. Pick one
+  once — a synced one, if you like — and every CSV files itself into a subfolder
+  by report type, instead of piling up in Downloads:
+
+  ```
+  Grapheme Spelling Test/
+    Accuracy by grapheme/  Block 2A - 3 tests - Accuracy by grapheme - 2026-09-20.csv
+    Student profile/       Block 2A - Sam W. - 13 tests - Student profile - 2026-09-20.csv
+  ```
+
+  Folder names are always the report type, never a class or student name — a
+  name is far more exposed as a folder than inside a file name.
+- **Print / Save PDF** asks for a name the same way, then opens your browser's
+  print dialog. PDFs cannot be filed into your exports folder automatically —
+  printing is handled by the browser, and it does not tell the page where the
+  file went — so choose *Save as PDF* and pick the folder yourself. Choose *Save as PDF*
   as the destination to get a file you can email or attach to an IEP. The
   toolbar, tab strip and buttons are left out of the printed version, and the
   colours are kept.
