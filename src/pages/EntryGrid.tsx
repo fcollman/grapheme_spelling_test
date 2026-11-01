@@ -22,7 +22,7 @@ export function EntryGrid() {
   const [wordDraft, setWordDraft] = useState('')
   const [studentDraft, setStudentDraft] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{
-    kind: 'student' | 'word'
+    kind: 'student' | 'word' | 'clear'
     id: string
     name: string
     count: number
@@ -165,6 +165,20 @@ export function EntryGrid() {
     else setPendingDelete({ kind: 'student', id: s.id, name: names(s.id), count })
   }
 
+  /**
+   * How much one student has on the test in front of you.
+   *
+   * Deliberately narrower than `spellingsByStudent`: clearing a column touches
+   * this test alone, so counting every test would overstate the damage just as
+   * badly as the removal warning would understate it by counting only one.
+   */
+  const answersOnThisTest = (studentId: string) =>
+    Object.values(test.responses).filter((byStudent) => (byStudent[studentId] ?? '').trim() !== '').length
+
+  /** Offered when a whole paper went in against the wrong name. */
+  const clearStudent = (s: { id: string }, count: number) =>
+    setPendingDelete({ kind: 'clear', id: s.id, name: names(s.id), count })
+
   const removeWord = (w: { id: string; text: string }) => {
     const count = spellingsForWord(w.id)
     if (count === 0) dispatch({ type: 'removeWord', id: w.id })
@@ -300,16 +314,26 @@ export function EntryGrid() {
           title={
             pendingDelete.kind === 'student'
               ? `Remove ${pendingDelete.name} from the class?`
-              : `Remove the word “${pendingDelete.name}”?`
+              : pendingDelete.kind === 'word'
+                ? `Remove the word “${pendingDelete.name}”?`
+                : `Clear ${pendingDelete.name}’s answers on this test?`
           }
-          confirmLabel={pendingDelete.kind === 'student' ? 'Remove student' : 'Remove word'}
+          confirmLabel={
+            pendingDelete.kind === 'student'
+              ? 'Remove student'
+              : pendingDelete.kind === 'word'
+                ? 'Remove word'
+                : `Clear ${pendingDelete.count} answer${pendingDelete.count === 1 ? '' : 's'}`
+          }
           danger
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => {
             dispatch(
               pendingDelete.kind === 'student'
                 ? { type: 'removeStudent', id: pendingDelete.id }
-                : { type: 'removeWord', id: pendingDelete.id },
+                : pendingDelete.kind === 'word'
+                  ? { type: 'removeWord', id: pendingDelete.id }
+                  : { type: 'clearStudentResponses', studentId: pendingDelete.id },
             )
             setPendingDelete(null)
           }}
@@ -325,11 +349,22 @@ export function EntryGrid() {
               Their answers are kept, so <strong>Add from an earlier test</strong> can put them back
               with their work intact.
             </>
-          ) : (
+          ) : pendingDelete.kind === 'word' ? (
             <>
               <strong>{pendingDelete.name}</strong> has {pendingDelete.count} spelling
               {pendingDelete.count === 1 ? '' : 's'} recorded against it on this test. Removing the
               word removes those too.
+            </>
+          ) : (
+            <>
+              This empties <strong>{pendingDelete.name}</strong>’s column on{' '}
+              <strong>{test.name}</strong> — {pendingDelete.count} spelling
+              {pendingDelete.count === 1 ? '' : 's'}, and any corrections you made to{' '}
+              {pendingDelete.count === 1 ? 'it' : 'them'}.
+              <br />
+              They stay in the class and keep their work on every other test. Unlike removing a
+              student, though, <strong>this cannot be undone</strong> — the answers are not kept
+              anywhere to put back.
             </>
           )}
         </ConfirmDialog>
@@ -490,46 +525,61 @@ export function EntryGrid() {
               <tr>
                 <th className="c1">Word</th>
                 <th className="num no-print c2">Nonsense</th>
-                {project.students.map((s) => (
-                  <th key={s.id}>
-                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      {project.settings.anonymize ? (
-                        <span style={{ width: 110, display: 'inline-block' }}>{names(s.id)}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={s.name}
-                          aria-label={`Name for ${s.name}`}
-                          style={{ width: 110, padding: '2px 5px' }}
-                          onChange={(e) => dispatch({ type: 'renameStudent', id: s.id, name: e.target.value })}
-                        />
-                      )}
-                      <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
-                        <button
-                          className="icon"
-                          title="Move left"
-                          onClick={() => dispatch({ type: 'moveStudent', id: s.id, delta: -1 })}
-                        >
-                          ◀
-                        </button>
-                        <button
-                          className="icon"
-                          title="Move right"
-                          onClick={() => dispatch({ type: 'moveStudent', id: s.id, delta: 1 })}
-                        >
-                          ▶
-                        </button>
-                        <button
-                          className="icon"
-                          title={`Remove ${names(s.id)}`}
-                          onClick={() => removeStudent(s)}
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    </div>
-                  </th>
-                ))}
+                {project.students.map((s) => {
+                  const entered = answersOnThisTest(s.id)
+                  return (
+                    <th key={s.id}>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        {project.settings.anonymize ? (
+                          <span style={{ width: 110, display: 'inline-block' }}>{names(s.id)}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={s.name}
+                            aria-label={`Name for ${s.name}`}
+                            style={{ width: 110, padding: '2px 5px' }}
+                            onChange={(e) => dispatch({ type: 'renameStudent', id: s.id, name: e.target.value })}
+                          />
+                        )}
+                        <span className="no-print" style={{ whiteSpace: 'nowrap' }}>
+                          <button
+                            className="icon"
+                            title="Move left"
+                            onClick={() => dispatch({ type: 'moveStudent', id: s.id, delta: -1 })}
+                          >
+                            ◀
+                          </button>
+                          <button
+                            className="icon"
+                            title="Move right"
+                            onClick={() => dispatch({ type: 'moveStudent', id: s.id, delta: 1 })}
+                          >
+                            ▶
+                          </button>
+                          <button
+                            className="icon"
+                            disabled={entered === 0}
+                            title={
+                              entered === 0
+                                ? `Nothing to clear for ${names(s.id)} on this test`
+                                : `Clear ${names(s.id)}’s ${entered} answer${entered === 1 ? '' : 's'} on this test`
+                            }
+                            onClick={() => clearStudent(s, entered)}
+                          >
+                            ⌫
+                          </button>
+                          <button
+                            className="icon"
+                            title={`Remove ${names(s.id)}`}
+                            onClick={() => removeStudent(s)}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      </div>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>

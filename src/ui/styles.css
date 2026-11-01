@@ -189,9 +189,16 @@ button.icon {
   line-height: 1;
 }
 
-button.icon:hover {
+button.icon:hover:not(:disabled) {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+/* Greyed and inert rather than hidden, so the row of icons does not shuffle
+   sideways as students gain and lose answers. */
+button.icon:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 input[type='text'],
