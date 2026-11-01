@@ -35,8 +35,11 @@ export function load(): Project | null {
   }
 }
 
-export function download(filename: string, content: string, mime: string) {
-  const blob = new Blob([content], { type: `${mime};charset=utf-8` })
+export function download(filename: string, content: string | Blob, mime: string) {
+  // A recording arrives already a Blob with its own type; re-wrapping it as
+  // text would corrupt it, and the charset would be a lie.
+  const blob =
+    content instanceof Blob ? content : new Blob([content], { type: `${mime};charset=utf-8` })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

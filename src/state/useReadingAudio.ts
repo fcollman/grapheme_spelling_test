@@ -54,9 +54,21 @@ export interface ReadingAudio {
   attach: () => Promise<void>
   /** For browsers without a file picker, fed from an `<input type="file">`. */
   attachFile: (file: File) => void
+  /** Take on a recording the page just made and wrote to disk. */
+  adopt: (handle: FileSystemFileHandle) => Promise<void>
+  /**
+   * Play a recording the page just made but could not write to disk.
+   *
+   * Without the File System Access API there is no handle to remember, so the
+   * teacher gets the file in Downloads and the project cannot point at it. It
+   * still plays straight away, so marking is not held up.
+   */
+  adoptBlob: (blob: Blob, name: string) => void
   detach: () => void
   /** The element the page renders; audio-only files play through it too. */
   ref: React.RefObject<HTMLVideoElement>
+  /** Wired to the element, to repair the length of a file we recorded ourselves. */
+  onLoadedMetadata: () => void
   /** True when the file picker is available, so the page can offer the fallback. */
   canPick: boolean
 }
@@ -180,12 +192,52 @@ export function useReadingAudio(
     [load, onAttached],
   )
 
+  const adopt = useCallback(
+    async (handle: FileSystemFileHandle) => {
+      await rememberHandle(key, handle)
+      const file = await handle.getFile()
+      load(file, undefined)
+      onAttached({ name: file.name, ...stampOf(file) })
+    },
+    [key, load, onAttached],
+  )
+
+  const adoptBlob = useCallback(
+    (blob: Blob, fileName: string) => {
+      const file = new File([blob], fileName, { type: blob.type })
+      load(file, undefined)
+      onAttached({ name: file.name, ...stampOf(file) })
+    },
+    [load, onAttached],
+  )
+
   const detach = useCallback(() => {
     if (urlRef.current) URL.revokeObjectURL(urlRef.current)
     urlRef.current = null
     if (ref.current) ref.current.removeAttribute('src')
     setStatus('none')
     setName(null)
+  }, [])
+
+  /**
+   * Teaches the browser how long its own recording is.
+   *
+   * `MediaRecorder` writes WebM without a duration in the header, because it
+   * cannot know the length until it stops. The file then reports `Infinity` and
+   * will not seek — which would break stepping back through a reading, the one
+   * thing the times exist for. Seeking far past the end forces the browser to
+   * read to the end and work the duration out, after which it behaves like any
+   * other file.
+   */
+  const onLoadedMetadata = useCallback(() => {
+    const el = ref.current
+    if (!el || el.duration !== Infinity) return
+    const settle = () => {
+      el.removeEventListener('timeupdate', settle)
+      el.currentTime = 0
+    }
+    el.addEventListener('timeupdate', settle)
+    el.currentTime = 1e8
   }, [])
 
   const at = useCallback(() => {
@@ -232,8 +284,11 @@ export function useReadingAudio(
     setRate,
     attach,
     attachFile,
+    adopt,
+    adoptBlob,
     detach,
     ref,
+    onLoadedMetadata,
     canPick: typeof window !== 'undefined' && !!window.showOpenFilePicker,
   }
 }

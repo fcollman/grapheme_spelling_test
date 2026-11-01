@@ -47,6 +47,10 @@ This means the results are **fast**, **100% deterministic** and **local**.
   another computer.
 - Printouts and CSV exports are generated in the browser and go straight to your
   own machine.
+- **The microphone is used only when you press Record**, and only to write a
+  file to the folder you choose. The audio goes from the microphone to that file
+  and nowhere else; the recording indicator is on screen the whole time it is
+  running, and the microphone is released the moment you stop.
 - **Recordings attached to a reading test are never uploaded and never stored.**
   The page plays the file from your own disk and keeps only the times you marked
   — a few numbers per word. The recording itself is not written into your

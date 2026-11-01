@@ -97,6 +97,48 @@ export async function pickAudioFile(): Promise<FileSystemFileHandle | null> {
   }
 }
 
+/**
+ * Refuses to write a recording anywhere but an audio file.
+ *
+ * The same reasoning as `isSafeProjectTarget`: the save dialog will accept any
+ * name typed into it, and a teacher who lands on `index.html` would overwrite
+ * the application with a sound file.
+ */
+export function isSafeAudioTarget(name: string): boolean {
+  return /\.(webm|m4a|mp4|mp3|wav|ogg|aac)$/i.test(name)
+}
+
+/** Where to put a recording the page just made. */
+export async function pickRecordingTarget(
+  suggestedName: string,
+  extension: string,
+): Promise<FileSystemFileHandle | null> {
+  if (!window.showSaveFilePicker) return null
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types: [{ description: 'Recording', accept: { 'audio/*': [`.${extension}`] } }],
+      id: 'gst-audio',
+    })
+    if (!handle || !isSafeAudioTarget(handle.name)) return null
+    return handle
+  } catch (e) {
+    if (classifyError(e) === 'cancelled') return null
+    throw e
+  }
+}
+
+export async function writeBlob(handle: FileSystemFileHandle, blob: Blob): Promise<void> {
+  const writable = await handle.createWritable()
+  try {
+    await writable.write(blob)
+    await writable.close()
+  } catch (e) {
+    await writable.abort?.()
+    throw e
+  }
+}
+
 export async function pickExportsFolder(): Promise<FileSystemDirectoryHandle | null> {
   if (!window.showDirectoryPicker) return null
   try {
