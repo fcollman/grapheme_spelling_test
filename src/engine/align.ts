@@ -1,4 +1,5 @@
 import { isVowel, type PhonemeId } from '../data/phonemes'
+import { isAccentVariant } from './accent'
 import { phonemeDistance } from './distance'
 import { segment } from './segment'
 import { syllabify, type Syllable } from './syllabify'
@@ -44,6 +45,17 @@ export interface AlignOptions {
    * otherwise read as a vowel error in every unstressed syllable.
    */
   lenientSchwa?: boolean
+  /**
+   * Which direction is being assessed. Absent means encoding, so every existing
+   * caller is unchanged.
+   *
+   * Encoding is a spelling test: the student chose letters for a sound they
+   * heard, so the letters they chose are the evidence. Decoding is a passage
+   * read aloud: the letters were printed in front of them and what the teacher
+   * typed is a transcription of the sound they made, so the letters are the
+   * teacher's shorthand and carry no judgement about the student.
+   */
+  mode?: 'encoding' | 'decoding'
 }
 
 /** Per-slot teacher corrections, keyed by slot index. */
@@ -170,7 +182,19 @@ function markOf(
   const schwaMatch =
     options.lenientSchwa && schwaPair && (!stressed || (sameLetters && studentGrapheme !== ''))
 
-  if (single === target || schwaMatch) {
+  /*
+   * Reading aloud makes no spelling choice, so the letters cannot grade it.
+   *
+   * "kat", "cat" and "katt" are one reading typed three ways: the letters
+   * describe the teacher's shorthand, not the student. Keeping the encoding
+   * rule here would score every correctly-read sound as a near miss, because a
+   * transcription hardly ever matches the word's own spelling.
+   */
+  if (options.mode === 'decoding') {
+    if (single === target) return 'exact'
+    if (schwaMatch) return 'plausible'
+    if (single !== null && isAccentVariant(target, single)) return 'plausible'
+  } else if (single === target || schwaMatch) {
     return sameLetters ? 'exact' : 'plausible'
   }
 
@@ -192,6 +216,12 @@ function markOf(
    * error itself rather than an echo of one: "hop" written "hope" spells the
    * vowel with the same `o`, and the silent `e` that changed it is exactly what
    * went wrong, so that must keep scoring as a vowel error.
+   *
+   * This applies when reading too, and is not a leftover from spelling. The
+   * mechanism is the round trip through eSpeak, which the teacher's respelling
+   * also goes through: write "agen" for "again" and the `g` reads soft, through
+   * no doing of the reader. Dropping it here would undo the fix for #22 on the
+   * side where dropped sounds are commonest.
    */
   if (single !== null && sameLetters && studentGrapheme !== '' && !isVowel(target)) {
     return 'exact'

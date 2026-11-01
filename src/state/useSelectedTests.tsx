@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useStore } from './store'
-import { analysisApplies, useAllTests } from './useAnalysis'
+import { useAllTests } from './useAnalysis'
 import { testsInOrder, type ReportSource } from '../reports/aggregate'
-import type { Test } from './types'
+import { isReading, type Test } from './types'
 
 /**
  * Which tests a report covers, and their analyses.
@@ -75,9 +75,15 @@ export interface SelectedTests {
 export function useSelectedTests(defaultTo: 'active' | 'all'): SelectedTests {
   const { project } = useStore()
   const shared = useContext(SharedSelection)
-  // Only tests the reports can actually score. Offering a reading test here
-  // would put a chip in the picker that changes nothing when ticked.
-  const tests = useMemo(() => testsInOrder(project).filter(analysisApplies), [project])
+  /*
+   * Spelling tests only, for now.
+   *
+   * Reading tests are scored, but every report here pools whatever it is given,
+   * and pooling encoding with decoding would average two different questions
+   * into one meaningless number. They arrive when there is a control to choose
+   * between the two.
+   */
+  const tests = useMemo(() => testsInOrder(project).filter((t) => !isReading(t)), [project])
   const all = useAllTests(project, true)
 
   // Recomputed rather than stored, so a page still on its default keeps step

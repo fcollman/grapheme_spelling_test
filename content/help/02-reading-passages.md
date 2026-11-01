@@ -86,13 +86,49 @@ you start.
 If you have locked the word list (the same **🔒** lock the spelling grid uses),
 the passage cannot be edited at all until you unlock it.
 
+## Checking the analysis
+
+Once a passage is marked, the **Grapheme analysis** tab breaks it down the same
+way it breaks down a spelling test: one column per spelling unit, with the sound
+it makes underneath, and a colour for how each student handled it.
+
+The question it asks is the other way round, though, and the wording follows.
+The column headed *Wrote* on a spelling test is headed **Said** here, and amber
+no longer means "right sound, different spelling" — a reader never chooses a
+spelling. It means **accent, not a decoding error**.
+
+### Spelling the sounds is not the same as making them
+
+This is the part worth understanding, because it is why a reading test needs its
+own scoring.
+
+Suppose a student reads *cliff* perfectly and you write down `clif`. On a
+spelling test, `f` for `ff` is a real decision and the app marks it amber. But
+your student never made that decision — they said /f/, correctly, and `clif` is
+just how you wrote it down. So on a reading test it is **green**.
+
+The same goes the other way. If they read *shore* as "sore", that is a digraph
+reduced to its first letter, and it is marked wrong whichever way you transcribe
+it. Real misreadings survive; your choice of letters does not count against
+anyone.
+
+**So spell what you heard however comes naturally.** You are not being marked on
+your spelling.
+
+### When the app gets it wrong
+
+Accents are where an automatic judgement will disagree with you, and the app
+knows only a few — the cot/caught merger, dropped r's, *-in'* for *-ing*. If a
+student's pronunciation is fine and the app has called it wrong, **click the
+cell and correct it**. Your decision wins and stays put.
+
 ## What happens to the results
 
-Nothing yet. **Reading tests are not analysed in this version** — they are not
-offered in the test picker on any report, and they do not appear in any score.
+The grapheme analysis works now. The **reports** do not include reading tests
+yet: they would pool decoding with spelling and average two different questions
+into one meaningless number.
 
-That is deliberate rather than unfinished. Scoring a reading test means asking a
-different question of every sound, and the reports that put reading and spelling
-side by side are being built next. Marking a passage now means the data is ready
-and waiting when they arrive, rather than being scored by the wrong rules in the
-meantime.
+The next piece of work adds a switch between the two, and after that two reports
+that put them side by side — where a student is weak at both, and where they can
+read a word they cannot spell. Marking passages now means that data is ready and
+waiting.
