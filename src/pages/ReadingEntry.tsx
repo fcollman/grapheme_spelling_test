@@ -6,6 +6,7 @@ import { toCsv } from '../export/csv'
 import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { planKey } from './readingKeys'
 
 /**
  * Marking a passage read aloud.
@@ -72,51 +73,28 @@ export function ReadingEntry() {
 
   const onWordKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
     const word = words[index]
+    const plan = planKey({
+      key: e.key,
+      shiftKey: e.shiftKey,
+      value: e.currentTarget.value,
+      omitted: omittedFor(word.id),
+      index,
+      wordCount: words.length,
+    })
+    if (!plan) return
 
-    /*
-     * A dash marks a word the student never said.
-     *
-     * It needs no modifier and cannot collide with a respelling: the tokeniser
-     * splits on a hyphen and `cleanWord` strips it, so a dash can never be part
-     * of what a teacher types for a word.
-     */
-    if (e.key === '-' && e.currentTarget.value === '') {
-      e.preventDefault()
-      dispatch({ type: 'setOmitted', wordId: word.id, studentId, omitted: true })
-      focusWord(index + 1)
-      return
-    }
+    if (plan.preventDefault) e.preventDefault()
+    if (plan.blur) e.currentTarget.blur()
 
-    if (e.key === 'Escape') {
-      e.currentTarget.blur()
-      return
-    }
-
-    if (e.key !== 'Tab' && e.key !== 'Enter') return
-
-    const back = e.shiftKey
-    const next = back ? index - 1 : index + 1
-
-    /*
-     * Deliberately not trapping focus. At either end of the passage the key is
-     * left alone, so Tab carries on out to the buttons around the passage the
-     * way it does anywhere else on a page.
-     */
-    if (next < 0 || next >= words.length) {
-      if (e.key === 'Enter') e.preventDefault()
-      return
-    }
-
-    e.preventDefault()
-
-    // Going forward over a word nothing has been said about means it was read
-    // correctly. Going backwards asserts nothing — that is how you get back to
-    // a word to listen again without marking everything you pass.
-    if (!back && e.currentTarget.value === '' && !omittedFor(word.id)) {
+    // Recorded before moving, and without reference to whether there is
+    // anywhere to move to — see readingKeys.ts.
+    if (plan.record === 'confirm') {
       dispatch({ type: 'setResponse', wordId: word.id, studentId, value: word.text })
+    } else if (plan.record === 'omit') {
+      dispatch({ type: 'setOmitted', wordId: word.id, studentId, omitted: true })
     }
 
-    focusWord(next)
+    if (plan.move !== null) focusWord(plan.move)
   }
 
   const commitPassage = (text: string) => {
