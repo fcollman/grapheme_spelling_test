@@ -9,6 +9,7 @@ import {
   type Project,
   type Settings,
   type SlotOverrideData,
+  type AudioMeta,
   type Student,
   type Test,
   type TestKind,
@@ -38,6 +39,9 @@ export type Action =
   | { type: 'setResponse'; wordId: string; studentId: string; value: string }
   | { type: 'setPassage'; text: string }
   | { type: 'setOmitted'; wordId: string; studentId: string; omitted: boolean }
+  | { type: 'setAudioTime'; wordId: string; studentId: string; seconds: number | null }
+  | { type: 'setAudioMeta'; studentId: string; meta: AudioMeta | null }
+  | { type: 'clearAudioTimes'; studentId: string }
   | { type: 'clearStudentResponses'; studentId: string }
   | { type: 'setOverride'; wordId: string; studentId: string; slot: number; value: SlotOverrideData | null }
   | { type: 'clearOverridesForWord'; wordId: string }
@@ -273,6 +277,48 @@ export function reducer(project: Project, action: Action): Project {
         overrides: withoutWords(t.overrides, stale),
         wordPhonemes: withoutWords(t.wordPhonemes, stale),
         omissions: t.omissions ? withoutWords(t.omissions, stale) : t.omissions,
+        audioTimes: t.audioTimes ? withoutWords(t.audioTimes, stale) : t.audioTimes,
+      }))
+    }
+
+    case 'setAudioTime': {
+      /*
+       * Where in the recording this word was marked.
+       *
+       * Written only when the teacher moves on, never on the media element's
+       * own progress events: those fire several times a second, and dispatching
+       * from them would flood the reducer, leave the file permanently showing
+       * unsaved changes, and defeat the autosave debounce entirely.
+       */
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      const current = active?.audioTimes?.[action.wordId]?.[action.studentId]
+      if (!active || current === (action.seconds ?? undefined)) return project
+
+      return withActiveTest(project, (t) => {
+        const forWord = { ...(t.audioTimes?.[action.wordId] ?? {}) }
+        if (action.seconds === null) delete forWord[action.studentId]
+        else forWord[action.studentId] = action.seconds
+        return { ...t, audioTimes: { ...(t.audioTimes ?? {}), [action.wordId]: forWord } }
+      })
+    }
+
+    case 'setAudioMeta': {
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active) return project
+      return withActiveTest(project, (t) => {
+        const files = { ...(t.audioFiles ?? {}) }
+        if (action.meta === null) delete files[action.studentId]
+        else files[action.studentId] = action.meta
+        return { ...t, audioFiles: files }
+      })
+    }
+
+    case 'clearAudioTimes': {
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active?.audioTimes) return project
+      return withActiveTest(project, (t) => ({
+        ...t,
+        audioTimes: withoutStudent(t.audioTimes ?? {}, action.studentId),
       }))
     }
 

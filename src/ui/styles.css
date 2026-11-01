@@ -924,6 +924,51 @@ input.pw-input:focus {
   padding: 0 3px;
 }
 
+.audiobar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--panel-sunk, #f7f8fb);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Unmissable: a page that is listening to a child must say so. */
+.recording-dot {
+  color: var(--wrong-ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  animation: recording-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-dot {
+    animation: none;
+  }
+}
+
+.audiostatus {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Anything other than "playing the file you expected" has to be noticed. */
+.audiostatus.warn {
+  color: var(--wrong-ink);
+  font-weight: 600;
+}
+
 /* ---------- sortable column headings ---------- */
 
 /*
