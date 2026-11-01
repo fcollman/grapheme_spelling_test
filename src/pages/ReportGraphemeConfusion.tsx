@@ -4,7 +4,8 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
-import { buildReportsAcross, CLASS, getGraphemeConfusion, NONE } from '../reports/aggregate'
+import { buildReportsAcross, CLASS, getGraphemeConfusion, NONE, type GraphemeRow } from '../reports/aggregate'
+import { confusionColumns, trimToConfusions } from '../reports/confusionAxes'
 import { displayList } from '../data/phonemes'
 import { category } from '../data/categories'
 import { CategoryDot } from '../components/CategoryTag'
@@ -31,16 +32,34 @@ export function ReportGraphemeConfusion() {
     [project, scope.sources],
   )
   const [who, setWho] = useState<string>(CLASS)
-  const [hideEmpty, setHideEmpty] = useState(true)
+  /** Ticked, the sheet shows only the substitutions; unticked, the whole grid. */
+  const [onlyConfusions, setOnlyConfusions] = useState(true)
   const [drill, setDrill] = useState<Drill | null>(null)
 
-  const rowTotal = (key: string) =>
-    reports.writtenSpellings.reduce((sum, s) => sum + getGraphemeConfusion(reports, who, key, s), 0)
-  const colTotal = (written: string) =>
-    reports.graphemes.reduce((sum, g) => sum + getGraphemeConfusion(reports, who, g.key, written), 0)
+  /*
+   * Every target spelling gets a column, in the row order, so each row meets
+   * its own column and the correct answers run down the diagonal. Columns used
+   * to be only what students actually wrote, which left a target nobody spelled
+   * correctly with nowhere to be correct, and meant no column could ever be
+   * empty for the toggle below to hide.
+   */
+  const allCols = useMemo(
+    () =>
+      confusionColumns(
+        reports.graphemes.map((g) => g.letters),
+        reports.writtenSpellings,
+        NONE,
+      ),
+    [reports],
+  )
 
-  const rows = hideEmpty ? reports.graphemes.filter((g) => rowTotal(g.key) > 0) : reports.graphemes
-  const cols = hideEmpty ? reports.writtenSpellings.filter((s) => colTotal(s) > 0) : reports.writtenSpellings
+  const { rows, cols } = useMemo(() => {
+    const count = (g: GraphemeRow, c: string) => getGraphemeConfusion(reports, who, g.key, c)
+    const isDiagonal = (g: GraphemeRow, c: string) => c === g.letters
+    return onlyConfusions
+      ? trimToConfusions(reports.graphemes, allCols, count, isDiagonal)
+      : { rows: reports.graphemes, cols: allCols }
+  }, [reports, allCols, onlyConfusions, who])
 
   // One label for this view, used in the heading, the file name and the printout.
   const whoName = who === CLASS ? 'Whole class' : names(who)
@@ -92,7 +111,8 @@ export function ReportGraphemeConfusion() {
       <p className="hint">
         Rows are the spelling the word needed; columns are what the student actually wrote. The
         shaded diagonal is correct. Everything off it is a specific substitution to teach against —{' '}
-        {NONE} means nothing was written for that unit at all.
+        {NONE} means nothing was written for that unit at all. Untick the box below to see every
+        spelling, right or wrong, with the correct answers running down the diagonal.
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -108,8 +128,14 @@ export function ReportGraphemeConfusion() {
           </select>
         </label>
         <label className="check">
-          <input type="checkbox" checked={hideEmpty} onChange={(e) => setHideEmpty(e.target.checked)} />
-          Hide empty rows and columns
+          <input
+            type="checkbox"
+            checked={onlyConfusions}
+            onChange={(e) => setOnlyConfusions(e.target.checked)}
+          />
+          <span title="Unticked, every spelling gets a row and a column of its own, so the correct answers run down the diagonal">
+            Hide rows and columns with no confusions
+          </span>
         </label>
         <span className="spacer" />
         <button className="btn" onClick={exportCsv}>

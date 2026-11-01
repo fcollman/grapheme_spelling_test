@@ -10,6 +10,7 @@ import { toCsv } from '../export/csv'
 import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
 import { OccurrenceModal } from '../components/OccurrenceModal'
+import { confusionColumns, trimToConfusions } from '../reports/confusionAxes'
 import type { Drill } from '../reports/occurrences'
 
 /**
@@ -30,19 +31,33 @@ export function ReportConfusion() {
     [project, scope.sources],
   )
   const [who, setWho] = useState<string>(CLASS)
-  const [hideEmpty, setHideEmpty] = useState(true)
+  /** Ticked, the sheet shows only the swaps; unticked, the whole grid. */
+  const [onlyConfusions, setOnlyConfusions] = useState(true)
   const [drill, setDrill] = useState<Drill | null>(null)
 
   const label = (id: string) => (id === NONE ? NONE : display(id as PhonemeId, notation))
 
   const allRows: string[] = [...reports.phonemes, NONE]
-  const allCols: string[] = [...reports.producedPhonemes, NONE]
+  // Every target sound gets a column too, not only the ones somebody produced,
+  // so a row can always meet its own column on the diagonal.
+  const allCols: string[] = useMemo(
+    () => confusionColumns(reports.phonemes, reports.producedPhonemes, NONE),
+    [reports],
+  )
 
-  const rowTotal = (r: string) => allCols.reduce((sum, c) => sum + getConfusion(reports, who, r, c), 0)
-  const colTotal = (c: string) => allRows.reduce((sum, r) => sum + getConfusion(reports, who, r, c), 0)
-
-  const rows = hideEmpty ? allRows.filter((r) => rowTotal(r) > 0) : allRows
-  const cols = hideEmpty ? allCols.filter((c) => colTotal(c) > 0) : allCols
+  const { rows, cols } = useMemo(
+    () =>
+      onlyConfusions
+        ? trimToConfusions(
+            allRows,
+            allCols,
+            (r, c) => getConfusion(reports, who, r, c),
+            (r, c) => r === c && r !== NONE,
+          )
+        : { rows: allRows, cols: allCols },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reports, allCols, onlyConfusions, who],
+  )
 
   // One label for this view, used in the heading, the file name and the printout.
   const whoName = who === CLASS ? 'Whole class' : names(who)
@@ -107,8 +122,14 @@ export function ReportConfusion() {
           </select>
         </label>
         <label className="check">
-          <input type="checkbox" checked={hideEmpty} onChange={(e) => setHideEmpty(e.target.checked)} />
-          Hide empty rows and columns
+          <input
+            type="checkbox"
+            checked={onlyConfusions}
+            onChange={(e) => setOnlyConfusions(e.target.checked)}
+          />
+          <span title="Unticked, every sound gets a row and a column of its own, so the correct answers run down the diagonal">
+            Hide rows and columns with no confusions
+          </span>
         </label>
         <span className="spacer" />
         <button className="btn" onClick={exportCsv}>
