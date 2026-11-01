@@ -40,6 +40,13 @@ about what was to spell a particular sound in a particular context.
 Note, the setting is shared with **Accuracy by grapheme**, so it stays where you put
 it to ensure consistency across pages.
 
+## Sorting to find the worst
+
+Click a column heading to sort by it: once for the worst first, again for the
+best first, a third time to put the chart back in its own order. Sort by
+**Whole class** for what to reteach to everyone, or by a student's column for
+what that child needs. Sounds that never came up sink to the bottom either way.
+
 ## Otherwise it works like the grapheme report
 
 Everything else on this page behaves exactly as **Accuracy by grapheme** does:

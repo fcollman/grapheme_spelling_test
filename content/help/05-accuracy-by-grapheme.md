@@ -25,6 +25,38 @@ obscure growth.
 Whatever you choose here is what every other report tab shows too, so you can
 carry the same span of tests across the reports without setting it up again.
 
+## Sorting to find the worst
+
+The sheet is laid out in teaching order, which is the right way to read it when
+you are planning and the wrong way when the question is *what is this class
+worst at* — that answer is scattered down the page.
+
+**Click a column heading to sort by it.** The first click puts the worst first,
+which is usually the one you want. Click again for the best first, and a third
+time to put the sheet back in teaching order.
+
+![The sheet sorted by the whole-class column, worst first. The sorted heading carries an arrow and the rows run from 38% upwards](images/sorted-column.webp)
+
+- Sort by **Whole class** for what to reteach to everyone.
+- Sort by **a student's column** for what that child needs, which can be a very
+  different list from the class's.
+
+Two things worth knowing:
+
+- **Sorting breaks the category headings**, because sorting inside each category
+  would leave the worst spellings scattered exactly as before. Each row carries
+  its own coloured category dot instead, so you can still see what kind of
+  pattern it is.
+- **Spellings that never came up sink to the bottom** whichever way you sort. A
+  blank is the absence of a score, not a bad one, and letting it lead a
+  "worst first" list would bury the real answer.
+
+When two rows have the same percentage, the one with more attempts behind it
+comes first — twenty attempts is a firmer finding than two.
+
+The CSV and the printout come out in the order on screen, so a sorted sheet
+exports sorted.
+
 ## Counting amber
 
 The tick box **Count "right sound, different spelling" as correct** decides what

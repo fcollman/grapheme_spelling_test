@@ -13,6 +13,8 @@ import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
+import { SortHeader } from '../components/SortHeader'
+import { nextSort, sortRows, type SortState } from '../reports/sorting'
 
 /**
  * Rows are the phonemes this test actually covered, columns are students, plus a
@@ -25,10 +27,19 @@ export function ReportAccuracy() {
   const fileName = useFileName()
   const names = useStudentNames()
   const [drill, setDrill] = useState<Drill | null>(null)
+  const [sort, setSort] = useState<SortState | null>(null)
   const { notation } = project.settings
   const reports = useMemo(
     () => buildReportsAcross(project, scope.sources),
     [project, scope.sources],
+  )
+
+  // The sheet's own order is the sound chart; sorting reorders it by whichever
+  // column was clicked. Everything downstream reads this, so the CSV and the
+  // printout come out in the order on screen.
+  const phonemes = useMemo(
+    () => sortRows(reports.phonemes, sort, (ph, col) => getTally(reports, ph, col), (ph) => display(ph, notation)),
+    [reports, sort, notation],
   )
 
   // Whole class first: the summary is what decides what to reteach, so it should
@@ -40,7 +51,7 @@ export function ReportAccuracy() {
 
   const exportCsv = () => {
     const rows: string[][] = [['Sound', 'Key word', ...columns.map((c) => c.name)]]
-    for (const p of reports.phonemes) {
+    for (const p of phonemes) {
       const cells = columns.map(({ id: who }) => {
         const t = getTally(reports, p, who)
         const pct = percentOf(t.correct, t.total)
@@ -115,14 +126,20 @@ export function ReportAccuracy() {
               <th className="c1">Sound</th>
               <th className="c2">As in</th>
               {columns.map((c) => (
-                <th key={c.id} className={`num ${c.id === CLASS ? 'classcol' : ''}`}>
-                  {c.name}
-                </th>
+                <SortHeader
+                  key={c.id}
+                  columnId={c.id}
+                  label={c.name}
+                  sort={sort}
+                  onSort={(id) => setSort((prev) => nextSort(prev, id))}
+                  naturalOrder="the sound chart order"
+                  className={`num ${c.id === CLASS ? 'classcol' : ''}`}
+                />
               ))}
             </tr>
           </thead>
           <tbody>
-            {reports.phonemes.map((p) => (
+            {phonemes.map((p) => (
               <tr key={p}>
                 <th className="rowhead phoneme c1">{display(p, notation)}</th>
                 <td className="c2" style={{ color: 'var(--muted)' }}>{get(p).example}</td>
@@ -132,7 +149,9 @@ export function ReportAccuracy() {
                   return (
                     <td
                       key={c.id}
-                      className={`num drillable ${c.id === CLASS ? 'classcol' : ''}`}
+                      className={`num drillable ${c.id === CLASS ? 'classcol' : ''} ${
+                        sort?.columnId === c.id ? 'sortedcol' : ''
+                      }`}
                       onClick={() =>
                         setDrill({
                           kind: 'phoneme',
