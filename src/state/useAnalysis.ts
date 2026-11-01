@@ -4,7 +4,7 @@ import { analyzeWords, cleanWord } from '../engine/phonemize'
 import { findPatterns, type PatternMatch } from '../engine/patterns'
 import { buildUnits, type GraphemeUnit } from '../engine/units'
 import type { NormalizedWord } from '../engine/normalize'
-import type { Project, Test } from './types'
+import { isReading, type Project, type Test } from './types'
 
 /** Everything the reports need about one test. */
 export interface TestAnalysis {
@@ -40,6 +40,24 @@ export function emptyTestAnalysis(): TestAnalysis {
 
 const INITIAL: AnalysisResult = { ...emptyTestAnalysis(), loading: true, error: null }
 
+const NOT_ANALYSED: AnalysisResult = { ...emptyTestAnalysis(), loading: false, error: null }
+
+/**
+ * Whether this engine knows how to score this test yet.
+ *
+ * A reading test records what a student said, not what they wrote, and the
+ * aligner decides `exact` against `plausible` by comparing letters — so running
+ * a passage through it would score every correctly-read sound as a near miss.
+ * Numbers that look right and are not are worse than none, so until decoding
+ * scoring lands, reading tests are left alone rather than mis-scored.
+ *
+ * Skipping them is also what keeps the cost sane: a passage is a few hundred
+ * words against a spelling test's twenty.
+ */
+export function analysisApplies(test: Test): boolean {
+  return !isReading(test)
+}
+
 /**
  * Phonemizes every target word and every attempt across the given tests in one
  * batched engine call. The engine cache is module-level, so a word that recurs in
@@ -51,6 +69,7 @@ export async function collectNorms(
 ): Promise<Map<string, NormalizedWord>> {
   const strings: string[] = []
   for (const test of tests) {
+    if (!analysisApplies(test)) continue
     for (const w of test.words) {
       strings.push(cleanWord(w.text))
       for (const s of project.students) {
@@ -128,9 +147,17 @@ function testSignature(project: Project, test: Test) {
  */
 export function useAnalysis(project: Project, test: Test): AnalysisResult {
   const [result, setResult] = useState<AnalysisResult>(INITIAL)
-  const signature = JSON.stringify(testSignature(project, test))
+  // Worked out before the signature, because stringifying a whole passage's
+  // responses on every render is exactly the cost this avoids.
+  const applies = analysisApplies(test)
+  const signature = applies ? JSON.stringify(testSignature(project, test)) : ''
 
   useEffect(() => {
+    if (!applies) setResult(NOT_ANALYSED)
+  }, [applies])
+
+  useEffect(() => {
+    if (!applies) return
     let cancelled = false
 
     async function run() {
@@ -149,7 +176,7 @@ export function useAnalysis(project: Project, test: Test): AnalysisResult {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature])
+  }, [signature, applies])
 
   return result
 }
@@ -172,9 +199,8 @@ const ALL_INITIAL: AllTestsAnalysis = { loading: true, error: null, byTest: new 
  */
 export function useAllTests(project: Project, enabled: boolean): AllTestsAnalysis {
   const [result, setResult] = useState<AllTestsAnalysis>(ALL_INITIAL)
-  const signature = JSON.stringify(
-    enabled ? project.tests.map((t) => testSignature(project, t)) : null,
-  )
+  const scorable = project.tests.filter(analysisApplies)
+  const signature = JSON.stringify(enabled ? scorable.map((t) => testSignature(project, t)) : null)
 
   useEffect(() => {
     if (!enabled) return
@@ -183,10 +209,10 @@ export function useAllTests(project: Project, enabled: boolean): AllTestsAnalysi
     async function run() {
       try {
         const options = { lenientSchwa: project.settings.lenientSchwa }
-        const norms = await collectNorms(project, project.tests)
+        const norms = await collectNorms(project, scorable)
         if (cancelled) return
         const byTest = new Map<string, TestAnalysis>()
-        for (const t of project.tests) byTest.set(t.id, analyzeTest(project, t, norms, options))
+        for (const t of scorable) byTest.set(t.id, analyzeTest(project, t, norms, options))
         setResult({ loading: false, error: null, byTest })
       } catch (e) {
         if (!cancelled) setResult({ loading: false, error: String(e), byTest: new Map() })

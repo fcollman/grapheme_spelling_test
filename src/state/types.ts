@@ -11,12 +11,29 @@ export interface Word {
   text: string
   /** Nonsense words test encoding without letting sight-word memory help. */
   nonsense: boolean
+  /**
+   * Where this word sits in `Test.passage`, for reading tests only.
+   *
+   * The passage is stored once and the page renders the text between one word's
+   * `end` and the next word's `start` verbatim, so commas, quotation marks, em
+   * dashes and paragraph breaks come out exactly as they were pasted without a
+   * second copy of the passage living in the word list.
+   */
+  start?: number
+  end?: number
 }
 
 export interface SlotOverrideData {
   student?: PhonemeId[]
   mark?: Mark
 }
+
+/**
+ * Spelling tests measure encoding — you hear a sound, can you write the letters.
+ * Reading tests measure decoding — you see the letters, can you say the sound.
+ * The same grapheme knowledge, tested in opposite directions.
+ */
+export type TestKind = 'spelling' | 'reading'
 
 export interface Test {
   id: string
@@ -30,6 +47,28 @@ export interface Test {
   overrides: Record<string, Record<string, Record<number, SlotOverrideData>>>
   /** Teacher-confirmed phoneme breakdown for a target word, replacing the engine's. */
   wordPhonemes: Record<string, PhonemeId[]>
+  /** Absent means 'spelling', so every project file written before this still loads. */
+  kind?: TestKind
+  /** Reading tests: the passage as the teacher pasted it. `words` is derived from it. */
+  passage?: string
+  /**
+   * Reading tests: `omissions[wordId][studentId]` when the student did not say the
+   * word at all.
+   *
+   * Kept apart from `responses` because a missing response already means "not
+   * assessed yet", and a word the student skipped is the opposite of that — it is
+   * a decoding failure the teacher watched happen.
+   */
+  omissions?: Record<string, Record<string, true>>
+}
+
+/** Every test written before reading tests existed is a spelling test. */
+export function testKind(test: Test): TestKind {
+  return test.kind ?? 'spelling'
+}
+
+export function isReading(test: Test): boolean {
+  return testKind(test) === 'reading'
 }
 
 export interface Settings {
@@ -115,6 +154,10 @@ export function emptyTest(name: string): Test {
     overrides: {},
     wordPhonemes: {},
   }
+}
+
+export function emptyReadingTest(name: string): Test {
+  return { ...emptyTest(name), kind: 'reading', passage: '' }
 }
 
 export function emptyProject(): Project {

@@ -1,5 +1,6 @@
 import type { Project, Student, Test, Word } from './types'
 import { DEFAULT_SETTINGS } from './types'
+import { tokenizePassage } from './passage'
 
 /**
  * A made-up class and six months of fortnightly tests, so the app can be
@@ -293,6 +294,79 @@ export const DEMO_STUDENT_COUNT = CLASS.length
  * Builds the whole demo project: a class of eight, tested every two weeks for
  * six months, ending today.
  */
+/**
+ * A passage for the reading test, and the mispronunciations worth seeding.
+ *
+ * Chosen so the errors are the ones decoding is meant to catch: silent-e ignored
+ * (`made` read as `mad`), a vowel team flattened (`reached` as `retched`), a
+ * digraph read as its first letter (`shore` as `sore`), and r-control lost
+ * (`bird` as `bid`). They are the same patterns the spelling tests cover, which
+ * is what makes the two comparable.
+ */
+const PASSAGE =
+  'The small boat made its way along the shore. A bird called from the cliff, ' +
+  'and the children reached the beach before the rain came down.'
+
+/** What a struggling reader says instead, keyed by the word they were reading. */
+const MISREADS: Record<string, string> = {
+  made: 'mad',
+  shore: 'sore',
+  bird: 'bid',
+  reached: 'retched',
+  beach: 'betch',
+  cliff: 'clif',
+  called: 'cold',
+  before: 'befor',
+}
+
+function readingTest(students: Student[], rng: () => number, date: string): Test {
+  const words: Word[] = tokenizePassage(PASSAGE).map((t, i) => ({
+    id: `demo_r_w${i}`,
+    text: t.text,
+    nonsense: false,
+    start: t.start,
+    end: t.end,
+  }))
+
+  const responses: Record<string, Record<string, string>> = {}
+  const omissions: Record<string, Record<string, true>> = {}
+
+  for (const [i, profile] of CLASS.entries()) {
+    const student = students[i]
+    for (const word of words) {
+      const misread = MISREADS[word.text.toLowerCase()]
+      responses[word.id] = responses[word.id] ?? {}
+
+      // Decoding runs a little ahead of spelling: a child can read a word they
+      // cannot yet spell, which is the gap the comparison reports are for.
+      const ability = Math.min(0.97, profile.start + profile.growth + 0.12)
+
+      if (misread && rng() > ability) {
+        responses[word.id][student.id] = misread
+      } else if (misread && rng() < 0.04) {
+        // Occasionally a word is skipped outright rather than misread.
+        omissions[word.id] = omissions[word.id] ?? {}
+        omissions[word.id][student.id] = true
+      } else {
+        responses[word.id][student.id] = word.text
+      }
+    }
+  }
+
+  return {
+    id: 'demo_reading',
+    name: 'Reading · The small boat',
+    date,
+    kind: 'reading',
+    passage: PASSAGE,
+    words,
+    responses,
+    omissions,
+    overrides: {},
+    wordPhonemes: {},
+  }
+}
+
 export function demoProject(): Project {
   const rng = makeRng(20260919)
 
@@ -354,12 +428,15 @@ export function demoProject(): Project {
     }
   })
 
+  // One passage read aloud, so the demo shows decoding beside encoding.
+  const reading = readingTest(students, rng, tests[tests.length - 1].date)
+
   return {
     version: 1,
     // Named, so the demo also shows what a class name does to file names and printouts.
     className: 'Block 2A',
     students,
-    tests,
+    tests: [...tests, reading],
     activeTestId: tests[tests.length - 1].id,
     settings: { ...DEFAULT_SETTINGS },
   }
