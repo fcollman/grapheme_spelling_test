@@ -4,6 +4,7 @@ import { useAnalysis } from './state/useAnalysis'
 import { readProjectFile } from './state/persist'
 import { DownloadProvider } from './components/DownloadProvider'
 import { ProjectFileProvider, useProjectFile } from './state/ProjectFileProvider'
+import { SelectedTestsProvider } from './state/useSelectedTests'
 import { demoProject, DEMO_STUDENT_COUNT } from './state/demo'
 import { emptyProject } from './state/types'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -39,7 +40,9 @@ export function App() {
   return (
     <DownloadProvider>
       <ProjectFileProvider>
-        <Workspace />
+        <SelectedTestsProvider>
+          <Workspace />
+        </SelectedTestsProvider>
       </ProjectFileProvider>
     </DownloadProvider>
   )

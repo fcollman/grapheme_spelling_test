@@ -15,7 +15,25 @@ The row of chips under the toolbar decides which tests the page covers.
 
 Click a test to add or remove it, or use the shortcuts:
 
-- **Select all**, **Clear**,  **Last 3**, **First 3**, **Most recent** 
+- **Select all**, **Clear**,  **Last 3**, **First 3**, **Most recent**
+- **Current test** picks just the one showing in the toolbar dropdown
+
+### The tests you pick follow you between tabs
+
+Choose a span once and every report tab shows the same one, so you can look at
+the same three tests as graphemes, then as phonemes, then as confusions, without
+setting it up again on each tab.
+
+It stays put until you change it — including when you switch tests in the
+toolbar to enter data, so a span you lined up for a meeting is not lost by a
+detour to the spelling grid. **Current test** is how you deliberately go back to
+following the toolbar.
+
+Until you touch a picker, each tab starts where it makes sense for that tab: a
+profile on your whole year, a report tab on the test in the toolbar. Adding or
+deleting a test puts them back to those starting points, because a selection
+that quietly means something different from what you chose is worse than one
+that has visibly reset.
 
 Everything on the page pools across whatever you have selected, so the same page
 serves a single lesson's test, a "how is it going" conversation, and a whole
