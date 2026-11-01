@@ -134,6 +134,21 @@ Two things worth knowing:
 With a big class the grid scrolls sideways, but the word and nonsense columns
 stay pinned to the left so you can always see what was dictated.
 
+### The headings stay put
+
+A long word list used to scroll the student names off the top, so by the time
+you reached the bottom of the list there was nothing left to tell you whose
+column you were in. Both ends of the grid now stay where they are: the names
+along the top, the scores along the bottom, and the words scroll between them.
+
+![A long word list scrolled down. The student names are still along the top and the Words correct row is still along the bottom](images/frozen-rows.webp)
+
+The report tabs do the same, so you can read a row at the bottom of a long list
+of spellings and still see which student or which test each column belongs to.
+
+Printing is unaffected — nothing is pinned on paper, and the whole table prints
+in full.
+
 The **Words correct** row at the bottom gives each student a plain score out of
 the number of words on the test, with a percentage.
 Althought, tt counts blanks as not correct, it also tells you how many
