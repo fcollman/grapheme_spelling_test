@@ -936,6 +936,26 @@ input.pw-input:focus {
   border-radius: var(--radius);
 }
 
+/* Unmissable: a page that is listening to a child must say so. */
+.recording-dot {
+  color: var(--wrong-ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  animation: recording-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-dot {
+    animation: none;
+  }
+}
+
 .audiostatus {
   max-width: 320px;
   overflow: hidden;

@@ -30,11 +30,32 @@ Two things are worth knowing about how the text is broken into words:
 - **Hyphenated words count as two.** `well-known` is marked as `well` and
   `known`, because that is how it is read.
 
-## Play the recording while you mark
+## Record the student, or attach a recording you already have
 
-If you recorded the student, attach the recording and work from it without
-leaving the keyboard. **Attach recording** takes `.mp3`, `.m4a`, `.wav` and the
-`.mov` files phones produce.
+### Recording here
+
+**● Record** records through your computer's microphone. The browser asks
+permission the first time; after that, press Record, let the student read, and
+press **Stop and save**.
+
+![Recording in progress: stop and save, a pulsing red Recording 0:05, and discard](images/reading-recording.webp)
+
+It then asks where to put the file, and that is the only copy — it is written
+straight to the folder you choose, not kept inside the app. **Discard** throws a
+recording away without saving it.
+
+While it is recording, the red **● Recording** counter is on screen the whole
+time and the microphone is released the moment you stop. A page that can listen
+to a child should never leave you guessing whether it is.
+
+Recording here saves a round trip: no mailing a file to yourself from your
+phone, no hunting through Downloads, and no copy of a student's voice sitting in
+your email.
+
+### Attaching one you already have
+
+**Attach recording** takes `.mp3`, `.m4a`, `.wav` and the `.mov` files phones
+produce.
 
 ![The transport bar above a passage being marked: change recording, play, back five seconds, speed, and the elapsed time](images/reading-audio.webp)
 
