@@ -120,3 +120,50 @@ export function normalizePeaks(peaks: Float32Array): Float32Array {
   for (let i = 0; i < peaks.length; i++) out[i] = peaks[i] * gain
   return out
 }
+
+/** Clear space between one word label and the next, in pixels. */
+export const LABEL_GAP = 8
+
+export interface PlacedLabel {
+  id: string
+  text: string
+  seconds: number
+  /** Where to put the label's left edge, in pixels across the bar. */
+  left: number
+}
+
+/**
+ * Which of the word marks can be labelled, left to right.
+ *
+ * A passage is a few hundred words and the bar a few hundred pixels wide, so
+ * most of the labels cannot be drawn. Drawn anyway they overlap into a smear
+ * that hides the very landmarks they exist to provide, so a label is taken only
+ * where there is room left beside the one before it.
+ *
+ * The earlier word wins a crowded run rather than the later one, so the set of
+ * labels only grows as the bar does, instead of shuffling.
+ */
+export function placeLabels(
+  marks: WordMark[],
+  duration: number,
+  width: number,
+  widthOf: (text: string) => number,
+): PlacedLabel[] {
+  if (duration <= 0 || width <= 0) return []
+  const out: PlacedLabel[] = []
+  let takenTo = -Infinity
+  for (const m of [...marks].sort((a, b) => a.seconds - b.seconds)) {
+    const x = fractionOf(m.seconds, duration) * width
+    if (x < takenTo) continue
+    const size = widthOf(m.text)
+    /*
+     * Pulled back inside the bar at the right-hand end, where the label would
+     * otherwise be clipped to a letter or two. The mark itself stays exactly
+     * where it is — only the word shifts, and only at the very edge.
+     */
+    const left = Math.max(0, Math.min(x, width - size))
+    out.push({ id: m.id, text: m.text, seconds: m.seconds, left })
+    takenTo = left + size + LABEL_GAP
+  }
+  return out
+}

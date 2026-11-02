@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { fractionOf, markNear, normalizePeaks, timeAt, type WordMark } from '../state/waveform'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  fractionOf,
+  markNear,
+  normalizePeaks,
+  placeLabels,
+  timeAt,
+  type WordMark,
+} from '../state/waveform'
 import { NUDGE_SECONDS } from '../pages/readingKeys'
 
 /**
@@ -22,6 +29,24 @@ const MARK_HIT_PX = 6
 
 const HEIGHT = 64
 
+/** Kept in step with `.wave-label` in the stylesheet, which is what is measured. */
+const LABEL_PX = 11
+
+/*
+ * One offscreen context, used for nothing but measuring labels. How many words
+ * fit on the bar depends on how wide they are, and counting characters thins
+ * the wrong ones — "illuminated" and "it" are not the same size.
+ */
+let ruler: CanvasRenderingContext2D | null | undefined
+
+function textWidth(text: string): number {
+  if (ruler === undefined) {
+    ruler = document.createElement('canvas').getContext('2d')
+    if (ruler) ruler.font = `${LABEL_PX}px ${getComputedStyle(document.body).fontFamily}`
+  }
+  return ruler ? ruler.measureText(text).width : text.length * LABEL_PX * 0.6
+}
+
 export function Waveform({
   peaks,
   duration,
@@ -31,6 +56,7 @@ export function Waveform({
   onScrub,
   onPickWord,
   onNudge,
+  onToggle,
 }: {
   peaks: Float32Array | null
   duration: number
@@ -40,10 +66,18 @@ export function Waveform({
   onScrub: (seconds: number) => void
   onPickWord: (mark: WordMark) => void
   onNudge: (delta: number) => void
+  onToggle: () => void
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const headRef = useRef<HTMLSpanElement>(null)
+
+  /*
+   * The one measurement this component keeps in state, because which labels fit
+   * is a layout question and has to be answered before the labels are rendered.
+   * Everything else that depends on the width is drawn imperatively.
+   */
+  const [width, setWidth] = useState(0)
 
   /*
    * Scaled for drawing only, leaving the measured peaks alone. Speech recorded
@@ -58,6 +92,7 @@ export function Waveform({
     if (!canvas || !box) return
     const width = box.clientWidth
     if (width === 0) return
+    setWidth(width)
     /*
      * Backing store in device pixels, CSS box in layout pixels. Without this the
      * trace is soft on every laptop screen made in the last decade.
@@ -128,6 +163,16 @@ export function Waveform({
     return () => cancelAnimationFrame(frame)
   }, [at, duration])
 
+  /*
+   * Which words get their names printed above the bar. Without them the marks
+   * are a row of identical ticks and finding one means hovering along the bar
+   * reading tooltips, which is the scrubbing this was meant to replace.
+   */
+  const labels = useMemo(
+    () => placeLabels(marks, duration, width, textWidth),
+    [marks, duration, width],
+  )
+
   const secondsAtEvent = (clientX: number): { seconds: number; tolerance: number } | null => {
     const box = boxRef.current
     if (!box || duration <= 0) return null
@@ -162,12 +207,15 @@ export function Waveform({
 
   /*
    * Inside the bar the bare arrow keys are free — it is not a text box — so
-   * they step the audio without the modifier the passage needs.
+   * they step the audio without the modifier the passage needs. Space plays and
+   * pauses here as it does in the passage, so clicking the bar to find a place
+   * does not quietly change what the keyboard does.
    */
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'ArrowLeft') onNudge(-NUDGE_SECONDS)
     else if (e.key === 'ArrowRight') onNudge(NUDGE_SECONDS)
     else if (e.key === 'Home') onScrub(0)
+    else if (e.key === ' ') onToggle()
     else return
     e.preventDefault()
   }
@@ -178,7 +226,7 @@ export function Waveform({
         ref={boxRef}
         className="wave-box"
         role="group"
-        aria-label="Recording. Click to move, arrow keys to step."
+        aria-label="Recording. Click to move, arrow keys to step, space to play."
         tabIndex={0}
         onClick={onClick}
         onMouseMove={onMove}
@@ -193,6 +241,11 @@ export function Waveform({
               style={{ left: `${fractionOf(m.seconds, duration) * 100}%` }}
             />
           ))}
+        {labels.map((l) => (
+          <span key={l.id} className="wave-label" style={{ left: `${l.left}px` }}>
+            {l.text}
+          </span>
+        ))}
         <span ref={headRef} className="wave-head" />
         {decoding && <span className="wave-note">Reading the recording…</span>}
       </div>

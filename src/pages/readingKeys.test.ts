@@ -98,11 +98,17 @@ describe('keys this page does not claim', () => {
 })
 
 describe('planAudioKey', () => {
-  const base = { altKey: true, ctrlKey: false, metaKey: false }
+  const base = { altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, inTextBox: true }
 
   it('steps back and forward', () => {
-    expect(planAudioKey({ ...base, key: 'ArrowLeft' })).toBe(-NUDGE_SECONDS)
-    expect(planAudioKey({ ...base, key: 'ArrowRight' })).toBe(NUDGE_SECONDS)
+    expect(planAudioKey({ ...base, key: 'ArrowLeft' })).toEqual({
+      kind: 'nudge',
+      seconds: -NUDGE_SECONDS,
+    })
+    expect(planAudioKey({ ...base, key: 'ArrowRight' })).toEqual({
+      kind: 'nudge',
+      seconds: NUDGE_SECONDS,
+    })
   })
 
   /*
@@ -123,5 +129,29 @@ describe('planAudioKey', () => {
     for (const key of ['Tab', 'Enter', '-', 'Escape', 'a']) {
       expect(planAudioKey({ ...base, key })).toBeNull()
     }
+  })
+
+  describe('space', () => {
+    /*
+     * Taken bare, which only holds because a respelling is one word by
+     * construction — the tokeniser split the passage on whitespace.
+     */
+    it('plays and pauses from a word box, with no modifier to remember', () => {
+      expect(planAudioKey({ ...base, altKey: false, key: ' ' })).toEqual({ kind: 'toggle' })
+    })
+
+    /*
+     * Outside a text box space already means "press this button", and the
+     * button undoing a skip sits inside the passage.
+     */
+    it('leaves buttons alone', () => {
+      expect(planAudioKey({ ...base, altKey: false, inTextBox: false, key: ' ' })).toBeNull()
+    })
+
+    it('leaves modified spaces to the browser', () => {
+      expect(planAudioKey({ ...base, altKey: false, ctrlKey: true, key: ' ' })).toBeNull()
+      expect(planAudioKey({ ...base, altKey: false, metaKey: true, key: ' ' })).toBeNull()
+      expect(planAudioKey({ ...base, altKey: false, shiftKey: true, key: ' ' })).toBeNull()
+    })
   })
 })

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_GAIN, QUIET_FLOOR, fractionOf, markNear, normalizePeaks, peaksFrom, timeAt } from './waveform'
+import {
+  MAX_GAIN,
+  QUIET_FLOOR,
+  fractionOf,
+  markNear,
+  normalizePeaks,
+  peaksFrom,
+  placeLabels,
+  timeAt,
+} from './waveform'
 
 describe('peaksFrom', () => {
   it('reduces to the requested number of columns', () => {
@@ -116,5 +125,54 @@ describe('normalizePeaks', () => {
 
   it('survives an empty array', () => {
     expect(normalizePeaks(new Float32Array(0))).toHaveLength(0)
+  })
+})
+
+describe('placing the word labels', () => {
+  const mark = (id: string, seconds: number, text = id) => ({ id, text, seconds })
+  /** Every word six pixels wide, so the arithmetic in the tests is visible. */
+  const six = () => 6
+
+  it('labels a mark with the word that was heard there', () => {
+    const placed = placeLabels([mark('w1', 5, 'boat')], 10, 100, six)
+    expect(placed).toHaveLength(1)
+    expect(placed[0]).toMatchObject({ id: 'w1', text: 'boat', left: 50 })
+  })
+
+  it('drops the labels there is no room for rather than overlapping them', () => {
+    const marks = [mark('a', 1), mark('b', 1.1), mark('c', 5)]
+    expect(placeLabels(marks, 10, 100, six).map((l) => l.id)).toEqual(['a', 'c'])
+  })
+
+  /*
+   * The bar is the same picture at every size; only how much of it can be
+   * named changes. A wider bar must never show *fewer* words.
+   */
+  it('names more words as the bar grows, and never fewer', () => {
+    const marks = [mark('a', 1), mark('b', 2), mark('c', 3), mark('d', 4)]
+    const narrow = placeLabels(marks, 10, 60, six).map((l) => l.id)
+    const wide = placeLabels(marks, 10, 600, six).map((l) => l.id)
+    expect(wide.length).toBeGreaterThan(narrow.length)
+    for (const id of narrow) expect(wide).toContain(id)
+  })
+
+  it('keeps the last word inside the bar instead of clipping it', () => {
+    const placed = placeLabels([mark('end', 10, 'finish')], 10, 100, () => 40)
+    expect(placed[0].left).toBe(60)
+  })
+
+  /*
+   * Times are stamped as the teacher taps through, so a word marked after
+   * seeking backwards can arrive out of order. Left unsorted it would hide
+   * every label after it.
+   */
+  it('reads the bar left to right whatever order the marks arrive in', () => {
+    const marks = [mark('late', 9), mark('early', 1), mark('mid', 5)]
+    expect(placeLabels(marks, 10, 300, six).map((l) => l.id)).toEqual(['early', 'mid', 'late'])
+  })
+
+  it('has nothing to place before the recording has been measured', () => {
+    expect(placeLabels([mark('a', 1)], 0, 100, six)).toEqual([])
+    expect(placeLabels([mark('a', 1)], 10, 0, six)).toEqual([])
   })
 })

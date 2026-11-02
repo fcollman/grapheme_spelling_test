@@ -84,28 +84,51 @@ export function planKey({
 /** How far the audio shortcuts and buttons jump. */
 export const NUDGE_SECONDS = 2
 
+/** What a key means for the recording. */
+export type AudioAction = { kind: 'nudge'; seconds: number } | { kind: 'toggle' }
+
 export interface AudioKeyContext {
   key: string
   altKey: boolean
   ctrlKey: boolean
   metaKey: boolean
+  shiftKey: boolean
+  /** Whether the keystroke came from a box the teacher types into. */
+  inTextBox: boolean
 }
 
 /**
- * Stepping the recording without leaving the passage.
+ * Driving the recording without leaving the passage.
  *
- * The modifier is not decoration. Every unmodified key here already means
- * something: letters are the respelling, Tab and Enter advance, `-` skips,
- * Escape leaves, and the arrows move the caret inside a respelling the teacher
- * is correcting. Alt is the only one left that a text box does not want, so the
- * audio controls live behind it and data entry is untouched.
+ * The modifier on the arrows is not decoration. Every unmodified key here
+ * already means something: letters are the respelling, Tab and Enter advance,
+ * `-` skips, Escape leaves, and the arrows move the caret inside a respelling
+ * the teacher is correcting. Alt is the only one left that a text box does not
+ * want, so stepping lives behind it and data entry is untouched.
+ *
+ * Space is the one exception, and it is taken bare because a respelling can
+ * never contain one: the tokeniser splits the passage on whitespace, so one box
+ * is one word and a space in it would mean nothing. Outside a text box space
+ * already means "press this button" — the skip button sits inside the passage
+ * too — so there it is left alone.
  *
  * Ctrl and Meta are excluded rather than ignored, so browser and system
  * shortcuts that happen to include Alt keep working.
  */
-export function planAudioKey({ key, altKey, ctrlKey, metaKey }: AudioKeyContext): number | null {
-  if (!altKey || ctrlKey || metaKey) return null
-  if (key === 'ArrowLeft') return -NUDGE_SECONDS
-  if (key === 'ArrowRight') return NUDGE_SECONDS
+export function planAudioKey({
+  key,
+  altKey,
+  ctrlKey,
+  metaKey,
+  shiftKey,
+  inTextBox,
+}: AudioKeyContext): AudioAction | null {
+  if (ctrlKey || metaKey) return null
+
+  if (key === ' ' && !altKey && !shiftKey) return inTextBox ? { kind: 'toggle' } : null
+
+  if (!altKey) return null
+  if (key === 'ArrowLeft') return { kind: 'nudge', seconds: -NUDGE_SECONDS }
+  if (key === 'ArrowRight') return { kind: 'nudge', seconds: NUDGE_SECONDS }
   return null
 }

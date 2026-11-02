@@ -81,7 +81,7 @@ your email.
 **Attach recording** takes `.mp3`, `.m4a`, `.wav` and the `.mov` files phones
 produce.
 
-![The transport bar above a passage being marked: change recording, play, step back and forward, speed, and the elapsed time](images/reading-audio.webp)
+![The transport bar above a passage being marked: change recording, play, step back and forward, speed and elapsed time, and below them the recording drawn as a waveform with the words marked along it in purple and named above the bar](images/reading-audio.webp)
 
 **Speed** is the control that earns its place — most people mark comfortably at
 0.75×. **↺ 2s** and **↻ 2s** step the recording back and forward two seconds.
@@ -93,10 +93,13 @@ scrubbing a plain progress bar means overshooting and scrubbing back, over and
 over, and the thing you want is usually one particular word.
 
 - **Click anywhere on it** to move the recording to that moment.
-- **The vertical marks are the words you have already stepped through**, in the
-  places you heard them. Hover one to see which word it is.
+- **The purple marks are the words you have already stepped through**, in the
+  places you heard them, with the word itself printed above the bar.
 - **Click a mark** and the recording goes back to that word *and* the cursor
   moves to it, so you can listen again and change what you wrote.
+- Where the words come too close together to print them all, only some are
+  named — the marks are all still there, and hovering one shows its word.
+- <kbd>Space</kbd> plays and pauses, here as well as in the passage.
 - The silences between sentences show up as flat stretches, which turn out to be
   the easiest things to navigate by.
 
@@ -160,12 +163,16 @@ keyboard. You should not need the mouse at all.
 | type, then <kbd>Tab</kbd> | They said this instead |
 | <kbd>Shift</kbd>+<kbd>Tab</kbd> | Go back a word |
 | <kbd>-</kbd> | They skipped that word altogether |
+| <kbd>Space</kbd> | Play or pause the recording |
 | <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd> | Step the recording back or forward two seconds |
 
-<kbd>Alt</kbd> is used for the recording controls on purpose. Every unmodified
-key is already spoken for — letters are the respelling, <kbd>Tab</kbd> advances,
-and the plain arrow keys still move the cursor inside a respelling you are
-correcting. You can step the audio without ever leaving the passage.
+<kbd>Alt</kbd> is used for stepping on purpose. Every unmodified key is already
+spoken for — letters are the respelling, <kbd>Tab</kbd> advances, and the plain
+arrow keys still move the cursor inside a respelling you are correcting.
+<kbd>Space</kbd> is the exception, and it can be taken because a respelling is
+always a single word: there is nowhere in the passage you would need to type a
+space. So you can start and stop the recording, and step it back and forward,
+without ever leaving the passage.
 
 **Most words are read correctly, so most of the time this is just
 <kbd>Tab</kbd>.** You only type when something goes wrong.

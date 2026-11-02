@@ -212,23 +212,29 @@ export function ReadingEntry() {
   }
 
   /*
-   * Stepping the recording from inside the passage.
+   * Driving the recording from inside the passage.
    *
    * Caught here rather than on each input because every word bubbles to this
    * element, and because `defaultPrevented` then tells us the keystroke was
    * already a marking key — the two sets must never overlap.
+   *
+   * It stays out of the way entirely when nothing is attached: a key swallowed
+   * to do nothing is worse than a key that still types.
    */
   const onPassageKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.defaultPrevented) return
-    const delta = planAudioKey({
+    if (e.defaultPrevented || audio.status === 'none') return
+    const action = planAudioKey({
       key: e.key,
       altKey: e.altKey,
       ctrlKey: e.ctrlKey,
       metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+      inTextBox: e.target instanceof HTMLInputElement,
     })
-    if (delta === null) return
+    if (!action) return
     e.preventDefault()
-    audio.nudge(delta)
+    if (action.kind === 'toggle') audio.toggle()
+    else audio.nudge(action.seconds)
   }
 
   const commitPassage = (text: string) => {
@@ -372,8 +378,9 @@ export function ReadingEntry() {
             you typed before. <kbd>-</kbd> marks a word they skipped altogether.{' '}
             {audio.status !== 'none' && (
               <>
-                <kbd>Alt</kbd>+<kbd>←</kbd> and <kbd>Alt</kbd>+<kbd>→</kbd> step the recording
-                back and forward {NUDGE_SECONDS} seconds without leaving the passage.
+                <kbd>Space</kbd> plays and pauses the recording, and <kbd>Alt</kbd>+<kbd>←</kbd>{' '}
+                and <kbd>Alt</kbd>+<kbd>→</kbd> step it back and forward {NUDGE_SECONDS} seconds —
+                all without leaving the passage.
               </>
             )}
           </p>
@@ -397,6 +404,7 @@ export function ReadingEntry() {
                 if (index >= 0) focusWord(index)
               }}
               onNudge={audio.nudge}
+              onToggle={audio.toggle}
             />
           )}
 
@@ -576,7 +584,7 @@ function AudioBar({
           >
             ↺ {NUDGE_SECONDS}s
           </button>
-          <button className="btn" onClick={audio.toggle} title="Play or pause">
+          <button className="btn" onClick={audio.toggle} title="Play or pause (Space)">
             {audio.playing ? '❚❚' : '▶'}
           </button>
           <button
