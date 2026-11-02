@@ -8,6 +8,7 @@ import {
   stampOf,
 } from './fileAccess'
 import type { AudioMeta } from './types'
+import { peaksFrom } from './waveform'
 
 /**
  * A recording to mark against, played from the teacher's own computer.
@@ -25,6 +26,9 @@ import type { AudioMeta } from './types'
  * which would make a liar of the promise on the About page.
  */
 
+/** Whether there is a picture of the recording to aim at yet. */
+export type WaveStatus = 'none' | 'decoding' | 'ready' | 'failed'
+
 export type AudioStatus =
   | 'none' // nothing attached
   | 'ready'
@@ -39,6 +43,21 @@ export interface ReadingAudio {
   /** Seconds, or null when nothing is loaded. */
   at: () => number | null
   seek: (seconds: number) => void
+  /** Straight to a moment, with no lead — what a click on the waveform means. */
+  seekTo: (seconds: number) => void
+  /** Relative, for the step buttons and their keyboard shortcuts. */
+  nudge: (delta: number) => void
+  /** One peak per column, for drawing, or null while there is nothing to draw. */
+  peaks: Float32Array | null
+  /**
+   * Length in seconds, taken from the decode rather than the element.
+   *
+   * The element reports `Infinity` for a recording made in this page until it
+   * has been coaxed into working it out, and a waveform cannot be laid out
+   * against an unknown length.
+   */
+  duration: number
+  waveStatus: WaveStatus
   play: () => void
   playing: boolean
   toggle: () => void
@@ -88,8 +107,54 @@ export function useReadingAudio(
   const [name, setName] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
   const [rate, setRateState] = useState(1)
+  const [peaks, setPeaks] = useState<Float32Array | null>(null)
+  const [duration, setDuration] = useState(0)
+  const [waveStatus, setWaveStatus] = useState<WaveStatus>('none')
+  const decodeToken = useRef(0)
 
   const key = `audio:${testId}:${studentId}` as const
+
+  /**
+   * Reading the whole file once to draw it.
+   *
+   * `decodeAudioData` is local — it is the same decoder the element uses, with
+   * no network involved. The decoded buffer is large (a few minutes of speech
+   * is tens of megabytes) so it is reduced to peaks immediately and dropped;
+   * only the small array survives.
+   *
+   * A phone's `.mov` may refuse to decode here even though the element plays it
+   * happily, since this path wants an audio container. That is not an error
+   * worth interrupting anyone about: the bar falls back to a plain timeline,
+   * which still carries the word marks and still takes a click.
+   */
+  const decodeWave = useCallback(async (file: File) => {
+    const token = ++decodeToken.current
+    setPeaks(null)
+    setDuration(0)
+    setWaveStatus('decoding')
+    const Ctor =
+      window.AudioContext ??
+      (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!Ctor) {
+      setWaveStatus('failed')
+      return
+    }
+    let context: AudioContext | null = null
+    try {
+      const bytes = await file.arrayBuffer()
+      context = new Ctor()
+      const decoded = await context.decodeAudioData(bytes)
+      // A newer file was attached while this one was decoding; its own run wins.
+      if (token !== decodeToken.current) return
+      setPeaks(peaksFrom(decoded.getChannelData(0)))
+      setDuration(decoded.duration)
+      setWaveStatus('ready')
+    } catch {
+      if (token === decodeToken.current) setWaveStatus('failed')
+    } finally {
+      void context?.close().catch(() => undefined)
+    }
+  }, [])
 
   const load = useCallback(
     (file: File, remembered: AudioMeta | undefined) => {
@@ -104,6 +169,7 @@ export function useReadingAudio(
         return
       }
       if (el) el.src = url
+      void decodeWave(file)
 
       const stamp = stampOf(file)
       /*
@@ -116,7 +182,7 @@ export function useReadingAudio(
         (remembered.size !== stamp.size || remembered.lastModified !== stamp.lastModified)
       setStatus(differs ? 'different' : 'ready')
     },
-    [],
+    [decodeWave],
   )
 
   // Reconnect whatever was attached last time, without prompting: queryPermission
@@ -125,6 +191,10 @@ export function useReadingAudio(
     let cancelled = false
     setStatus('none')
     setName(null)
+    decodeToken.current += 1
+    setPeaks(null)
+    setDuration(0)
+    setWaveStatus('none')
     if (urlRef.current) {
       URL.revokeObjectURL(urlRef.current)
       urlRef.current = null
@@ -215,6 +285,10 @@ export function useReadingAudio(
     if (urlRef.current) URL.revokeObjectURL(urlRef.current)
     urlRef.current = null
     if (ref.current) ref.current.removeAttribute('src')
+    decodeToken.current += 1
+    setPeaks(null)
+    setDuration(0)
+    setWaveStatus('none')
     setStatus('none')
     setName(null)
   }, [])
@@ -254,6 +328,18 @@ export function useReadingAudio(
     el.currentTime = Math.max(0, seconds - SEEK_LEAD)
   }, [])
 
+  const seekTo = useCallback((seconds: number) => {
+    const el = ref.current
+    if (!el || !urlRef.current) return
+    el.currentTime = Math.max(0, seconds)
+  }, [])
+
+  const nudge = useCallback((delta: number) => {
+    const el = ref.current
+    if (!el || !urlRef.current) return
+    el.currentTime = Math.max(0, el.currentTime + delta)
+  }, [])
+
   const play = useCallback(() => {
     void ref.current?.play().catch(() => undefined)
   }, [])
@@ -275,6 +361,11 @@ export function useReadingAudio(
     name,
     at,
     seek,
+    seekTo,
+    nudge,
+    peaks,
+    duration,
+    waveStatus,
     play,
     playing,
     toggle,

@@ -20,6 +20,9 @@
   --none-bg: #eeeff2;
   --none-ink: #6b7080;
 
+  --wave-ink: #4a6fa5;
+  --wave-mark: rgba(47, 90, 168, 0.45);
+
   --radius: 8px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -954,6 +957,105 @@ input.pw-input:focus {
   .recording-dot {
     animation: none;
   }
+}
+
+/*
+ * The recording drawn out, so a teacher can aim at a word instead of scrubbing
+ * for it. The bar itself takes every click: the word marks are painted on top
+ * with pointer events off, because a passage can put three hundred of them on
+ * one bar and overlapping hit areas would make clicking a lottery.
+ */
+.wave {
+  margin-bottom: 10px;
+}
+
+.wave-box {
+  position: relative;
+  height: 64px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.wave-box:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.wave-canvas {
+  display: block;
+}
+
+.wave-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--wave-mark);
+  pointer-events: none;
+}
+
+/* Red, and above the marks: it is the one thing that moves. */
+.wave-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--wrong-ink);
+  pointer-events: none;
+  visibility: hidden;
+  will-change: transform;
+}
+
+.wave-note {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/*
+ * Shows sound arriving, which is the only way to tell a working microphone from
+ * a virtual device that opens cleanly and delivers silence. Driven by
+ * `transform` so it costs a compositor frame and never a React render.
+ */
+.meter {
+  display: inline-block;
+  width: 72px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--none-bg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--exact-ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* Full width, so a warning that the recording is empty is never ellipsised. */
+.audioalarm {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--wrong-bg);
+  border: 1px solid var(--wrong-line);
+  color: var(--wrong-ink);
+  font-weight: 600;
 }
 
 .audiostatus {

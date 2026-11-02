@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planKey, type KeyContext } from './readingKeys'
+import { NUDGE_SECONDS, planAudioKey, planKey, type KeyContext } from './readingKeys'
 
 const at = (over: Partial<KeyContext> = {}): KeyContext => ({
   key: 'Tab',
@@ -94,5 +94,34 @@ describe('keys this page does not claim', () => {
 
   it('gets out of the way on Escape without marking', () => {
     expect(planKey(at({ key: 'Escape' }))).toMatchObject({ record: null, blur: true })
+  })
+})
+
+describe('planAudioKey', () => {
+  const base = { altKey: true, ctrlKey: false, metaKey: false }
+
+  it('steps back and forward', () => {
+    expect(planAudioKey({ ...base, key: 'ArrowLeft' })).toBe(-NUDGE_SECONDS)
+    expect(planAudioKey({ ...base, key: 'ArrowRight' })).toBe(NUDGE_SECONDS)
+  })
+
+  /*
+   * The whole point of the modifier: a teacher correcting a respelling uses the
+   * arrows to move the caret, and must keep being able to.
+   */
+  it('leaves the bare arrow keys to the text box', () => {
+    expect(planAudioKey({ ...base, altKey: false, key: 'ArrowLeft' })).toBeNull()
+    expect(planAudioKey({ ...base, altKey: false, key: 'ArrowRight' })).toBeNull()
+  })
+
+  it('leaves system and browser shortcuts alone', () => {
+    expect(planAudioKey({ ...base, ctrlKey: true, key: 'ArrowLeft' })).toBeNull()
+    expect(planAudioKey({ ...base, metaKey: true, key: 'ArrowRight' })).toBeNull()
+  })
+
+  it('ignores the keys the passage already uses', () => {
+    for (const key of ['Tab', 'Enter', '-', 'Escape', 'a']) {
+      expect(planAudioKey({ ...base, key })).toBeNull()
+    }
   })
 })

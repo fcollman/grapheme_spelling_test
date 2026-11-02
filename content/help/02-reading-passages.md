@@ -48,6 +48,30 @@ While it is recording, the red **● Recording** counter is on screen the whole
 time and the microphone is released the moment you stop. A page that can listen
 to a child should never leave you guessing whether it is.
 
+### Check the level bar before you rely on it
+
+Next to the counter is a small bar that moves with the sound coming in. **If it
+is not moving, nothing is being recorded.**
+
+This matters more than it sounds. A browser can open the *wrong* microphone —
+the virtual one belonging to Zoom, Teams, or an audio tool you installed once —
+and that device opens perfectly happily and then delivers pure silence. Your
+computer shows the microphone as active, the recording appears to work, the file
+saves, and it contains nothing at all.
+
+So the app watches for it. If no sound arrives for a couple of seconds it says
+so in red while you are still recording, and if a whole recording turns out to
+be silent it tells you after saving rather than letting you find out later.
+
+**Mic** lets you choose which microphone to use. If the level bar is dead, that
+is the first thing to change. The choice is remembered on this computer — it is
+not stored in your project, because a microphone that exists on your laptop will
+not exist on anyone else's.
+
+A silent recording is still saved rather than thrown away. If the app were wrong
+about it, deleting it would destroy the only copy of something that cannot be
+recorded again.
+
 Recording here saves a round trip: no mailing a file to yourself from your
 phone, no hunting through Downloads, and no copy of a student's voice sitting in
 your email.
@@ -57,10 +81,31 @@ your email.
 **Attach recording** takes `.mp3`, `.m4a`, `.wav` and the `.mov` files phones
 produce.
 
-![The transport bar above a passage being marked: change recording, play, back five seconds, speed, and the elapsed time](images/reading-audio.webp)
+![The transport bar above a passage being marked: change recording, play, step back and forward, speed, and the elapsed time](images/reading-audio.webp)
 
 **Speed** is the control that earns its place — most people mark comfortably at
-0.75×. **↺ 5s** jumps back five seconds.
+0.75×. **↺ 2s** and **↻ 2s** step the recording back and forward two seconds.
+
+### Finding your place in the recording
+
+Under the controls the recording is drawn out as a waveform. It is there because
+scrubbing a plain progress bar means overshooting and scrubbing back, over and
+over, and the thing you want is usually one particular word.
+
+- **Click anywhere on it** to move the recording to that moment.
+- **The vertical marks are the words you have already stepped through**, in the
+  places you heard them. Hover one to see which word it is.
+- **Click a mark** and the recording goes back to that word *and* the cursor
+  moves to it, so you can listen again and change what you wrote.
+- The silences between sentences show up as flat stretches, which turn out to be
+  the easiest things to navigate by.
+
+The marks appear as you work: each <kbd>Tab</kbd> notes where you were, so the
+bar fills in behind you.
+
+If a recording cannot be drawn — some phone video files will not decode this way
+even though they play perfectly — the bar becomes a plain timeline instead. It
+still shows the word marks and still takes a click.
 
 ### It remembers where you were in the recording
 
@@ -115,6 +160,12 @@ keyboard. You should not need the mouse at all.
 | type, then <kbd>Tab</kbd> | They said this instead |
 | <kbd>Shift</kbd>+<kbd>Tab</kbd> | Go back a word |
 | <kbd>-</kbd> | They skipped that word altogether |
+| <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd> | Step the recording back or forward two seconds |
+
+<kbd>Alt</kbd> is used for the recording controls on purpose. Every unmodified
+key is already spoken for — letters are the respelling, <kbd>Tab</kbd> advances,
+and the plain arrow keys still move the cursor inside a respelling you are
+correcting. You can step the audio without ever leaving the passage.
 
 **Most words are read correctly, so most of the time this is just
 <kbd>Tab</kbd>.** You only type when something goes wrong.

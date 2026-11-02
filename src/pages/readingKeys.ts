@@ -80,3 +80,32 @@ export function planKey({
 
   return { record, move, preventDefault, blur: false }
 }
+
+/** How far the audio shortcuts and buttons jump. */
+export const NUDGE_SECONDS = 2
+
+export interface AudioKeyContext {
+  key: string
+  altKey: boolean
+  ctrlKey: boolean
+  metaKey: boolean
+}
+
+/**
+ * Stepping the recording without leaving the passage.
+ *
+ * The modifier is not decoration. Every unmodified key here already means
+ * something: letters are the respelling, Tab and Enter advance, `-` skips,
+ * Escape leaves, and the arrows move the caret inside a respelling the teacher
+ * is correcting. Alt is the only one left that a text box does not want, so the
+ * audio controls live behind it and data entry is untouched.
+ *
+ * Ctrl and Meta are excluded rather than ignored, so browser and system
+ * shortcuts that happen to include Alt keep working.
+ */
+export function planAudioKey({ key, altKey, ctrlKey, metaKey }: AudioKeyContext): number | null {
+  if (!altKey || ctrlKey || metaKey) return null
+  if (key === 'ArrowLeft') return -NUDGE_SECONDS
+  if (key === 'ArrowRight') return NUDGE_SECONDS
+  return null
+}
