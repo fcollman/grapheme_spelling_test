@@ -17,11 +17,14 @@ export function TestPicker({
   tests,
   selected,
   onChange,
+  label = 'Tests included',
 }: {
   /** In date order, oldest first. */
   tests: Test[]
   selected: Set<string>
   onChange: (next: Set<string>) => void
+  /** Named when a page shows two of these and they have to be told apart. */
+  label?: string
 }) {
   const { project } = useStore()
   const set = (ids: string[]) => onChange(new Set(ids))
@@ -53,7 +56,7 @@ export function TestPicker({
     <div className="testpicker no-print">
       <div className="testpicker-actions">
         <span className="testpicker-label">
-          Tests included
+          {label}
           <strong>
             {selected.size} of {tests.length}
           </strong>

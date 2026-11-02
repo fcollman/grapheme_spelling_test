@@ -13,7 +13,7 @@
  * privacy toggle to them.
  */
 
-/** One folder per kind of export, matching the ten places that export a CSV. */
+/** One folder per kind of export, matching the places that export a CSV. */
 export const REPORT_FOLDERS = [
   'Spelling test',
   'Reading passage',
@@ -25,6 +25,8 @@ export const REPORT_FOLDERS = [
   'Accuracy by phoneme',
   'Phoneme misuse',
   'Phoneme confusion',
+  'Combined accuracy',
+  'Spelling vs reading',
   'Examples',
 ] as const
 

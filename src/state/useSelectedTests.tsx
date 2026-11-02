@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useStore } from './store'
-import { useAllTests } from './useAnalysis'
+import { useAllTests, type AllTestsAnalysis } from './useAnalysis'
 import { testsInOrder, type ReportSource } from '../reports/aggregate'
 import { isReading, type Test } from './types'
 
@@ -132,10 +132,44 @@ export interface SelectedTests {
  *   this no longer applies — see {@link SelectedTestsProvider}.
  */
 export function useSelectedTests(defaultTo: 'active' | 'all'): SelectedTests {
+  const shared = useContext(SharedSelection)
+  if (!shared) throw new Error('useSelectedTests outside SelectedTestsProvider')
+  const { project } = useStore()
+  const all = useAllTests(project, true)
+  return useSelection(shared.mode, defaultTo, all)
+}
+
+/**
+ * Both directions at once, for the two reports that compare them.
+ *
+ * One call to {@link useAllTests}, shared. Asking for each side separately
+ * would analyse every test in the project twice over for one page, and a
+ * passage is a hundred words against twenty on a spelling list.
+ *
+ * The selections are the same ones every other tab uses, so the span chosen on
+ * Accuracy by grapheme is the span these compare — and choosing a different one
+ * here follows the teacher back.
+ */
+export function useComparedTests(defaultTo: 'active' | 'all'): {
+  encoding: SelectedTests
+  decoding: SelectedTests
+} {
+  const { project } = useStore()
+  const all = useAllTests(project, true)
+  return {
+    encoding: useSelection('encoding', defaultTo, all),
+    decoding: useSelection('decoding', defaultTo, all),
+  }
+}
+
+function useSelection(
+  mode: ReportMode,
+  defaultTo: 'active' | 'all',
+  all: AllTestsAnalysis,
+): SelectedTests {
   const { project } = useStore()
   const shared = useContext(SharedSelection)
   if (!shared) throw new Error('useSelectedTests outside SelectedTestsProvider')
-  const { mode } = shared
 
   /*
    * One mode at a time, and the filter is here rather than in the aggregation
@@ -147,7 +181,6 @@ export function useSelectedTests(defaultTo: 'active' | 'all'): SelectedTests {
     () => testsInOrder(project).filter((t) => inMode(t, mode)),
     [project, mode],
   )
-  const all = useAllTests(project, true)
 
   // Recomputed rather than stored, so a page still on its default keeps step
   // with the toolbar as the teacher moves between tests to enter data.
