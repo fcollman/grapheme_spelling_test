@@ -4,8 +4,16 @@ import type { CategoryId } from '../data/categories'
 import { COLLAPSING_CATEGORIES } from '../data/categories'
 import { unitResults } from '../engine/units'
 import { cellKey } from '../state/useAnalysis'
-import type { Project } from '../state/types'
-import { CLASS, isPatternKey, NONE, patternRowKey, soundAccepted, type ReportSource } from './aggregate'
+import { isReading, type Project } from '../state/types'
+import {
+  CLASS,
+  isPatternKey,
+  NONE,
+  patternRowKey,
+  producedKey,
+  soundAccepted,
+  type ReportSource,
+} from './aggregate'
 
 /**
  * The individual answers behind a single number in a report.
@@ -76,7 +84,11 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
       ? project.students
       : project.students.filter((s) => s.id === drill.studentId)
 
-  const wanted = (producedKey: string) => drill.produced === undefined || drill.produced === producedKey
+  const wanted = (key: string) => drill.produced === undefined || drill.produced === key
+
+  // The same axis the clicked sheet was drawn on, decided the same way, or the
+  // list would not be the answers the cell counted.
+  const spoken = drill.sources.length > 0 && drill.sources.every(({ test }) => isReading(test))
 
   for (const { test, analysis } of drill.sources) {
     for (const word of test.words) {
@@ -162,20 +174,20 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
 
             if (slot.target !== drill.key) continue
             // Mirrors the matrix: an accepted sound sits on the diagonal.
-            const producedKey =
+            const key =
               slot.student.length === 0
                 ? NONE
                 : soundAccepted(slot.mark)
                   ? slot.target
                   : slot.student[0]
-            if (!wanted(producedKey)) continue
+            if (!wanted(key)) continue
             out.push({
               ...stamp,
               targetLetters: slot.targetGrapheme,
               wroteLetters: slot.studentGrapheme,
               sounds: slot.student.length > 0 ? slot.student : [slot.target],
               mark: slot.mark,
-              producedKey,
+              producedKey: key,
             })
           }
           continue
@@ -189,15 +201,21 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
               ? r.unit.key === drill.key
               : r.unit.category === (drill.key as CategoryId)
           if (!matches) continue
-          const producedKey = r.studentLetters || NONE
-          if (!wanted(producedKey)) continue
+          const key = producedKey({
+            spoken,
+            mark: r.mark,
+            letters: r.studentLetters,
+            phonemes: r.studentPhonemes,
+            target: r.unit.phonemes,
+          })
+          if (!wanted(key)) continue
           out.push({
             ...stamp,
             targetLetters: r.unit.letters,
             wroteLetters: r.studentLetters,
             sounds: r.unit.phonemes,
             mark: r.mark,
-            producedKey,
+            producedKey: key,
           })
         }
 
@@ -221,8 +239,14 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
               : 'wrong'
 
           const wrote = covered.map((r) => r.studentLetters).join('')
-          const producedKey = wrote || NONE
-          if (!wanted(producedKey)) continue
+          const key = producedKey({
+            spoken,
+            mark,
+            letters: wrote,
+            phonemes: covered.flatMap((r) => r.studentPhonemes),
+            target: covered.flatMap((r) => r.unit.phonemes),
+          })
+          if (!wanted(key)) continue
 
           out.push({
             ...stamp,
@@ -230,7 +254,7 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
             wroteLetters: wrote,
             sounds: covered.flatMap((r) => r.unit.phonemes),
             mark,
-            producedKey,
+            producedKey: key,
           })
         }
       }

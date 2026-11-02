@@ -4,7 +4,7 @@ import { REPORT_ORDER } from '../data/phonemes'
 import { CATEGORIES, COLLAPSING_CATEGORIES, category, type CategoryId } from '../data/categories'
 import { unitResults } from '../engine/units'
 import type { PatternMatch } from '../engine/patterns'
-import type { Project, Test } from '../state/types'
+import { isReading, type Project, type Test } from '../state/types'
 import { cellKey, type TestAnalysis } from '../state/useAnalysis'
 
 /** Marker used for an omitted sound (row/column ∅ in the confusion matrix). */
@@ -47,10 +47,15 @@ export interface Reports {
   graphemes: GraphemeRow[]
   /** graphemeAccuracy[unitKey][studentId] */
   graphemeAccuracy: Map<string, Map<string, Tally>>
-  /** graphemeConfusion[studentId][unitKey][letters the student wrote] */
+  /** graphemeConfusion[studentId][unitKey][what came out] — see {@link producedKey}. */
   graphemeConfusion: Map<string, Map<string, Map<string, number>>>
-  /** Distinct spellings students actually wrote, for confusion matrix columns. */
-  writtenSpellings: string[]
+  /** Distinct things students actually produced, for confusion matrix columns. */
+  producedUnits: string[]
+  /**
+   * True when `producedUnits` holds sounds rather than letters, so a report can
+   * label and format the axis correctly. See {@link producedKey}.
+   */
+  producedIsSound: boolean
 
   /**
    * The words behind each error, so a report can say "wrote `s` for `sh` in
@@ -61,6 +66,7 @@ export interface Reports {
 
 export interface ErrorExample {
   word: string
+  /** What came out, in the same terms the confusion sheet counts — see {@link producedKey}. */
   wrote: string
   /**
    * Kept so a report can separate a genuine sound error from a phonetically
@@ -95,6 +101,62 @@ export function patternRowKey(p: PatternMatch): string {
 /** True for a report row that came from a spanning pattern rather than a column. */
 export function isPatternKey(key: string): boolean {
   return key.startsWith('pattern:')
+}
+
+/**
+ * The produced axis of the grapheme confusion sheet, in one place.
+ *
+ * Spelling and reading produce different things, and the column has to say
+ * which. In a spelling test the student chose the letters, so the letters are
+ * the answer. In a reading test the letters are the TEACHER'S shorthand for a
+ * sound she heard — "shun" and "shn" are one mispronunciation typed two ways —
+ * so counting them splits one error across two columns of an already sparse
+ * grid, and credits the student with a spelling they never produced. The sound
+ * is what the reader produced, and the sheet becomes grapheme → sound: the
+ * exact mirror of encoding's sound → grapheme.
+ *
+ * An `exact` reading lands on the diagonal whatever came out of the phonemizer.
+ * The consonant rescue in `markOf` exists precisely because a respelling runs
+ * through eSpeak as a whole word, so a letter changed elsewhere can alter a
+ * neighbouring consonant's sound — an artefact of the round trip, not something
+ * the student said. Showing it off the diagonal would invent a substitution and
+ * contradict the accuracy sheet, which counted the same answer correct.
+ *
+ * A `plausible` reading does NOT fold onto the diagonal. It is a reduced vowel
+ * or a curated accent variant, and the teacher is the authority on her own
+ * students' dialect: she can only exercise that judgement over evidence she can
+ * see.
+ */
+export function producedKey(outcome: {
+  spoken: boolean
+  mark: Mark
+  /** The letters the teacher has down for this unit. */
+  letters: string
+  /** The sounds those letters make. */
+  phonemes: PhonemeId[]
+  /** The sounds the unit was asking for. */
+  target: PhonemeId[]
+}): string {
+  if (!outcome.spoken) return outcome.letters || NONE
+  return soundsKey(outcome.mark === 'exact' ? outcome.target : outcome.phonemes)
+}
+
+/**
+ * Sounds as one column key. `+` is the join a unit key already uses, and the ids
+ * are the inventory's (`SH`, `AE`), so a key never collides with a spelling.
+ */
+export function soundsKey(phonemes: PhonemeId[]): string {
+  return phonemes.join('+') || NONE
+}
+
+/** The sounds back out of a column key, for display. */
+export function soundsOf(key: string): PhonemeId[] {
+  return key === NONE || key === '' ? [] : key.split('+')
+}
+
+/** The column a row's correct answer lands in — the diagonal of the sheet. */
+export function diagonalKey(row: GraphemeRow, producedIsSound: boolean): string {
+  return producedIsSound ? soundsKey(row.phonemes) : row.letters
 }
 
 /**
@@ -169,14 +231,26 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
   const graphemeAccuracy = new Map<string, Map<string, Tally>>()
   const graphemeConfusion = new Map<string, Map<string, Map<string, number>>>()
   const graphemeRows = new Map<string, GraphemeRow>()
-  const seenSpellings = new Set<string>()
+  const seenProducedUnits = new Set<string>()
   const examples = new Map<string, ErrorExample[]>()
 
-  const addExample = (studentId: string, unitKey: string, wrote: string, word: string, mark: Mark) => {
-    const key = exampleKey(studentId, unitKey, wrote)
+  /*
+   * One axis for the whole sheet, decided here rather than per word.
+   *
+   * A unit's row key is its letters and its sounds, so the same grapheme from a
+   * spelling test and from a reading test is one row. Choosing the axis per
+   * word would hand that row both a letter column and a sound column, and it
+   * would be correct in neither. Mixed selections cannot be made through the
+   * tabs; if one ever arrives it falls back to letters, which is what the sheet
+   * did before reading tests existed.
+   */
+  const spoken = sources.length > 0 && sources.every(({ test }) => isReading(test))
+
+  const addExample = (studentId: string, unitKey: string, produced: string, word: string, mark: Mark) => {
+    const key = exampleKey(studentId, unitKey, produced)
     const list = examples.get(key) ?? []
     if (list.length < MAX_EXAMPLES) {
-      list.push({ word, wrote, mark })
+      list.push({ word, wrote: produced, mark })
       examples.set(key, list)
     }
   }
@@ -243,17 +317,28 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
       if (a.attempted) {
         const results = unitResults(a, units)
 
-        const record = (key: string, correct: boolean, written: string, mark: Mark) => {
+        const record = (key: string, correct: boolean, produced: string, mark: Mark) => {
           tally(nested(graphemeAccuracy, key, () => new Map<string, Tally>()), student.id, correct)
           tally(nested(graphemeAccuracy, key, () => new Map<string, Tally>()), CLASS, correct)
-          seenSpellings.add(written)
-          addGraphemeConfusion(student.id, key, written)
+          seenProducedUnits.add(produced)
+          addGraphemeConfusion(student.id, key, produced)
           // Only anything less than exact is worth quoting as evidence.
-          if (mark !== 'exact') addExample(student.id, key, written, word.text, mark)
+          if (mark !== 'exact') addExample(student.id, key, produced, word.text, mark)
         }
 
         for (const r of results) {
-          record(r.unit.key, isCorrect(r.mark, amber), r.studentLetters || NONE, r.mark)
+          record(
+            r.unit.key,
+            isCorrect(r.mark, amber),
+            producedKey({
+              spoken,
+              mark: r.mark,
+              letters: r.studentLetters,
+              phonemes: r.studentPhonemes,
+              target: r.unit.phonemes,
+            }),
+            r.mark,
+          )
         }
 
         // A spanning pattern counts as right only when every column it covers is.
@@ -272,7 +357,13 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
           record(
             patternRowKey(p),
             covered.every((r) => isCorrect(r.mark, amber)),
-            covered.map((r) => r.studentLetters).join('') || NONE,
+            producedKey({
+              spoken,
+              mark: patternMark,
+              letters: covered.map((r) => r.studentLetters).join(''),
+              phonemes: covered.flatMap((r) => r.studentPhonemes),
+              target: covered.flatMap((r) => r.unit.phonemes),
+            }),
             patternMark,
           )
         }
@@ -325,6 +416,22 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
   // Grapheme rows come out grouped by category in the taxonomy's own order, then
   // alphabetically, so the report reads like a scope and sequence.
   const categoryRank = new Map(CATEGORIES.map((c, i) => [c.id, i]))
+
+  /*
+   * Columns run in the order the teacher already reads that axis in:
+   * alphabetical for spellings, and the phoneme inventory's own order for
+   * sounds, which is what every other sound axis in the app uses. ∅ is not an
+   * answer, so it sits at the end either way.
+   */
+  const phonemeRank = new Map(REPORT_ORDER.map((p, i) => [p, i]))
+  const bySound = (a: string, b: string) => {
+    const [x, y] = [soundsOf(a), soundsOf(b)]
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      const d = (phonemeRank.get(x[i]) ?? 99) - (phonemeRank.get(y[i]) ?? 99)
+      if (d !== 0) return d
+    }
+    return 0
+  }
   const graphemes = [...graphemeRows.values()].sort(
     (a, b) =>
       (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99) ||
@@ -341,9 +448,10 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
     graphemes,
     graphemeAccuracy,
     graphemeConfusion,
-    writtenSpellings: [...seenSpellings].sort((a, b) =>
-      a === NONE ? 1 : b === NONE ? -1 : a.localeCompare(b),
+    producedUnits: [...seenProducedUnits].sort((a, b) =>
+      a === NONE ? 1 : b === NONE ? -1 : spoken ? bySound(a, b) : a.localeCompare(b),
     ),
+    producedIsSound: spoken,
     examples,
   }
 }
@@ -489,7 +597,7 @@ export function getGraphemeConfusion(
   reports: Reports,
   who: string,
   key: string,
-  written: string,
+  produced: string,
 ): number {
-  return reports.graphemeConfusion.get(who)?.get(key)?.get(written) ?? 0
+  return reports.graphemeConfusion.get(who)?.get(key)?.get(produced) ?? 0
 }

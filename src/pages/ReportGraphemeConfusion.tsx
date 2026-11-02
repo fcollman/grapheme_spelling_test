@@ -4,7 +4,15 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
-import { buildReportsAcross, CLASS, getGraphemeConfusion, NONE, type GraphemeRow } from '../reports/aggregate'
+import {
+  buildReportsAcross,
+  CLASS,
+  diagonalKey,
+  getGraphemeConfusion,
+  NONE,
+  soundsOf,
+  type GraphemeRow,
+} from '../reports/aggregate'
 import { confusionColumns, trimToConfusions } from '../reports/confusionAxes'
 import { displayList } from '../data/phonemes'
 import { category } from '../data/categories'
@@ -19,6 +27,11 @@ import type { Drill } from '../reports/occurrences'
  * Which spelling was written where another was needed — "k" for "ck", "a" for
  * "ai". This is where orthographic error patterns show up most directly, since
  * the sound can be right while the spelling is consistently wrong.
+ *
+ * Read backwards for a reading test: the rows are still the spellings, but the
+ * columns become the sounds that came out of them, so the sheet asks "what does
+ * this child do with `oa`?" — the mirror of the question it asks about
+ * spelling. The axis is chosen by the data, not by this page; see `producedKey`.
  */
 export function ReportGraphemeConfusion() {
   const { project } = useStore()
@@ -43,29 +56,35 @@ export function ReportGraphemeConfusion() {
    * correctly with nowhere to be correct, and meant no column could ever be
    * empty for the toggle below to hide.
    */
+  const said = reports.producedIsSound
   const allCols = useMemo(
     () =>
       confusionColumns(
-        reports.graphemes.map((g) => g.letters),
-        reports.writtenSpellings,
+        reports.graphemes.map((g) => diagonalKey(g, said)),
+        reports.producedUnits,
         NONE,
       ),
-    [reports],
+    [reports, said],
   )
+
+  /** A column key is a sound key when the axis is sounds, so it needs spelling out. */
+  const colLabel = (c: string) => (said && c !== NONE ? displayList(soundsOf(c), notation) : c)
 
   const { rows, cols } = useMemo(() => {
     const count = (g: GraphemeRow, c: string) => getGraphemeConfusion(reports, who, g.key, c)
-    const isDiagonal = (g: GraphemeRow, c: string) => c === g.letters
+    const isDiagonal = (g: GraphemeRow, c: string) => c === diagonalKey(g, said)
     return onlyConfusions
       ? trimToConfusions(reports.graphemes, allCols, count, isDiagonal)
       : { rows: reports.graphemes, cols: allCols }
-  }, [reports, allCols, onlyConfusions, who])
+  }, [reports, allCols, onlyConfusions, who, said])
 
   // One label for this view, used in the heading, the file name and the printout.
   const whoName = who === CLASS ? 'Whole class' : names(who)
 
   const exportCsv = () => {
-    const out: string[][] = [['Needed \\ Wrote', 'Sound(s)', ...cols]]
+    const out: string[][] = [
+      [said ? 'Letters \\ Said' : 'Needed \\ Wrote', 'Sound(s)', ...cols.map(colLabel)],
+    ]
     for (const g of rows) {
       out.push([
         g.patternLabel ?? g.letters,
@@ -109,10 +128,23 @@ export function ReportGraphemeConfusion() {
 
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
-        Rows are the spelling the word needed; columns are what the student actually wrote. The
-        shaded diagonal is correct. Everything off it is a specific substitution to teach against —{' '}
-        {NONE} means nothing was written for that unit at all. Untick the box below to see every
-        spelling, right or wrong, with the correct answers running down the diagonal.
+        {said ? (
+          <>
+            Rows are the spelling on the page; columns are the sound the student made of it. The
+            shaded diagonal is a correct reading. Everything off it is a specific substitution to
+            teach against — {NONE} means they said nothing for that unit at all. The columns are
+            sounds rather than your respelling on purpose: “shun” and “shn” are one
+            mispronunciation typed two ways, and counting them apart would split one error in two.
+          </>
+        ) : (
+          <>
+            Rows are the spelling the word needed; columns are what the student actually wrote. The
+            shaded diagonal is correct. Everything off it is a specific substitution to teach
+            against — {NONE} means nothing was written for that unit at all. Untick the box below
+            to see every spelling, right or wrong, with the correct answers running down the
+            diagonal.
+          </>
+        )}
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -133,7 +165,13 @@ export function ReportGraphemeConfusion() {
             checked={onlyConfusions}
             onChange={(e) => setOnlyConfusions(e.target.checked)}
           />
-          <span title="Unticked, every spelling gets a row and a column of its own, so the correct answers run down the diagonal">
+          <span
+            title={
+              said
+                ? 'Unticked, every spelling gets a row and every sound a column, so the correct readings run down the diagonal'
+                : 'Unticked, every spelling gets a row and a column of its own, so the correct answers run down the diagonal'
+            }
+          >
             Hide rows and columns with no confusions
           </span>
         </label>
@@ -153,11 +191,23 @@ export function ReportGraphemeConfusion() {
         <table className="grid-sticky report-grid">
           <thead>
             <tr>
-              <th className="c1">Needed ↓ / Wrote →</th>
+              <th className="c1">{said ? 'Letters ↓ / Said →' : 'Needed ↓ / Wrote →'}</th>
               <th className="c2">Sound(s)</th>
               {cols.map((c) => (
-                <th key={c} className="num phoneme" title={c === NONE ? 'Nothing written' : `Wrote "${c}"`}>
-                  {c}
+                <th
+                  key={c}
+                  className="num phoneme"
+                  title={
+                    c === NONE
+                      ? said
+                        ? 'Said nothing'
+                        : 'Nothing written'
+                      : said
+                        ? `Said ${colLabel(c)}`
+                        : `Wrote "${c}"`
+                  }
+                >
+                  {colLabel(c)}
                 </th>
               ))}
             </tr>
@@ -174,7 +224,7 @@ export function ReportGraphemeConfusion() {
                 </td>
                 {cols.map((c) => {
                   const n = getGraphemeConfusion(reports, who, g.key, c)
-                  const diagonal = c === g.letters
+                  const diagonal = c === diagonalKey(g, said)
                   return (
                     <td
                       key={c}
@@ -184,7 +234,7 @@ export function ReportGraphemeConfusion() {
                         setDrill({
                           kind: 'grapheme',
                           key: g.key,
-                          label: `${g.patternLabel ?? g.letters} → ${c === NONE ? 'nothing' : c}`,
+                          label: `${g.patternLabel ?? g.letters} → ${c === NONE ? 'nothing' : colLabel(c)}`,
                           sounds: g.phonemes,
                           studentId: who,
                           sources: scope.sources,
@@ -205,8 +255,12 @@ export function ReportGraphemeConfusion() {
                       }}
                       title={
                         diagonal
-                          ? `"${g.letters}" spelled correctly ${n} time${n === 1 ? '' : 's'}`
-                          : `Wrote "${c}" where "${g.letters}" was needed, ${n} time${n === 1 ? '' : 's'}`
+                          ? said
+                            ? `"${g.letters}" read correctly ${n} time${n === 1 ? '' : 's'}`
+                            : `"${g.letters}" spelled correctly ${n} time${n === 1 ? '' : 's'}`
+                          : said
+                            ? `Said ${colLabel(c)} for "${g.letters}", ${n} time${n === 1 ? '' : 's'}`
+                            : `Wrote "${c}" where "${g.letters}" was needed, ${n} time${n === 1 ? '' : 's'}`
                       }
                     >
                       {n || '·'}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PrintTitle } from '../components/PrintTitle'
 import { useStore } from '../state/store'
+import { isReading } from '../state/types'
 import { useStudentNames } from '../state/names'
 import { cellKey, type AnalysisResult } from '../state/useAnalysis'
 import { displayList, type PhonemeId } from '../data/phonemes'
@@ -34,6 +35,14 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
   const { requestDownload, requestPrint } = useDownloads()
   const fileName = useFileName()
   const { project, test, dispatch } = useStore()
+  /*
+   * The same grid reads a passage, with the vocabulary changed. A reading test
+   * is marked on the sound the student made, so "wrote" becomes "said" and the
+   * amber tier stops meaning a spelling choice. This page is also where a
+   * teacher overrules a pronunciation the engine judged wrongly, which is what
+   * makes an accent it has never heard recoverable.
+   */
+  const decoding = isReading(test)
   const names = useStudentNames()
   const { notation } = project.settings
   const [editing, setEditing] = useState<EditTarget | null>(null)
@@ -74,7 +83,9 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
   const exportCsv = () => {
     const rows: string[][] = [
       [
-        'Test', 'Date', 'Word', 'Type', 'Student', 'Wrote', 'Spelling correct',
+        'Test', 'Date', 'Word', 'Type', 'Student',
+        decoding ? 'Said' : 'Wrote',
+        decoding ? 'Read correctly' : 'Spelling correct',
         'Column', 'Syllable', 'Target letters', 'Target sound(s)', 'Category', 'Taught pattern',
         'Patterns covering', 'Student letters', 'Student sound(s)', 'Result', 'Teacher edited',
       ],
@@ -118,7 +129,11 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
     return (
       <section className="panel">
         <h2>Grapheme analysis</h2>
-        <div className="empty">Add words and students on the spelling test tab first.</div>
+        <div className="empty">
+          {decoding
+            ? 'Paste a passage and add students on the reading tab first.'
+            : 'Add words and students on the spelling test tab first.'}
+        </div>
       </section>
     )
   }
@@ -133,8 +148,10 @@ export function GraphemeAnalysis({ analysis }: { analysis: AnalysisResult }) {
       <p className="hint">
         Each column is one spelling unit of the target word — a grapheme, or a chunk taught whole
         like <strong>-ank</strong> and <strong>-ttle</strong> — with the sound or sounds it makes
-        underneath. Blends stay as separate columns so you can see which sound was missed. Click any
-        cell to correct it.
+        underneath. Blends stay as separate columns so you can see which sound was missed.{' '}
+        {decoding
+          ? 'Click any cell the engine judged wrongly — an accent it does not know, for instance.'
+          : 'Click any cell to correct it.'}
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -306,6 +323,7 @@ function WordBlock({
   const names = useStudentNames()
   const { notation } = project.settings
   const confirmed = test.wordPhonemes[wordId] !== undefined
+  const markText = isReading(test) ? MARK_TEXT_READING : MARK_TEXT
 
   if (units.length === 0) {
     return (
@@ -361,7 +379,7 @@ function WordBlock({
           <thead>
             <tr>
               <th className="c1">Student</th>
-              <th className="c2">Wrote</th>
+              <th className="c2">{isReading(test) ? 'Said' : 'Wrote'}</th>
               {units.map((u) => (
                 <th
                   key={u.index}
@@ -412,7 +430,7 @@ function WordBlock({
                         syllableStartUnits.has(r.unit.index) ? 'syllable-group' : ''
                       } ${focus !== 'all' && isFocused(r, patterns, focus) ? 'focused' : ''}`}
                       title={`${names(student.id)} · ${r.unit.letters} (${displayList(r.unit.phonemes, notation)}) · ${
-                        MARK_TEXT[r.mark]
+                        markText[r.mark]
                       }${r.overridden ? ' (edited)' : ''}`}
                       onClick={() =>
                         onEditCell({
@@ -485,6 +503,14 @@ const MARK_TEXT: Record<Mark, string> = {
   omitted: 'left out',
 }
 
+/** Reading makes no spelling choice, so the amber tier means an accent instead. */
+const MARK_TEXT_READING: Record<Mark, string> = {
+  exact: 'read correctly',
+  plausible: 'accent, not a decoding error',
+  wrong: 'wrong sound',
+  omitted: 'left out',
+}
+
 function CellEditor({
   edit,
   analysis,
@@ -499,8 +525,9 @@ function CellEditor({
   onReset: (slot: number) => void
 }) {
   const names = useStudentNames()
-  const { project } = useStore()
+  const { project, test } = useStore()
   const { notation } = project.settings
+  const decoding = isReading(test)
   const a = analysis.byCell.get(cellKey(edit.wordId, edit.studentId))
   const units = analysis.unitsByWord.get(edit.wordId) ?? []
   const result = a ? unitResults(a, units)[edit.unitIndex] : undefined
@@ -520,13 +547,17 @@ function CellEditor({
         <p className="sub">
           This column is <strong>{result.unit.letters}</strong> spelling{' '}
           {displayList(result.unit.phonemes, notation)}
-          {result.unit.patternLabel && ` (${result.unit.patternLabel}, taught as one chunk)`}. They wrote “
-          {a.attempt || '—'}”, and these letters were matched to this column: “
-          {result.studentLetters || '—'}”.
+          {result.unit.patternLabel && ` (${result.unit.patternLabel}, taught as one chunk)`}. They{' '}
+          {decoding ? 'said' : 'wrote'} “{a.attempt || '—'}”, and this part of it was matched to this
+          column: “{result.studentLetters || '—'}”.
         </p>
 
         <p className="sub" style={{ margin: '0 0 6px' }}>
-          <strong>What sound did the student's letters actually make here?</strong>
+          <strong>
+            {decoding
+              ? 'What sound did the student actually make here?'
+              : "What sound did the student's letters actually make here?"}
+          </strong>
         </p>
         <PhonemePicker value={chosen} onChange={setChosen} notation={notation} />
 
@@ -534,8 +565,10 @@ function CellEditor({
           <label className="check">
             Result
             <select value={mark} onChange={(e) => setMark(e.target.value as Mark)}>
-              <option value="exact">Correct spelling for this sound</option>
-              <option value="plausible">Right sound, different spelling</option>
+              <option value="exact">{decoding ? 'Read correctly' : 'Correct spelling for this sound'}</option>
+              <option value="plausible">
+                {decoding ? 'Accent, not a decoding error' : 'Right sound, different spelling'}
+              </option>
               <option value="wrong">Wrong sound</option>
               <option value="omitted">Left out</option>
             </select>
