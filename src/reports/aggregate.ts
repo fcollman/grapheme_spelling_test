@@ -582,10 +582,19 @@ export function buildProgress(
     }
   }
 
-  // A row created part-way through needs blank points for the earlier tests.
+  /*
+   * A row created part-way through needs blank points for the earlier tests.
+   *
+   * Counted back from the end, because the points go on the FRONT: a row with
+   * n of the T tests is missing exactly the first T - n, and the next one to
+   * prepend is the one just before whatever it already starts with. Indexing
+   * forwards instead filled the gap with the last tests over again — the count
+   * came out right, so a steady table looked fine while every blank cell named
+   * the wrong test and every row carried a duplicate test id.
+   */
   for (const row of rows.values()) {
     while (row.points.length < tests.length) {
-      const test = tests[row.points.length]
+      const test = tests[tests.length - row.points.length - 1]
       row.points.unshift({ testId: test.id, testName: test.name, date: test.date, tally: null })
     }
   }

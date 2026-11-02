@@ -229,6 +229,34 @@ describe('progress over time', () => {
     }
   })
 
+  it('back-fills a late-arriving row with the tests that actually came before it', async () => {
+    /*
+     * A category that first appears half way through the term needs blank points
+     * for the tests before it. Those were filled from the wrong end of the list,
+     * so the row ended up naming the LAST tests twice and the early ones never —
+     * invisible in a steady table, because the count still came out right.
+     *
+     * It stops being invisible the moment the column list changes under a table
+     * that is already on screen, which is what the encode/decode toggle does:
+     * the points are keyed by test id, and duplicate keys leave stale cells
+     * behind, so rows come out ragged and spill past the last column.
+     */
+    const project = makeProject()
+    // Nothing with a digraph until March.
+    project.tests[0] = makeTest('t1', 'January', '2026-01-10', [['w1', 'cat']], {
+      w1: { s1: 'cat', s2: 'cat' },
+    })
+
+    const rows = buildProgress(project, await analyseAll(project), CLASS, 'category')
+    const digraph = rows.find((r) => r.category === 'consonant-digraph')!
+
+    expect(digraph.points.map((p) => p.testName)).toEqual(['January', 'February', 'March'])
+    expect(digraph.points.map((p) => p.testId)).toEqual(['t1', 't2', 't3'])
+    expect(digraph.points[0].tally).toBeNull()
+    expect(digraph.points[1].tally).toBeNull()
+    expect(digraph.points[2].tally).not.toBeNull()
+  })
+
   it('marks a category missing from a test as not assessed, not as zero', async () => {
     const project = makeProject()
     const rows = buildProgress(project, await analyseAll(project), CLASS, 'category')
