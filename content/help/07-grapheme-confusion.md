@@ -22,6 +22,27 @@ A column marked **∅** means nothing was written for that unit at all.
 So a `7` where the row is `ck` and the column is `k` reads: *seven times, a word
 needed `ck` and the student wrote `k`.* 
 
+### Reading passages: the columns become sounds
+
+On a reading passage the grid turns around, and the header says so: **Letters ↓
+/ Said →**. The rows are still the spellings, but the columns are the *sounds*
+the student made of them, so the sheet asks *what does this child do with `oa`?*
+— the exact mirror of the question it asks about spelling.
+
+The columns are sounds rather than your respelling on purpose. When you type
+"shun" for one child and "shn" for another, that is one mispronunciation written
+down two ways, and counting them as two different answers would split one error
+in half across a grid that is already sparse. What the student produced is the
+sound, so the sound is what gets counted.
+
+Two things follow:
+
+- The **diagonal** is the sound the letters were supposed to make. A reading
+  marked correct lands there whatever you typed to record it.
+- A **near miss stays off the diagonal** — a reduced vowel, or a vowel that is
+  simply how your students speak. Those are not decoding errors, but they are
+  yours to judge, and you can only judge what you can see.
+
 ### Two views of the same grid
 
 The tick box under the grid decides how much of it you see.

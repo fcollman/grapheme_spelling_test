@@ -152,14 +152,14 @@ describe('drilling into an accuracy figure', () => {
     const { sources, reports } = await setup()
 
     for (const g of reports.graphemes) {
-      for (const written of reports.writtenSpellings) {
+      for (const produced of reports.producedUnits) {
         for (const who of ['s1', CLASS]) {
-          const count = getGraphemeConfusion(reports, who, g.key, written)
+          const count = getGraphemeConfusion(reports, who, g.key, produced)
           const rows = findOccurrences(
             project,
-            drillFor({ kind: 'grapheme', key: g.key, studentId: who, sources, produced: written }),
+            drillFor({ kind: 'grapheme', key: g.key, studentId: who, sources, produced }),
           )
-          expect(rows.length, `${g.letters} -> "${written}" for ${who}`).toBe(count)
+          expect(rows.length, `${g.letters} -> "${produced}" for ${who}`).toBe(count)
         }
       }
     }

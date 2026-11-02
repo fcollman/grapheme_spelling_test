@@ -6,9 +6,11 @@ import { useSelectedTests } from '../state/useSelectedTests'
 import type { Mark } from '../engine/align'
 import {
   buildReportsAcross,
+  diagonalKey,
   getExamples,
   getGraphemeTally,
   NONE,
+  soundsOf,
   type GraphemeRow,
   type ReportSource,
   type Reports,
@@ -81,10 +83,12 @@ function errorLines(reports: Reports, studentId: string): ErrorLine[] {
   if (!byUnit) return out
 
   for (const g of reports.graphemes) {
-    const written = byUnit.get(g.key)
-    if (!written) continue
-    for (const [wrote, count] of written) {
-      if (wrote === g.letters) continue // the diagonal: they got it right
+    const produced = byUnit.get(g.key)
+    if (!produced) continue
+    for (const [wrote, count] of produced) {
+      // The diagonal: they got it right. Which column that is depends on the
+      // axis, which is letters for a spelling test and sounds for a reading one.
+      if (wrote === diagonalKey(g, reports.producedIsSound)) continue
       const examples = getExamples(reports, studentId, g.key, wrote)
       if (examples.length === 0) continue // nothing was actually marked down here
       out.push({
@@ -103,10 +107,18 @@ function errorLines(reports: Reports, studentId: string): ErrorLine[] {
 function ErrorList({
   lines,
   notation,
+  said = false,
   plausible = false,
 }: {
   lines: ErrorLine[]
   notation: Notation
+  /**
+   * True when these lines come from reading aloud. The same line reads
+   * differently in each direction: a reader produced a sound, and the letters
+   * in the project are the teacher's record of it, so saying "wrote" would
+   * credit the student with a spelling they never made.
+   */
+  said?: boolean
   plausible?: boolean
 }) {
   return (
@@ -117,7 +129,15 @@ function ErrorList({
           <span className="target">{e.row.patternLabel ?? e.row.letters}</span>
           <span className="sounds">{displayList(e.row.phonemes, notation)}</span>
           <span className="arrow">→</span>
-          <span className="wrote">{e.wrote === NONE ? 'left it out' : `wrote “${e.wrote}”`}</span>
+          <span className="wrote">
+            {e.wrote === NONE
+              ? said
+                ? 'said nothing'
+                : 'left it out'
+              : said
+                ? `said ${displayList(soundsOf(e.wrote), notation)}`
+                : `wrote “${e.wrote}”`}
+          </span>
           {e.words.length > 0 && (
             <span className="in">
               in{' '}
@@ -183,12 +203,17 @@ export function StudentProfile() {
         ])
       }
       for (const e of errorLines(reports, s.id)) {
+        const came = reports.producedIsSound
+          ? e.wrote === NONE
+            ? 'said nothing'
+            : `said ${displayList(soundsOf(e.wrote), notation)}`
+          : `wrote "${e.wrote === NONE ? 'nothing' : e.wrote}"`
         rows.push([
           names(s.id),
           e.mark === 'plausible' ? 'Spelling error' : 'Sound error',
           e.row.patternLabel ?? e.row.letters,
           displayList(e.row.phonemes, notation),
-          `wrote "${e.wrote === NONE ? 'nothing' : e.wrote}"${e.words.length ? ` in ${e.words.join(', ')}` : ''}`,
+          `${came}${e.words.length ? ` in ${e.words.join(', ')}` : ''}`,
           '',
           String(e.count),
           '',
@@ -427,7 +452,7 @@ function Profile({
       {soundErrors.length === 0 ? (
         <p className="sub">No sound errors on these tests.</p>
       ) : (
-        <ErrorList lines={soundErrors} notation={notation} />
+        <ErrorList lines={soundErrors} notation={notation} said={reports.producedIsSound} />
       )}
 
       {spellingErrors.length > 0 && (
@@ -437,7 +462,12 @@ function Profile({
             These sounded correct read aloud. The sound is known; the spelling choice is what needs
             teaching.
           </p>
-          <ErrorList lines={spellingErrors} notation={notation} plausible />
+          <ErrorList
+            lines={spellingErrors}
+            notation={notation}
+            said={reports.producedIsSound}
+            plausible
+          />
         </>
       )}
 
