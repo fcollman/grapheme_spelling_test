@@ -867,6 +867,28 @@ th.focused {
   /* Always visible: the teacher is reading along with the recording, so the
      word must not disappear behind what they type about it. */
   color: inherit;
+  cursor: pointer;
+}
+
+/* The only hint that a word can be clicked. Anything stronger would decorate
+   three hundred words at once and make the passage unreadable. */
+.pw-word:hover {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+/*
+ * Sits directly above the passage, because that is what it acts on. One line
+ * and quiet: the keyboard is still the fast way through, and this is the
+ * shortcut for the common case where most of a reading was right.
+ */
+.passage-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
 }
 
 /*

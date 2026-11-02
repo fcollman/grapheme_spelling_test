@@ -147,6 +147,26 @@ export function ReadingEntry() {
     return { read, respelled, skipped, left: words.length - read - respelled - skipped }
   }, [words, test.responses, test.omissions, studentId])
 
+  /*
+   * The checkbox above the passage is derived, never stored: it is ticked when
+   * every word is marked read correctly. That makes it a progress indicator as
+   * well as a control — it unticks itself the moment a word is respelled or
+   * skipped, which is the truth about the passage and not a state to keep.
+   */
+  const allRead = words.length > 0 && counts.read === words.length
+  const nothingToFill = counts.left === 0 && !allRead
+
+  const onToggleAllRead = () => {
+    /*
+     * Unticking only ever undoes this control's own work. It can only be
+     * ticked when every mark is a plain confirmation, so there is nothing
+     * typed to lose — which is what makes an undo for a mistaken click safe
+     * without a dialog in the way.
+     */
+    if (allRead) dispatch({ type: 'clearStudentResponses', studentId })
+    else dispatch({ type: 'markRestRead', studentId })
+  }
+
   const onWordKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
     const word = words[index]
     const plan = planKey({
@@ -408,6 +428,26 @@ export function ReadingEntry() {
             />
           )}
 
+          <div className="group no-print passage-head">
+            <label
+              className="check"
+              title={
+                nothingToFill
+                  ? 'Every word is marked already. Clear what you typed to mark the whole passage correct.'
+                  : 'Mark every word you have not marked yet as read correctly'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={allRead}
+                disabled={nothingToFill}
+                onChange={onToggleAllRead}
+              />
+              All read correctly
+            </label>
+            <span className="keyword">Click any word to change its mark.</span>
+          </div>
+
           <div className="passage" onKeyDown={onPassageKeyDown}>
             {words.map((w, i) => {
               const gapFrom = i === 0 ? 0 : (words[i - 1].end ?? 0)
@@ -420,6 +460,7 @@ export function ReadingEntry() {
                   value={responseFor(w.id)}
                   omitted={omittedFor(w.id)}
                   register={(el) => inputs.current.set(w.id, el)}
+                  onPick={() => focusWord(i)}
                   onKeyDown={(e) => onWordKeyDown(e, i)}
                   onChange={(value) =>
                     dispatch({ type: 'setResponse', wordId: w.id, studentId, value })
@@ -662,6 +703,7 @@ const PassageWord = memo(function PassageWord({
   omitted,
   wordId,
   register,
+  onPick,
   onKeyDown,
   onChange,
   onUnskip,
@@ -672,6 +714,7 @@ const PassageWord = memo(function PassageWord({
   omitted: boolean
   wordId: string
   register: (el: HTMLInputElement | null) => void
+  onPick: () => void
   onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
   onChange: (value: string) => void
   onUnskip: () => void
@@ -683,7 +726,16 @@ const PassageWord = memo(function PassageWord({
     <>
       {gap}
       <span className={`pw ${omitted ? 'skipped' : said ? 'said' : correct ? 'read' : ''}`}>
-        <span className="pw-word">{text}</span>
+        {/*
+          * Clicking the word opens it for marking, because the box beside it is
+          * collapsed to nothing until it is needed and there is otherwise no
+          * way to reach one word with the mouse. A span rather than a button:
+          * the passage has to read as prose, and the word is already reachable
+          * from the keyboard through the box it belongs to.
+          */}
+        <span className="pw-word" onClick={onPick} title={`Mark ${text}`}>
+          {text}
+        </span>
         {omitted && (
           <button className="pw-skip" title="They skipped this word — click to undo" onClick={onUnskip}>
             –

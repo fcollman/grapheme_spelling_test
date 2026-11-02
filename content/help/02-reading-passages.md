@@ -155,7 +155,7 @@ listening.
 Pick the student you are listening to, then work through the passage from the
 keyboard. You should not need the mouse at all.
 
-![A passage part-marked: words read correctly in green, a mispronunciation struck through with what the student said beside it, and a skipped word](images/reading-entry.webp)
+![A passage part-marked: the All read correctly checkbox above it, then words read correctly in green, a mispronunciation struck through with what the student said beside it, and a skipped word](images/reading-entry.webp)
 
 | Key | What it means |
 |---|---|
@@ -176,6 +176,24 @@ without ever leaving the passage.
 
 **Most words are read correctly, so most of the time this is just
 <kbd>Tab</kbd>.** You only type when something goes wrong.
+
+### Mark the ones that went wrong, then tick the rest
+
+There is a second way to work, and for a fluent reader it is the faster one:
+**listen the whole way through, click only the words that went wrong**, and
+when you are done tick **All read correctly** above the passage.
+
+- **Click any word** to open it for marking, wherever it is in the passage.
+  The cursor goes to it and anything you already typed comes back selected, so
+  you can change your mind about a word without tabbing back to it.
+- **All read correctly** fills in every word you have not marked yet. What you
+  typed stays as you typed it, and so does anything you marked skipped — it
+  says *the rest* were fine, so it can never wipe out a mark.
+- The tick is not a setting; it is the passage telling you where it stands. It
+  appears on its own once every word is marked read correctly, and it goes away
+  again the moment one of them is not.
+- Untick it to clear the whole passage and start again. That is only possible
+  when every mark is a plain correct, so there is never anything typed to lose.
 
 ### Type what it sounded like
 

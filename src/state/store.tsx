@@ -39,6 +39,7 @@ export type Action =
   | { type: 'setResponse'; wordId: string; studentId: string; value: string }
   | { type: 'setPassage'; text: string }
   | { type: 'setOmitted'; wordId: string; studentId: string; omitted: boolean }
+  | { type: 'markRestRead'; studentId: string }
   | { type: 'setAudioTime'; wordId: string; studentId: string; seconds: number | null }
   | { type: 'setAudioMeta'; studentId: string; meta: AudioMeta | null }
   | { type: 'clearAudioTimes'; studentId: string }
@@ -345,6 +346,31 @@ export function reducer(project: Project, action: Action): Project {
             : t.overrides,
         }
       })
+    }
+
+    case 'markRestRead': {
+      /*
+       * Every word nothing has been said about yet was read correctly.
+       *
+       * Most readings are mostly right, so the alternative is tapping Tab three
+       * hundred times to say so. What the teacher typed, and what they marked
+       * skipped, is left exactly as it stands: this claims the *rest* were
+       * fine, which is the only version of it that can never destroy a mark.
+       */
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active) return project
+
+      const filled: Record<string, Record<string, string>> = {}
+      for (const w of active.words) {
+        if ((active.responses[w.id]?.[action.studentId] ?? '') !== '') continue
+        if (active.omissions?.[w.id]?.[action.studentId]) continue
+        filled[w.id] = { ...(active.responses[w.id] ?? {}), [action.studentId]: w.text }
+      }
+      // Nothing to fill in means nothing changed, and an unchanged project has
+      // to be the same object or the file is marked dirty for no reason.
+      if (Object.keys(filled).length === 0) return project
+
+      return withActiveTest(project, (t) => ({ ...t, responses: { ...t.responses, ...filled } }))
     }
 
     case 'setResponse':
