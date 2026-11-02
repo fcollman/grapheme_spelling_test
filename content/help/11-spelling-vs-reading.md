@@ -61,6 +61,17 @@ it to 1 shows every comparison the data can make; raising it to 10 keeps only
 the ones you could defend in a meeting. Nothing is ever hidden: the row stays,
 with both its counts visible, and only the difference is withheld.
 
+## Click any score for the examples behind it
+
+As everywhere else in the app, every figure on these two sheets is clickable,
+and clicking one opens the individual answers that produced it — with its own
+CSV download.
+
+The two score columns open their own side: the spelling tests, or the reading
+passages. The last column is made of both, so it opens **both at once**, with
+each answer saying which test it came from and whether it was written or read
+aloud. That is the quickest way to see what a difference is actually made of.
+
 ## Reading the sheet
 
 **Showing** switches between the whole class and one child. A whole class pools

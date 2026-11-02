@@ -75,6 +75,14 @@ export interface Occurrence {
    * letters written, or the sound produced, or `∅` for nothing.
    */
   producedKey: string
+  /**
+   * This answer was read aloud rather than written.
+   *
+   * Per occurrence, not per list, because the two comparison sheets open a cell
+   * that counts both directions at once — and "they wrote" over a row that was
+   * spoken would credit the student with a spelling they never produced.
+   */
+  spoken: boolean
 }
 
 export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
@@ -111,6 +119,7 @@ export function findOccurrences(project: Project, drill: Drill): Occurrence[] {
           word: word.text,
           nonsense: word.nonsense,
           attempt: a.attempt,
+          spoken: isReading(test),
         }
 
         // Misuse counts a sound the student REACHED FOR where it was not wanted,

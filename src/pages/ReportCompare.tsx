@@ -4,7 +4,7 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useComparedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
-import { buildReportsAcross, CLASS, type Tally } from '../reports/aggregate'
+import { buildReportsAcross, CLASS, type ReportSource, type Tally } from '../reports/aggregate'
 import {
   compareGraphemes,
   comparePhonemes,
@@ -19,6 +19,8 @@ import { Fraction, percentOf } from '../components/Fraction'
 import { divergeColor, divergeInk, scaleColor, scaleInk } from '../components/Legend'
 import { SortHeader } from '../components/SortHeader'
 import { nextSort, sortRowsByValue, type SortState } from '../reports/sorting'
+import { OccurrenceModal } from '../components/OccurrenceModal'
+import type { Drill } from '../reports/occurrences'
 import { toCsv } from '../export/csv'
 import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
@@ -136,6 +138,7 @@ function CompareSheet({
   const [level, setLevel] = useState<Level>('grapheme')
   const [minimum, setMinimum] = useState(MIN_EVIDENCE)
   const [sort, setSort] = useState<SortState | null>(null)
+  const [drill, setDrill] = useState<Drill | null>(null)
 
   const encoding = useMemo(
     () => buildReportsAcross(project, scope.encoding.sources),
@@ -169,6 +172,24 @@ function CompareSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, sort, notation],
   )
+
+  /*
+   * Every figure here opens into the answers behind it, the same as on the
+   * one-direction sheets. A side's cell opens that side's tests; the last
+   * column is made of both, so it opens both at once and the list says which
+   * each answer came from.
+   */
+  const drillFor = (r: CompareRow, sources: ReportSource[], scopeLabel: string): Drill => ({
+    kind: r.unit.kind,
+    key: r.key,
+    label: labelOf(r),
+    sounds: r.unit.kind === 'grapheme' ? r.unit.row.phonemes : [r.unit.id],
+    studentId: who,
+    sources,
+    scopeLabel,
+  })
+
+  const bothSources = [...scope.encoding.sources, ...scope.decoding.sources]
 
   const whoName = who === CLASS ? 'Whole class' : names(who)
   const scopeLabel = `${scope.encoding.scopeLabel} against ${scope.decoding.scopeLabel}`
@@ -391,24 +412,33 @@ function CompareSheet({
                   </>
                 )}
 
-                <TallyCell tally={r.encoding} what="spelled" />
-                <TallyCell tally={r.decoding} what="read" />
+                <TallyCell
+                  tally={r.encoding}
+                  what="spelled"
+                  onOpen={() => setDrill(drillFor(r, scope.encoding.sources, scope.encoding.scopeLabel))}
+                />
+                <TallyCell
+                  tally={r.decoding}
+                  what="read"
+                  onOpen={() => setDrill(drillFor(r, scope.decoding.sources, scope.decoding.scopeLabel))}
+                />
 
                 {showing === 'combined' ? (
                   <td
-                    className="num"
+                    className="num drillable"
+                    onClick={() => setDrill(drillFor(r, bothSources, scopeLabel))}
                     style={{
                       background: r.combined === null ? undefined : scaleColor(r.combined),
                       color: r.combined === null ? 'var(--muted)' : scaleInk(r.combined),
                       fontWeight: 650,
                     }}
-                    title={
+                    title={`${
                       r.combined === null
                         ? missingWhy(r.missing!, minimum)
                         : r.missing === 'decoding' || r.missing === 'encoding'
                           ? missingWhy(r.missing, minimum)
                           : 'The two percentages averaged, one weight each'
-                    }
+                    } — click to see every example, both ways`}
                   >
                     <span>{r.combined === null ? '—' : `${Math.round(r.combined * 100)}%`}</span>
                     {(r.missing === 'decoding' || r.missing === 'encoding') && (
@@ -417,13 +447,16 @@ function CompareSheet({
                   </td>
                 ) : (
                   <td
-                    className="num"
+                    className="num drillable"
+                    onClick={() => setDrill(drillFor(r, bothSources, scopeLabel))}
                     style={{
                       background: r.divergence === null ? undefined : divergeColor(r.divergence),
                       color: r.divergence === null ? 'var(--muted)' : divergeInk(r.divergence),
                       fontWeight: 650,
                     }}
-                    title={r.divergence === null ? missingWhy(r.missing!, minimum) : gapWhy(r.divergence)}
+                    title={`${
+                      r.divergence === null ? missingWhy(r.missing!, minimum) : gapWhy(r.divergence)
+                    } — click to see every example, both ways`}
                   >
                     {r.divergence === null ? (
                       <span className="onesided">{missingWord(r.missing!)}</span>
@@ -437,16 +470,19 @@ function CompareSheet({
           </tbody>
         </table>
       </div>
+
+      {drill && <OccurrenceModal drill={drill} onClose={() => setDrill(null)} />}
     </section>
   )
 }
 
 /** One side's score, coloured the way every other accuracy sheet colours one. */
-function TallyCell({ tally, what }: { tally: Tally; what: string }) {
+function TallyCell({ tally, what, onOpen }: { tally: Tally; what: string; onOpen: () => void }) {
   const fraction = fractionOf(tally)
   return (
     <td
-      className="num"
+      className="num drillable"
+      onClick={onOpen}
       style={{
         background: fraction === null ? undefined : scaleColor(fraction),
         color: fraction === null ? 'var(--muted)' : scaleInk(fraction),
@@ -455,7 +491,7 @@ function TallyCell({ tally, what }: { tally: Tally; what: string }) {
       title={
         fraction === null
           ? 'Not covered on this side'
-          : `${tally.correct} of ${tally.total} ${what} correctly`
+          : `${tally.correct} of ${tally.total} ${what} correctly — click to see every example`
       }
     >
       {fraction === null ? '—' : <Fraction correct={tally.correct} total={tally.total} />}
