@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
+import { ModeToggle, noTestsInMode } from '../components/ModeToggle'
 import { buildReportsAcross, CLASS, getTally } from '../reports/aggregate'
 import { display, get } from '../data/phonemes'
 import { scaleColor, scaleInk } from '../components/Legend'
@@ -73,12 +74,15 @@ export function ReportAccuracy() {
       <section className="panel">
         <h2>Accuracy by phoneme</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
         <div className="empty">
           {scope.loading
             ? 'Analysing every test…'
             : scope.sources.length === 0
-              ? 'Choose at least one test above.'
+              ? scope.tests.length === 0
+                ? noTestsInMode(scope.mode)
+                : 'Choose at least one test above.'
               : 'Nothing to report yet — enter some student spellings first.'}
         </div>
       </section>
@@ -92,11 +96,12 @@ export function ReportAccuracy() {
       </PrintTitle>
       <h2>Accuracy by phoneme</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
-        How many times each student spelled each sound correctly, out of the times that sound came up
-        in a word they attempted. A sound that never came up shows 0/0 in grey rather than counting
-        against anyone.
+        {scope.mode === 'decoding'
+          ? 'How many times each student said each sound correctly, out of the times that sound came up in a word they read. A sound that never came up shows 0/0 in grey rather than counting against anyone.'
+          : 'How many times each student spelled each sound correctly, out of the times that sound came up in a word they attempted. A sound that never came up shows 0/0 in grey rather than counting against anyone.'}
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -108,7 +113,16 @@ export function ReportAccuracy() {
               dispatch({ type: 'updateSettings', settings: { amberCountsCorrect: e.target.checked } })
             }
           />
-          Count “correct sound, different letters” as correct
+          {/*
+            * The same amber cells, but amber means something different in each
+            * direction. Spelling it out: in encoding it is the right sound
+            * written with letters that were not the ones taught; in decoding it
+            * is the right word said with an accent, or with an unstressed vowel
+            * reduced — neither of which is a decoding error.
+            */}
+          {scope.mode === 'decoding'
+            ? 'Count a close enough pronunciation as correct'
+            : 'Count “correct sound, different letters” as correct'}
         </label>
         <span className="spacer" />
         <button className="btn" onClick={exportCsv}>

@@ -28,6 +28,7 @@ number is a sound being over-used.
 
 ## The usual controls
 
+- **Evidence from** at the top chooses spelling tests or reading passages — the two are never pooled into one number. The **Student profile** section of this guide explains the choice.
 - The **test picker** at the top pools the count across any tests you select. 
 - **Click any number** to open the examples behind it.
 - **Download CSV** and **Print / Save PDF** work as they do everywhere else.

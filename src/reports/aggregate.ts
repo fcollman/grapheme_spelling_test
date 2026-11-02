@@ -518,8 +518,16 @@ export function buildProgress(
   byTest: Map<string, TestAnalysis>,
   who: string,
   level: ProgressLevel,
+  /*
+   * Which tests make up the time series, defaulting to all of them.
+   *
+   * This is the one report that does not go through `buildReportsAcross`, so it
+   * is also the one place the encode/decode filter cannot reach on its own. Left
+   * to itself it would put a spelling test and a reading test in adjacent
+   * columns and call the difference growth, when the two are opposite questions.
+   */
+  tests: Test[] = testsInOrder(project),
 ): ProgressRow[] {
-  const tests = testsInOrder(project)
   const perTest = tests.map((test) => {
     const analysis = byTest.get(test.id)
     return { test, reports: analysis ? buildReports(project, test, analysis) : null }

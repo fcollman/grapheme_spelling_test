@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
+import { ModeToggle, noTestsInMode } from '../components/ModeToggle'
 import {
   buildReportsAcross,
   CLASS,
@@ -106,12 +107,15 @@ export function ReportGraphemeConfusion() {
       <section className="panel">
         <h2>Grapheme confusion</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
         <div className="empty">
           {scope.loading
             ? 'Analysing every test…'
             : scope.sources.length === 0
-              ? 'Choose at least one test above.'
+              ? scope.tests.length === 0
+                ? noTestsInMode(scope.mode)
+                : 'Choose at least one test above.'
               : 'Nothing to report yet — enter some student spellings first.'}
         </div>
       </section>
@@ -126,6 +130,7 @@ export function ReportGraphemeConfusion() {
       </PrintTitle>
       <h2>Grapheme confusion</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
         {said ? (
@@ -135,6 +140,7 @@ export function ReportGraphemeConfusion() {
             teach against — {NONE} means they said nothing for that unit at all. The columns are
             sounds rather than your respelling on purpose: “shun” and “shn” are one
             mispronunciation typed two ways, and counting them apart would split one error in two.
+            Untick the box below to see every reading, right or wrong.
           </>
         ) : (
           <>

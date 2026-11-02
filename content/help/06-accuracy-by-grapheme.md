@@ -16,6 +16,8 @@ they cover is correct.
 
 ## It pools across whatever tests you choose
 
+**Evidence from** at the top chooses spelling tests or reading passages — the two are never pooled into one number. The **Student profile** section of this guide explains the choice.
+
 The test picker at the top works exactly as it does on the student profile. Click
 chips to add or remove tests, or use **Select all**, **Last 3**, **First 3**,
 **Most recent** and **Current test**.  More tests will add more data and make

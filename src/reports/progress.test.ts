@@ -268,3 +268,43 @@ describe('progress over time', () => {
     for (const r of rows) expect(r.points).toHaveLength(1)
   })
 })
+
+/**
+ * The one report that does not go through `buildReportsAcross`, so the one
+ * place the encode/decode filter has to be applied by hand. Left to itself it
+ * would put a spelling test and a reading test in adjacent columns of one
+ * series and read the difference between them as growth.
+ */
+describe('buildProgress over a subset of the tests', () => {
+  it('defaults to every test, which is what every other caller relies on', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const rows = buildProgress(project, byTest, CLASS, 'category')
+
+    expect(rows[0].points.map((p) => p.testId)).toEqual(['t1', 't2', 't3'])
+  })
+
+  it('builds the series from only the tests it is given, in their order', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const some = testsInOrder(project).filter((t) => t.id !== 't2')
+    const rows = buildProgress(project, byTest, CLASS, 'category', some)
+
+    for (const row of rows) {
+      expect(row.points.map((p) => p.testId)).toEqual(['t1', 't3'])
+    }
+  })
+
+  it('leaves the excluded test out of the numbers, not just out of the columns', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const all = buildProgress(project, byTest, CLASS, 'category')
+    const one = buildProgress(project, byTest, CLASS, 'category', [project.tests[0]])
+
+    const totalOf = (rows: ReturnType<typeof buildProgress>) =>
+      rows.reduce((n, r) => n + r.points.reduce((m, p) => m + (p.tally?.total ?? 0), 0), 0)
+
+    expect(totalOf(one)).toBeGreaterThan(0)
+    expect(totalOf(one)).toBeLessThan(totalOf(all))
+  })
+})

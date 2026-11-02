@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
+import { ModeToggle, noTestsInMode } from '../components/ModeToggle'
 import { buildReportsAcross, CLASS, getConfusion, NONE } from '../reports/aggregate'
 import { display, get, type PhonemeId } from '../data/phonemes'
 import { toCsv } from '../export/csv'
@@ -81,12 +82,15 @@ export function ReportConfusion() {
       <section className="panel">
         <h2>Confusion matrix</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
         <div className="empty">
           {scope.loading
             ? 'Analysing every test…'
             : scope.sources.length === 0
-              ? 'Choose at least one test above.'
+              ? scope.tests.length === 0
+                ? noTestsInMode(scope.mode)
+                : 'Choose at least one test above.'
               : 'Nothing to report yet — enter some student spellings first.'}
         </div>
       </section>
@@ -101,12 +105,19 @@ export function ReportConfusion() {
       </PrintTitle>
       <h2>Confusion matrix</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
+      {/*
+        * The best report of the lot in decoding — "the word needed /th/, the
+        * student said /f/" is exactly what a reading teacher is listening for —
+        * and it takes no change beyond saying so.
+        */}
       <p className="hint">
-        Rows are the sound the word needed; columns are the sound the student's letters actually
-        made. The shaded diagonal is correct. Off-diagonal numbers are the specific swaps to teach
-        against — {NONE} in a column means the sound was left out, and the {NONE} row counts sounds
-        added that the word did not call for.
+        Rows are the sound the word needed; columns are the sound the student{' '}
+        {scope.mode === 'decoding' ? 'actually said' : "'s letters actually made"}. The shaded
+        diagonal is correct. Off-diagonal numbers are the specific swaps to teach against —{' '}
+        {NONE} in a column means the sound was left out, and the {NONE} row counts sounds added
+        that the word did not call for.
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
