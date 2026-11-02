@@ -9,6 +9,7 @@ import {
   type Project,
   type Settings,
   type SlotOverrideData,
+  type AudioMeta,
   type Student,
   type Test,
   type TestKind,
@@ -38,6 +39,10 @@ export type Action =
   | { type: 'setResponse'; wordId: string; studentId: string; value: string }
   | { type: 'setPassage'; text: string }
   | { type: 'setOmitted'; wordId: string; studentId: string; omitted: boolean }
+  | { type: 'markRestRead'; studentId: string }
+  | { type: 'setAudioTime'; wordId: string; studentId: string; seconds: number | null }
+  | { type: 'setAudioMeta'; studentId: string; meta: AudioMeta | null }
+  | { type: 'clearAudioTimes'; studentId: string }
   | { type: 'clearStudentResponses'; studentId: string }
   | { type: 'setOverride'; wordId: string; studentId: string; slot: number; value: SlotOverrideData | null }
   | { type: 'clearOverridesForWord'; wordId: string }
@@ -273,6 +278,48 @@ export function reducer(project: Project, action: Action): Project {
         overrides: withoutWords(t.overrides, stale),
         wordPhonemes: withoutWords(t.wordPhonemes, stale),
         omissions: t.omissions ? withoutWords(t.omissions, stale) : t.omissions,
+        audioTimes: t.audioTimes ? withoutWords(t.audioTimes, stale) : t.audioTimes,
+      }))
+    }
+
+    case 'setAudioTime': {
+      /*
+       * Where in the recording this word was marked.
+       *
+       * Written only when the teacher moves on, never on the media element's
+       * own progress events: those fire several times a second, and dispatching
+       * from them would flood the reducer, leave the file permanently showing
+       * unsaved changes, and defeat the autosave debounce entirely.
+       */
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      const current = active?.audioTimes?.[action.wordId]?.[action.studentId]
+      if (!active || current === (action.seconds ?? undefined)) return project
+
+      return withActiveTest(project, (t) => {
+        const forWord = { ...(t.audioTimes?.[action.wordId] ?? {}) }
+        if (action.seconds === null) delete forWord[action.studentId]
+        else forWord[action.studentId] = action.seconds
+        return { ...t, audioTimes: { ...(t.audioTimes ?? {}), [action.wordId]: forWord } }
+      })
+    }
+
+    case 'setAudioMeta': {
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active) return project
+      return withActiveTest(project, (t) => {
+        const files = { ...(t.audioFiles ?? {}) }
+        if (action.meta === null) delete files[action.studentId]
+        else files[action.studentId] = action.meta
+        return { ...t, audioFiles: files }
+      })
+    }
+
+    case 'clearAudioTimes': {
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active?.audioTimes) return project
+      return withActiveTest(project, (t) => ({
+        ...t,
+        audioTimes: withoutStudent(t.audioTimes ?? {}, action.studentId),
       }))
     }
 
@@ -299,6 +346,31 @@ export function reducer(project: Project, action: Action): Project {
             : t.overrides,
         }
       })
+    }
+
+    case 'markRestRead': {
+      /*
+       * Every word nothing has been said about yet was read correctly.
+       *
+       * Most readings are mostly right, so the alternative is tapping Tab three
+       * hundred times to say so. What the teacher typed, and what they marked
+       * skipped, is left exactly as it stands: this claims the *rest* were
+       * fine, which is the only version of it that can never destroy a mark.
+       */
+      const active = project.tests.find((t) => t.id === project.activeTestId)
+      if (!active) return project
+
+      const filled: Record<string, Record<string, string>> = {}
+      for (const w of active.words) {
+        if ((active.responses[w.id]?.[action.studentId] ?? '') !== '') continue
+        if (active.omissions?.[w.id]?.[action.studentId]) continue
+        filled[w.id] = { ...(active.responses[w.id] ?? {}), [action.studentId]: w.text }
+      }
+      // Nothing to fill in means nothing changed, and an unchanged project has
+      // to be the same object or the file is marked dirty for no reason.
+      if (Object.keys(filled).length === 0) return project
+
+      return withActiveTest(project, (t) => ({ ...t, responses: { ...t.responses, ...filled } }))
     }
 
     case 'setResponse':

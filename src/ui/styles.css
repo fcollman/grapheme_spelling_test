@@ -20,6 +20,15 @@
   --none-bg: #eeeff2;
   --none-ink: #6b7080;
 
+  --wave-ink: #4a6fa5;
+  /*
+   * Violet, which is deliberately none of the colours already in use: not the
+   * trace's blue, not the playhead's red, and not the green or amber the
+   * reports use for right and nearly-right — a word mark is a landmark, not a
+   * judgement. Against the blue trace it has to be legible at two pixels wide.
+   */
+  --wave-mark: #8f2f8b;
+
   --radius: 8px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -858,6 +867,28 @@ th.focused {
   /* Always visible: the teacher is reading along with the recording, so the
      word must not disappear behind what they type about it. */
   color: inherit;
+  cursor: pointer;
+}
+
+/* The only hint that a word can be clicked. Anything stronger would decorate
+   three hundred words at once and make the passage unreadable. */
+.pw-word:hover {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+/*
+ * Sits directly above the passage, because that is what it acts on. One line
+ * and quiet: the keyboard is still the fast way through, and this is the
+ * shortcut for the common case where most of a reading was right.
+ */
+.passage-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
 }
 
 /*
@@ -922,6 +953,169 @@ input.pw-input:focus {
   color: var(--wrong-ink);
   font-weight: 700;
   padding: 0 3px;
+}
+
+.audiobar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--panel-sunk, #f7f8fb);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Unmissable: a page that is listening to a child must say so. */
+.recording-dot {
+  color: var(--wrong-ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  animation: recording-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-dot {
+    animation: none;
+  }
+}
+
+/*
+ * The recording drawn out, so a teacher can aim at a word instead of scrubbing
+ * for it. The bar itself takes every click: the word marks are painted on top
+ * with pointer events off, because a passage can put three hundred of them on
+ * one bar and overlapping hit areas would make clicking a lottery.
+ */
+.wave {
+  margin-bottom: 10px;
+}
+
+/*
+ * The band across the top is where the words are named. It is padding rather
+ * than a separate element so the labels never sit on the trace: absolutely
+ * positioned children measure from the padding edge, so the band is simply the
+ * space above the canvas.
+ */
+.wave-box {
+  position: relative;
+  height: 86px;
+  padding-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.wave-box:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.wave-canvas {
+  display: block;
+}
+
+.wave-mark {
+  position: absolute;
+  top: 14px;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--wave-mark);
+  pointer-events: none;
+}
+
+/* Font size kept in step with LABEL_PX in Waveform.tsx, which measures it to
+   decide how many of these fit. */
+.wave-label {
+  position: absolute;
+  top: 0;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--wave-mark);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Red, and above the marks: it is the one thing that moves. */
+.wave-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--wrong-ink);
+  pointer-events: none;
+  visibility: hidden;
+  will-change: transform;
+}
+
+.wave-note {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/*
+ * Shows sound arriving, which is the only way to tell a working microphone from
+ * a virtual device that opens cleanly and delivers silence. Driven by
+ * `transform` so it costs a compositor frame and never a React render.
+ */
+.meter {
+  display: inline-block;
+  width: 72px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--none-bg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--exact-ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* Full width, so a warning that the recording is empty is never ellipsised. */
+.audioalarm {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--wrong-bg);
+  border: 1px solid var(--wrong-line);
+  color: var(--wrong-ink);
+  font-weight: 600;
+}
+
+.audiostatus {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Anything other than "playing the file you expected" has to be noticed. */
+.audiostatus.warn {
+  color: var(--wrong-ink);
+  font-weight: 600;
 }
 
 /* ---------- sortable column headings ---------- */

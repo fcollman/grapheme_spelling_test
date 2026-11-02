@@ -30,12 +30,132 @@ Two things are worth knowing about how the text is broken into words:
 - **Hyphenated words count as two.** `well-known` is marked as `well` and
   `known`, because that is how it is read.
 
+## Record the student, or attach a recording you already have
+
+### Recording here
+
+**● Record** records through your computer's microphone. The browser asks
+permission the first time; after that, press Record, let the student read, and
+press **Stop and save**.
+
+![Recording in progress: stop and save, a pulsing red Recording 0:05, and discard](images/reading-recording.webp)
+
+It then asks where to put the file, and that is the only copy — it is written
+straight to the folder you choose, not kept inside the app. **Discard** throws a
+recording away without saving it.
+
+While it is recording, the red **● Recording** counter is on screen the whole
+time and the microphone is released the moment you stop. A page that can listen
+to a child should never leave you guessing whether it is.
+
+### Check the level bar before you rely on it
+
+Next to the counter is a small bar that moves with the sound coming in. **If it
+is not moving, nothing is being recorded.**
+
+This matters more than it sounds. A browser can open the *wrong* microphone —
+the virtual one belonging to Zoom, Teams, or an audio tool you installed once —
+and that device opens perfectly happily and then delivers pure silence. Your
+computer shows the microphone as active, the recording appears to work, the file
+saves, and it contains nothing at all.
+
+So the app watches for it. If no sound arrives for a couple of seconds it says
+so in red while you are still recording, and if a whole recording turns out to
+be silent it tells you after saving rather than letting you find out later.
+
+**Mic** lets you choose which microphone to use. If the level bar is dead, that
+is the first thing to change. The choice is remembered on this computer — it is
+not stored in your project, because a microphone that exists on your laptop will
+not exist on anyone else's.
+
+A silent recording is still saved rather than thrown away. If the app were wrong
+about it, deleting it would destroy the only copy of something that cannot be
+recorded again.
+
+Recording here saves a round trip: no mailing a file to yourself from your
+phone, no hunting through Downloads, and no copy of a student's voice sitting in
+your email.
+
+### Attaching one you already have
+
+**Attach recording** takes `.mp3`, `.m4a`, `.wav` and the `.mov` files phones
+produce.
+
+![The transport bar above a passage being marked: change recording, play, step back and forward, speed and elapsed time, and below them the recording drawn as a waveform with the words marked along it in purple and named above the bar](images/reading-audio.webp)
+
+**Speed** is the control that earns its place — most people mark comfortably at
+0.75×. **↺ 2s** and **↻ 2s** step the recording back and forward two seconds.
+
+### Finding your place in the recording
+
+Under the controls the recording is drawn out as a waveform. It is there because
+scrubbing a plain progress bar means overshooting and scrubbing back, over and
+over, and the thing you want is usually one particular word.
+
+- **Click anywhere on it** to move the recording to that moment.
+- **The purple marks are the words you have already stepped through**, in the
+  places you heard them, with the word itself printed above the bar.
+- **Click a mark** and the recording goes back to that word *and* the cursor
+  moves to it, so you can listen again and change what you wrote.
+- Where the words come too close together to print them all, only some are
+  named — the marks are all still there, and hovering one shows its word.
+- <kbd>Space</kbd> plays and pauses, here as well as in the passage.
+- The silences between sentences show up as flat stretches, which turn out to be
+  the easiest things to navigate by.
+
+The marks appear as you work: each <kbd>Tab</kbd> notes where you were, so the
+bar fills in behind you.
+
+If a recording cannot be drawn — some phone video files will not decode this way
+even though they play perfectly — the bar becomes a plain timeline instead. It
+still shows the word marks and still takes a click.
+
+### It remembers where you were in the recording
+
+Each time you press <kbd>Tab</kbd>, the app notes where you are in the audio. So
+when you press <kbd>Shift</kbd>+<kbd>Tab</kbd> to go back a word, **the
+recording goes back with you** and plays that word again. Step back three words
+and it rewinds three words. You can listen to something twice without hunting
+for it on a scrubber.
+
+It starts playing slightly before the word, because you always tap a moment
+after a word begins.
+
+### The recording stays on your computer
+
+The app notes *where your file is*, not the file itself. Your project `.json`
+holds the times — a few numbers per word — and nothing else; a recording would
+be megabytes and would break the automatic save.
+
+That has one consequence worth knowing: **the recording is not carried inside
+your project file.** Open the file on another computer and the marks are all
+there, but you will be asked for the recording again. In Chrome and Edge the app
+remembers which file it was and reconnecting is one click.
+
+If you attach a *different* file from the one the times were made against, it
+says so rather than quietly seeking to the wrong places.
+
+### Why it cannot listen for you
+
+It would be better if the app could hear the recording and mark it itself. It
+cannot, for two reasons that are not going to change soon:
+
+- The smallest speech model worth using is about twice the size of this entire
+  application, which is one file you can email to someone.
+- The speech recognition built into browsers **sends the audio to a company's
+  servers**. That would break the promise on the About page that nothing you put
+  into this page ever leaves your computer — and a recording of a child reading
+  is the last thing that should.
+
+So the app plays, remembers your place, and keeps out of the way. You do the
+listening.
+
 ## Mark it while you listen
 
 Pick the student you are listening to, then work through the passage from the
 keyboard. You should not need the mouse at all.
 
-![A passage part-marked: words read correctly in green, a mispronunciation struck through with what the student said beside it, and a skipped word](images/reading-entry.webp)
+![A passage part-marked: the All read correctly checkbox above it, then words read correctly in green, a mispronunciation struck through with what the student said beside it, and a skipped word](images/reading-entry.webp)
 
 | Key | What it means |
 |---|---|
@@ -43,9 +163,37 @@ keyboard. You should not need the mouse at all.
 | type, then <kbd>Tab</kbd> | They said this instead |
 | <kbd>Shift</kbd>+<kbd>Tab</kbd> | Go back a word |
 | <kbd>-</kbd> | They skipped that word altogether |
+| <kbd>Space</kbd> | Play or pause the recording |
+| <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd> | Step the recording back or forward two seconds |
+
+<kbd>Alt</kbd> is used for stepping on purpose. Every unmodified key is already
+spoken for — letters are the respelling, <kbd>Tab</kbd> advances, and the plain
+arrow keys still move the cursor inside a respelling you are correcting.
+<kbd>Space</kbd> is the exception, and it can be taken because a respelling is
+always a single word: there is nowhere in the passage you would need to type a
+space. So you can start and stop the recording, and step it back and forward,
+without ever leaving the passage.
 
 **Most words are read correctly, so most of the time this is just
 <kbd>Tab</kbd>.** You only type when something goes wrong.
+
+### Mark the ones that went wrong, then tick the rest
+
+There is a second way to work, and for a fluent reader it is the faster one:
+**listen the whole way through, click only the words that went wrong**, and
+when you are done tick **All read correctly** above the passage.
+
+- **Click any word** to open it for marking, wherever it is in the passage.
+  The cursor goes to it and anything you already typed comes back selected, so
+  you can change your mind about a word without tabbing back to it.
+- **All read correctly** fills in every word you have not marked yet. What you
+  typed stays as you typed it, and so does anything you marked skipped — it
+  says *the rest* were fine, so it can never wipe out a mark.
+- The tick is not a setting; it is the passage telling you where it stands. It
+  appears on its own once every word is marked read correctly, and it goes away
+  again the moment one of them is not.
+- Untick it to clear the whole passage and start again. That is only possible
+  when every mark is a plain correct, so there is never anything typed to lose.
 
 ### Type what it sounded like
 

@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { cleanWord } from '../engine/phonemize'
@@ -6,7 +6,15 @@ import { toCsv } from '../export/csv'
 import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { planKey } from './readingKeys'
+import { planKey, planAudioKey, NUDGE_SECONDS } from './readingKeys'
+import { useReadingAudio } from '../state/useReadingAudio'
+import { useRecorder } from '../state/useRecorder'
+import { pickRecordingTarget, writeBlob } from '../state/fileAccess'
+import { Waveform } from '../components/Waveform'
+import type { WordMark } from '../state/waveform'
+import { buildFileName } from '../state/filename'
+import { download } from '../state/persist'
+import type { AudioMeta } from '../state/types'
 
 /**
  * Marking a passage read aloud.
@@ -34,6 +42,59 @@ export function ReadingEntry() {
   const locked = project.settings.lockWords
 
   const inputs = useRef(new Map<string, HTMLInputElement | null>())
+  const filePicker = useRef<HTMLInputElement>(null)
+
+  const onAttached = useCallback(
+    (meta: AudioMeta) => dispatch({ type: 'setAudioMeta', studentId, meta }),
+    [dispatch, studentId],
+  )
+  const audio = useReadingAudio(test.id, studentId, test.audioFiles?.[studentId], onAttached)
+  const recorder = useRecorder()
+  const [recordNote, setRecordNote] = useState<string | null>(null)
+  const [recordAlarm, setRecordAlarm] = useState<string | null>(null)
+
+  /**
+   * Record here, write it to the teacher's own disk, then mark against it.
+   *
+   * The file is chosen and written straight away rather than held in the page:
+   * a recording that exists only in a tab is one refresh from gone, and this
+   * one cannot be made again.
+   */
+  const stopRecording = async () => {
+    const made = await recorder.stop()
+    if (!made) {
+      setRecordNote('Nothing was recorded.')
+      return
+    }
+    /*
+     * A silent recording is still saved. It is worthless, but deciding that for
+     * the teacher means deleting the only copy of something that cannot be made
+     * again — if the judgement is wrong, the loss is total. Say so instead.
+     */
+    setRecordAlarm(made.silent ? SILENT_RECORDING : null)
+    const name = buildFileName([project.className, names(studentId), test.name, test.date])
+    try {
+      const handle = await pickRecordingTarget(`${name}.${made.extension}`, made.extension)
+      if (handle) {
+        await writeBlob(handle, made.blob)
+        await audio.adopt(handle)
+        setRecordNote(null)
+        return
+      }
+      /*
+       * No file picker, or the teacher closed it. The recording is too costly
+       * to throw away either way, so it goes to the browser's downloads and
+       * plays from memory; only the link back to it is lost.
+       */
+      download(`${name}.${made.extension}`, made.blob, made.blob.type)
+      audio.adoptBlob(made.blob, `${name}.${made.extension}`)
+      setRecordNote('Saved to your downloads. Attach it to link the project to the file.')
+    } catch {
+      download(`${name}.${made.extension}`, made.blob, made.blob.type)
+      audio.adoptBlob(made.blob, `${name}.${made.extension}`)
+      setRecordNote('Could not write that file, so it went to your downloads instead.')
+    }
+  }
 
   /**
    * Moving between words.
@@ -51,6 +112,21 @@ export function ReadingEntry() {
     el.select()
     return true
   }
+
+  /*
+   * Where each word was heard, for the waveform. Only words the teacher has
+   * already stepped through have a time, so the bar fills in as they work —
+   * which is exactly what makes going back to one of them possible.
+   */
+  const marks = useMemo<WordMark[]>(() => {
+    const times = test.audioTimes ?? {}
+    const out: WordMark[] = []
+    for (const w of words) {
+      const seconds = times[w.id]?.[studentId]
+      if (seconds !== undefined) out.push({ id: w.id, text: w.text, seconds })
+    }
+    return out
+  }, [words, test.audioTimes, studentId])
 
   const responseFor = (wordId: string) => test.responses[wordId]?.[studentId] ?? ''
   const omittedFor = (wordId: string) => test.omissions?.[wordId]?.[studentId] === true
@@ -70,6 +146,26 @@ export function ReadingEntry() {
     }
     return { read, respelled, skipped, left: words.length - read - respelled - skipped }
   }, [words, test.responses, test.omissions, studentId])
+
+  /*
+   * The checkbox above the passage is derived, never stored: it is ticked when
+   * every word is marked read correctly. That makes it a progress indicator as
+   * well as a control — it unticks itself the moment a word is respelled or
+   * skipped, which is the truth about the passage and not a state to keep.
+   */
+  const allRead = words.length > 0 && counts.read === words.length
+  const nothingToFill = counts.left === 0 && !allRead
+
+  const onToggleAllRead = () => {
+    /*
+     * Unticking only ever undoes this control's own work. It can only be
+     * ticked when every mark is a plain confirmation, so there is nothing
+     * typed to lose — which is what makes an undo for a mistaken click safe
+     * without a dialog in the way.
+     */
+    if (allRead) dispatch({ type: 'clearStudentResponses', studentId })
+    else dispatch({ type: 'markRestRead', studentId })
+  }
 
   const onWordKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
     const word = words[index]
@@ -94,7 +190,71 @@ export function ReadingEntry() {
       dispatch({ type: 'setOmitted', wordId: word.id, studentId, omitted: true })
     }
 
-    if (plan.move !== null) focusWord(plan.move)
+    /*
+     * The recording is stamped only here, when the teacher moves on — never
+     * from the media element's own progress events, which fire several times a
+     * second and would flood the reducer and the autosave with them.
+     *
+     * Moving forward records where the word being moved *to* begins, because
+     * the tap lands as that word is being said. Moving back seeks to the word
+     * being returned to, which is the whole point of keeping the times.
+     */
+    if (plan.move !== null) {
+      const target = words[plan.move]
+      const now = audio.at()
+      const forward = plan.move > index
+
+      if (forward && now !== null && audio.playing) {
+        dispatch({ type: 'setAudioTime', wordId: target.id, studentId, seconds: now })
+      } else if (!forward) {
+        const mark = test.audioTimes?.[target.id]?.[studentId]
+        if (mark !== undefined) {
+          audio.seek(mark)
+          audio.play()
+        }
+      }
+      focusWord(plan.move)
+    }
+  }
+
+  /*
+   * The first word is stamped when playback starts rather than on a Tab,
+   * because the teacher is already sitting on it when they press play — every
+   * other word is stamped by the keystroke that arrives at it.
+   */
+  const onPlaybackStart = () => {
+    audio.onPlay()
+    const first = words[0]
+    const now = audio.at()
+    if (first && now !== null && test.audioTimes?.[first.id]?.[studentId] === undefined) {
+      dispatch({ type: 'setAudioTime', wordId: first.id, studentId, seconds: now })
+    }
+  }
+
+  /*
+   * Driving the recording from inside the passage.
+   *
+   * Caught here rather than on each input because every word bubbles to this
+   * element, and because `defaultPrevented` then tells us the keystroke was
+   * already a marking key — the two sets must never overlap.
+   *
+   * It stays out of the way entirely when nothing is attached: a key swallowed
+   * to do nothing is worse than a key that still types.
+   */
+  const onPassageKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.defaultPrevented || audio.status === 'none') return
+    const action = planAudioKey({
+      key: e.key,
+      altKey: e.altKey,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+      inTextBox: e.target instanceof HTMLInputElement,
+    })
+    if (!action) return
+    e.preventDefault()
+    if (action.kind === 'toggle') audio.toggle()
+    else audio.nudge(action.seconds)
   }
 
   const commitPassage = (text: string) => {
@@ -215,13 +375,80 @@ export function ReadingEntry() {
             </button>
           </div>
 
+          <AudioBar
+            audio={audio}
+            picker={filePicker}
+            onPick={(file) => audio.attachFile(file)}
+            recorder={recorder}
+            note={recordNote}
+            alarm={recordAlarm}
+            onRecord={() => {
+              setRecordNote(null)
+              setRecordAlarm(null)
+              void recorder.start()
+            }}
+            onStopRecording={() => void stopRecording()}
+            onPlayStart={onPlaybackStart}
+            onClearTimes={() => dispatch({ type: 'clearAudioTimes', studentId })}
+          />
+
           <p className="hint no-print">
             <kbd>Tab</kbd> marks a word read correctly and moves on. Type what the student said
             instead, then <kbd>Tab</kbd>. <kbd>Shift</kbd>+<kbd>Tab</kbd> steps back and offers what
-            you typed before. <kbd>-</kbd> marks a word they skipped altogether.
+            you typed before. <kbd>-</kbd> marks a word they skipped altogether.{' '}
+            {audio.status !== 'none' && (
+              <>
+                <kbd>Space</kbd> plays and pauses the recording, and <kbd>Alt</kbd>+<kbd>←</kbd>{' '}
+                and <kbd>Alt</kbd>+<kbd>→</kbd> step it back and forward {NUDGE_SECONDS} seconds —
+                all without leaving the passage.
+              </>
+            )}
           </p>
 
-          <div className="passage">
+          {audio.status !== 'none' && recorder.state !== 'recording' && (
+            <Waveform
+              peaks={audio.peaks}
+              duration={audio.duration}
+              marks={marks}
+              decoding={audio.waveStatus === 'decoding'}
+              at={audio.at}
+              onScrub={audio.seekTo}
+              onPickWord={(mark) => {
+                /*
+                 * Seeking without moving the cursor would leave the page and the
+                 * recording looking at different words. Clicking a mark means
+                 * "take me back to that word", so it does both.
+                 */
+                audio.seek(mark.seconds)
+                const index = words.findIndex((w) => w.id === mark.id)
+                if (index >= 0) focusWord(index)
+              }}
+              onNudge={audio.nudge}
+              onToggle={audio.toggle}
+            />
+          )}
+
+          <div className="group no-print passage-head">
+            <label
+              className="check"
+              title={
+                nothingToFill
+                  ? 'Every word is marked already. Clear what you typed to mark the whole passage correct.'
+                  : 'Mark every word you have not marked yet as read correctly'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={allRead}
+                disabled={nothingToFill}
+                onChange={onToggleAllRead}
+              />
+              All read correctly
+            </label>
+            <span className="keyword">Click any word to change its mark.</span>
+          </div>
+
+          <div className="passage" onKeyDown={onPassageKeyDown}>
             {words.map((w, i) => {
               const gapFrom = i === 0 ? 0 : (words[i - 1].end ?? 0)
               const gap = passage.slice(gapFrom, w.start ?? gapFrom)
@@ -233,6 +460,7 @@ export function ReadingEntry() {
                   value={responseFor(w.id)}
                   omitted={omittedFor(w.id)}
                   register={(el) => inputs.current.set(w.id, el)}
+                  onPick={() => focusWord(i)}
                   onKeyDown={(e) => onWordKeyDown(e, i)}
                   onChange={(value) =>
                     dispatch({ type: 'setResponse', wordId: w.id, studentId, value })
@@ -249,6 +477,211 @@ export function ReadingEntry() {
         </>
       )}
     </section>
+  )
+}
+
+/*
+ * A virtual audio device — Zoom's, Teams', a loopback, an aggregate — opens
+ * without complaint and returns zeros forever, so the browser's own recording
+ * indicator lights up and the file is well-formed and empty. Naming the cause
+ * is the difference between a teacher fixing it in ten seconds and concluding
+ * the feature is broken.
+ */
+const DEAD_MICROPHONE =
+  'No sound is reaching the page. The wrong microphone may be selected — check Mic below, or your browser’s microphone setting.'
+
+const SILENT_RECORDING =
+  'That recording is silent — no sound reached the page. It was saved anyway, but check the Mic setting and record again.'
+
+const STATUS_TEXT: Record<string, string> = {
+  none: 'No recording attached',
+  ready: 'Recording attached',
+  reconnect: 'Click to reconnect the recording',
+  missing: 'That recording is no longer where it was',
+  different: 'This is not the file the times were made against',
+  unsupported: 'This browser cannot play that file — try .m4a or .mp3',
+}
+
+function clock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/**
+ * Playing a recording while marking.
+ *
+ * The media element is a `<video>` rather than an `<audio>`: a teacher records
+ * on a phone and gets a `.mov`, which `<audio>` will not decode even though
+ * there is nothing to watch. It is kept at zero size and driven entirely by
+ * these buttons.
+ */
+function AudioBar({
+  audio,
+  picker,
+  recorder,
+  note,
+  alarm,
+  onPick,
+  onRecord,
+  onStopRecording,
+  onPlayStart,
+  onClearTimes,
+}: {
+  audio: ReturnType<typeof useReadingAudio>
+  picker: React.RefObject<HTMLInputElement>
+  recorder: ReturnType<typeof useRecorder>
+  note: string | null
+  alarm: string | null
+  onPick: (file: File) => void
+  onRecord: () => void
+  onStopRecording: () => void
+  onPlayStart: () => void
+  onClearTimes: () => void
+}) {
+  const [now, setNow] = useState(0)
+  const recording = recorder.state === 'recording'
+
+  return (
+    <div className="group no-print audiobar">
+      {/* Zero-sized on purpose: audio-only files play through it just the same. */}
+      <video
+        ref={audio.ref}
+        playsInline
+        style={{ width: 0, height: 0, position: 'absolute' }}
+        onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
+        onLoadedMetadata={audio.onLoadedMetadata}
+        onPlay={onPlayStart}
+        onPause={audio.onPause}
+      />
+
+      {recorder.canRecord &&
+        (recording ? (
+          <>
+            <button className="btn danger" onClick={onStopRecording}>
+              ■ Stop and save
+            </button>
+            <span className="recording-dot" aria-live="polite">
+              ● Recording {clock(recorder.elapsed)}
+            </span>
+            {/* Proof that sound is arriving, which the counter alone cannot give. */}
+            <span className="meter" title="Input level">
+              <span className="meter-fill" ref={recorder.meterRef} />
+            </span>
+            <button className="btn" onClick={recorder.cancel} title="Throw this recording away">
+              Discard
+            </button>
+          </>
+        ) : (
+          <button className="btn" onClick={onRecord} disabled={recorder.state === 'saving'}>
+            {recorder.state === 'saving' ? 'Saving…' : '● Record'}
+          </button>
+        ))}
+
+      {!recording && recorder.devices.length > 1 && (
+        <label className="check" title="Which microphone to record from">
+          Mic
+          <select
+            value={recorder.deviceId ?? ''}
+            onChange={(e) => recorder.setDeviceId(e.target.value || null)}
+          >
+            <option value="">Default</option>
+            {recorder.devices.map((d) => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {!recording && (
+        <button
+          className="btn"
+          onClick={() => (audio.canPick ? void audio.attach() : picker.current?.click())}
+        >
+          {audio.status === 'none' ? 'Attach recording' : 'Change recording'}
+        </button>
+      )}
+      <input
+        ref={picker}
+        type="file"
+        accept="audio/*,video/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) onPick(file)
+          e.target.value = ''
+        }}
+      />
+
+      {audio.status !== 'none' && !recording && (
+        <>
+          {/* Laid out as a transport — back, play, forward — so the two steps
+              read as a pair and the shortcuts are discoverable from the tooltip. */}
+          <button
+            className="btn"
+            onClick={() => audio.nudge(-NUDGE_SECONDS)}
+            title={`Back ${NUDGE_SECONDS} seconds (Alt + ←)`}
+          >
+            ↺ {NUDGE_SECONDS}s
+          </button>
+          <button className="btn" onClick={audio.toggle} title="Play or pause (Space)">
+            {audio.playing ? '❚❚' : '▶'}
+          </button>
+          <button
+            className="btn"
+            onClick={() => audio.nudge(NUDGE_SECONDS)}
+            title={`Forward ${NUDGE_SECONDS} seconds (Alt + →)`}
+          >
+            ↻ {NUDGE_SECONDS}s
+          </button>
+          <label className="check">
+            Speed
+            <select value={audio.rate} onChange={(e) => audio.setRate(Number(e.target.value))}>
+              {[0.5, 0.75, 1, 1.25, 1.5].map((r) => (
+                <option key={r} value={r}>
+                  {r}×
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="keyword">{clock(now)}</span>
+        </>
+      )}
+
+      {/* While recording, the pulsing indicator is the status; anything else
+          here would contradict it. */}
+      <span
+        className={`keyword audiostatus ${audio.status === 'ready' && !note ? '' : 'warn'}`}
+        title={audio.name ?? undefined}
+      >
+        {recording
+          ? ''
+          : recorder.state === 'denied'
+          ? 'The microphone was not allowed'
+            : recorder.state === 'unsupported'
+              ? 'This browser cannot record'
+              : (note ??
+                (audio.name && audio.status === 'ready' ? audio.name : STATUS_TEXT[audio.status]))}
+      </span>
+
+      {/*
+        * Its own full-width row rather than the status line, which ellipsises at
+        * 320px. A warning that the recording is empty is the one message here
+        * that must never be cut off.
+        */}
+      {(recorder.deadAir || alarm) && (
+        <p className="audioalarm" role="alert">
+          {recorder.deadAir ? DEAD_MICROPHONE : alarm}
+        </p>
+      )}
+
+      {audio.status === 'different' && (
+        <button className="btn danger" onClick={onClearTimes}>
+          Clear the old times
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -270,6 +703,7 @@ const PassageWord = memo(function PassageWord({
   omitted,
   wordId,
   register,
+  onPick,
   onKeyDown,
   onChange,
   onUnskip,
@@ -280,6 +714,7 @@ const PassageWord = memo(function PassageWord({
   omitted: boolean
   wordId: string
   register: (el: HTMLInputElement | null) => void
+  onPick: () => void
   onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
   onChange: (value: string) => void
   onUnskip: () => void
@@ -291,7 +726,16 @@ const PassageWord = memo(function PassageWord({
     <>
       {gap}
       <span className={`pw ${omitted ? 'skipped' : said ? 'said' : correct ? 'read' : ''}`}>
-        <span className="pw-word">{text}</span>
+        {/*
+          * Clicking the word opens it for marking, because the box beside it is
+          * collapsed to nothing until it is needed and there is otherwise no
+          * way to reach one word with the mouse. A span rather than a button:
+          * the passage has to read as prose, and the word is already reachable
+          * from the keyboard through the box it belongs to.
+          */}
+        <span className="pw-word" onClick={onPick} title={`Mark ${text}`}>
+          {text}
+        </span>
         {omitted && (
           <button className="pw-skip" title="They skipped this word — click to undo" onClick={onUnskip}>
             –

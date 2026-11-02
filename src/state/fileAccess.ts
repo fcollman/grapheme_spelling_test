@@ -69,6 +69,76 @@ export async function pickProjectFileToOpen(): Promise<FileSystemFileHandle | nu
   }
 }
 
+/**
+ * A recording to listen to while marking.
+ *
+ * `.mov` is in the list because phones produce it and a teacher recording a
+ * child will have whatever her phone gave her. Read-only throughout: a
+ * recording is never written to, which is why `isSafeProjectTarget` has nothing
+ * to say about it — that guard protects a *save* target from being pointed at
+ * the app itself, and nothing here can reach a save.
+ */
+const AUDIO_TYPE = {
+  description: 'Audio or video recording',
+  accept: {
+    'audio/*': ['.mp3', '.m4a', '.wav', '.ogg', '.aac', '.flac', '.webm'],
+    'video/*': ['.mov', '.mp4', '.m4v'],
+  },
+}
+
+export async function pickAudioFile(): Promise<FileSystemFileHandle | null> {
+  if (!window.showOpenFilePicker) return null
+  try {
+    const [handle] = await window.showOpenFilePicker({ types: [AUDIO_TYPE], id: 'gst-audio' })
+    return handle ?? null
+  } catch (e) {
+    if (classifyError(e) === 'cancelled') return null
+    throw e
+  }
+}
+
+/**
+ * Refuses to write a recording anywhere but an audio file.
+ *
+ * The same reasoning as `isSafeProjectTarget`: the save dialog will accept any
+ * name typed into it, and a teacher who lands on `index.html` would overwrite
+ * the application with a sound file.
+ */
+export function isSafeAudioTarget(name: string): boolean {
+  return /\.(webm|m4a|mp4|mp3|wav|ogg|aac)$/i.test(name)
+}
+
+/** Where to put a recording the page just made. */
+export async function pickRecordingTarget(
+  suggestedName: string,
+  extension: string,
+): Promise<FileSystemFileHandle | null> {
+  if (!window.showSaveFilePicker) return null
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types: [{ description: 'Recording', accept: { 'audio/*': [`.${extension}`] } }],
+      id: 'gst-audio',
+    })
+    if (!handle || !isSafeAudioTarget(handle.name)) return null
+    return handle
+  } catch (e) {
+    if (classifyError(e) === 'cancelled') return null
+    throw e
+  }
+}
+
+export async function writeBlob(handle: FileSystemFileHandle, blob: Blob): Promise<void> {
+  const writable = await handle.createWritable()
+  try {
+    await writable.write(blob)
+    await writable.close()
+  } catch (e) {
+    await writable.abort?.()
+    throw e
+  }
+}
+
 export async function pickExportsFolder(): Promise<FileSystemDirectoryHandle | null> {
   if (!window.showDirectoryPicker) return null
   try {
@@ -85,9 +155,12 @@ export async function pickExportsFolder(): Promise<FileSystemDirectoryHandle | n
  * Safe to call on mount: `queryPermission` never prompts and never needs a user
  * gesture, unlike `requestPermission`.
  */
-export async function hasPermission(handle: FileSystemHandle): Promise<boolean> {
+export async function hasPermission(
+  handle: FileSystemHandle,
+  mode: FileSystemPermissionMode = 'readwrite',
+): Promise<boolean> {
   if (!handle.queryPermission) return true
-  return (await handle.queryPermission({ mode: 'readwrite' })) === 'granted'
+  return (await handle.queryPermission({ mode })) === 'granted'
 }
 
 /**
@@ -97,9 +170,12 @@ export async function hasPermission(handle: FileSystemHandle): Promise<boolean> 
  * rides on the Save the teacher was going to press anyway rather than
  * ambushing her with a prompt when the page opens.
  */
-export async function requestWritePermission(handle: FileSystemHandle): Promise<boolean> {
+export async function requestWritePermission(
+  handle: FileSystemHandle,
+  mode: FileSystemPermissionMode = 'readwrite',
+): Promise<boolean> {
   if (!handle.requestPermission) return true
-  return (await handle.requestPermission({ mode: 'readwrite' })) === 'granted'
+  return (await handle.requestPermission({ mode })) === 'granted'
 }
 
 /**
@@ -190,7 +266,12 @@ export async function writeIntoFolder(
 const DB_NAME = 'graphemespellingtest.handles'
 const STORE = 'handles'
 
-export type HandleKey = 'project' | 'exports'
+/**
+ * `audio:<testId>:<studentId>` remembers which recording goes with which
+ * reading, so the file does not have to be found again every session. The
+ * recording itself is never stored — only the pointer to where it lives.
+ */
+export type HandleKey = 'project' | 'exports' | `audio:${string}`
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

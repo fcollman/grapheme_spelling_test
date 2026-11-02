@@ -117,3 +117,62 @@ describe('marking a word as skipped', () => {
     expect(reducer(p, { type: 'setOmitted', wordId: the, studentId: 'a', omitted: false })).toBe(p)
   })
 })
+
+describe('marking the rest of the passage read correctly', () => {
+  it('fills in every word nothing has been said about', () => {
+    const p = reducer(withPassage('The cat sat'), { type: 'markRestRead', studentId: 'a' })
+    const [the, cat, sat] = wordIds(p)
+    expect(p.tests[0].responses[the].a).toBe('The')
+    expect(p.tests[0].responses[cat].a).toBe('cat')
+    expect(p.tests[0].responses[sat].a).toBe('sat')
+  })
+
+  /*
+   * The whole point of filling in only the rest. A teacher who has already
+   * noted the two words that went wrong must be able to say "and the others
+   * were fine" without losing them.
+   */
+  it('leaves a respelling alone', () => {
+    let p = withPassage('The cat sat')
+    const [, cat] = wordIds(p)
+    p = reducer(p, { type: 'setResponse', wordId: cat, studentId: 'a', value: 'kat' })
+    p = reducer(p, { type: 'markRestRead', studentId: 'a' })
+
+    expect(p.tests[0].responses[cat].a).toBe('kat')
+  })
+
+  it('leaves a skipped word skipped rather than claiming it was read', () => {
+    let p = withPassage('The cat sat')
+    const [, cat] = wordIds(p)
+    p = reducer(p, { type: 'setOmitted', wordId: cat, studentId: 'a', omitted: true })
+    p = reducer(p, { type: 'markRestRead', studentId: 'a' })
+
+    expect(p.tests[0].omissions?.[cat]?.a).toBe(true)
+    expect(p.tests[0].responses[cat]?.a).toBeUndefined()
+  })
+
+  it('marks one student only', () => {
+    let p = withPassage('The cat sat')
+    p = { ...p, students: [...p.students, { id: 'b', name: 'Ben' }] }
+    p = reducer(p, { type: 'markRestRead', studentId: 'a' })
+
+    const [the] = wordIds(p)
+    expect(p.tests[0].responses[the].a).toBe('The')
+    expect(p.tests[0].responses[the].b).toBeUndefined()
+  })
+
+  it('returns the same project when there is nothing left to fill in', () => {
+    const p = reducer(withPassage('The cat sat'), { type: 'markRestRead', studentId: 'a' })
+    // Object identity is the dirty flag, so a second click must not mark the
+    // file unsaved.
+    expect(reducer(p, { type: 'markRestRead', studentId: 'a' })).toBe(p)
+  })
+
+  /* Unticking the box is this, and it has to be reachable. */
+  it('is undone by clearing the student', () => {
+    let p = reducer(withPassage('The cat sat'), { type: 'markRestRead', studentId: 'a' })
+    p = reducer(p, { type: 'clearStudentResponses', studentId: 'a' })
+    const [the] = wordIds(p)
+    expect(p.tests[0].responses[the]?.a).toBeUndefined()
+  })
+})
