@@ -1374,6 +1374,31 @@ td.classcol {
   display: inline;
 }
 
+/* ---------- encode / decode ---------- */
+
+/*
+ * Sits directly above the picker, because the picker lists only the tests this
+ * mode covers. A segmented pair rather than a dropdown: there are two answers,
+ * they are opposites, and which one is showing should be readable without
+ * opening anything.
+ */
+.modetoggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.modetoggle-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  margin-right: 2px;
+}
+
 /* ---------- test picker ---------- */
 
 .testpicker {

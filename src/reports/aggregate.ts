@@ -518,8 +518,16 @@ export function buildProgress(
   byTest: Map<string, TestAnalysis>,
   who: string,
   level: ProgressLevel,
+  /*
+   * Which tests make up the time series, defaulting to all of them.
+   *
+   * This is the one report that does not go through `buildReportsAcross`, so it
+   * is also the one place the encode/decode filter cannot reach on its own. Left
+   * to itself it would put a spelling test and a reading test in adjacent
+   * columns and call the difference growth, when the two are opposite questions.
+   */
+  tests: Test[] = testsInOrder(project),
 ): ProgressRow[] {
-  const tests = testsInOrder(project)
   const perTest = tests.map((test) => {
     const analysis = byTest.get(test.id)
     return { test, reports: analysis ? buildReports(project, test, analysis) : null }
@@ -574,10 +582,19 @@ export function buildProgress(
     }
   }
 
-  // A row created part-way through needs blank points for the earlier tests.
+  /*
+   * A row created part-way through needs blank points for the earlier tests.
+   *
+   * Counted back from the end, because the points go on the FRONT: a row with
+   * n of the T tests is missing exactly the first T - n, and the next one to
+   * prepend is the one just before whatever it already starts with. Indexing
+   * forwards instead filled the gap with the last tests over again — the count
+   * came out right, so a steady table looked fine while every blank cell named
+   * the wrong test and every row carried a duplicate test id.
+   */
   for (const row of rows.values()) {
     while (row.points.length < tests.length) {
-      const test = tests[row.points.length]
+      const test = tests[tests.length - row.points.length - 1]
       row.points.unshift({ testId: test.id, testName: test.name, date: test.date, tally: null })
     }
   }

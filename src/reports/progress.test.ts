@@ -229,6 +229,34 @@ describe('progress over time', () => {
     }
   })
 
+  it('back-fills a late-arriving row with the tests that actually came before it', async () => {
+    /*
+     * A category that first appears half way through the term needs blank points
+     * for the tests before it. Those were filled from the wrong end of the list,
+     * so the row ended up naming the LAST tests twice and the early ones never —
+     * invisible in a steady table, because the count still came out right.
+     *
+     * It stops being invisible the moment the column list changes under a table
+     * that is already on screen, which is what the encode/decode toggle does:
+     * the points are keyed by test id, and duplicate keys leave stale cells
+     * behind, so rows come out ragged and spill past the last column.
+     */
+    const project = makeProject()
+    // Nothing with a digraph until March.
+    project.tests[0] = makeTest('t1', 'January', '2026-01-10', [['w1', 'cat']], {
+      w1: { s1: 'cat', s2: 'cat' },
+    })
+
+    const rows = buildProgress(project, await analyseAll(project), CLASS, 'category')
+    const digraph = rows.find((r) => r.category === 'consonant-digraph')!
+
+    expect(digraph.points.map((p) => p.testName)).toEqual(['January', 'February', 'March'])
+    expect(digraph.points.map((p) => p.testId)).toEqual(['t1', 't2', 't3'])
+    expect(digraph.points[0].tally).toBeNull()
+    expect(digraph.points[1].tally).toBeNull()
+    expect(digraph.points[2].tally).not.toBeNull()
+  })
+
   it('marks a category missing from a test as not assessed, not as zero', async () => {
     const project = makeProject()
     const rows = buildProgress(project, await analyseAll(project), CLASS, 'category')
@@ -266,5 +294,45 @@ describe('progress over time', () => {
     project.tests = [project.tests[0]]
     const rows = buildProgress(project, await analyseAll(project), CLASS, 'category')
     for (const r of rows) expect(r.points).toHaveLength(1)
+  })
+})
+
+/**
+ * The one report that does not go through `buildReportsAcross`, so the one
+ * place the encode/decode filter has to be applied by hand. Left to itself it
+ * would put a spelling test and a reading test in adjacent columns of one
+ * series and read the difference between them as growth.
+ */
+describe('buildProgress over a subset of the tests', () => {
+  it('defaults to every test, which is what every other caller relies on', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const rows = buildProgress(project, byTest, CLASS, 'category')
+
+    expect(rows[0].points.map((p) => p.testId)).toEqual(['t1', 't2', 't3'])
+  })
+
+  it('builds the series from only the tests it is given, in their order', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const some = testsInOrder(project).filter((t) => t.id !== 't2')
+    const rows = buildProgress(project, byTest, CLASS, 'category', some)
+
+    for (const row of rows) {
+      expect(row.points.map((p) => p.testId)).toEqual(['t1', 't3'])
+    }
+  })
+
+  it('leaves the excluded test out of the numbers, not just out of the columns', async () => {
+    const project = makeProject()
+    const byTest = await analyseAll(project)
+    const all = buildProgress(project, byTest, CLASS, 'category')
+    const one = buildProgress(project, byTest, CLASS, 'category', [project.tests[0]])
+
+    const totalOf = (rows: ReturnType<typeof buildProgress>) =>
+      rows.reduce((n, r) => n + r.points.reduce((m, p) => m + (p.tally?.total ?? 0), 0), 0)
+
+    expect(totalOf(one)).toBeGreaterThan(0)
+    expect(totalOf(one)).toBeLessThan(totalOf(all))
   })
 })

@@ -20,6 +20,8 @@ import { displayList, type Notation } from '../data/phonemes'
 import { CategoryDot } from '../components/CategoryTag'
 import { Fraction } from '../components/Fraction'
 import { TestPicker } from '../components/TestPicker'
+import { ModeToggle, noTestsInMode } from '../components/ModeToggle'
+import { useReportMode } from '../state/useSelectedTests'
 import { OccurrenceModal } from '../components/OccurrenceModal'
 import type { Drill } from '../reports/occurrences'
 import { scaleColor, scaleInk } from '../components/Legend'
@@ -210,7 +212,11 @@ export function StudentProfile() {
           : `wrote "${e.wrote === NONE ? 'nothing' : e.wrote}"`
         rows.push([
           names(s.id),
-          e.mark === 'plausible' ? 'Spelling error' : 'Sound error',
+          e.mark === 'plausible'
+            ? scope.mode === 'decoding'
+              ? 'Close pronunciation'
+              : 'Spelling error'
+            : 'Sound error',
           e.row.patternLabel ?? e.row.letters,
           displayList(e.row.phonemes, notation),
           `${came}${e.words.length ? ` in ${e.words.join(', ')}` : ''}`,
@@ -269,13 +275,18 @@ export function StudentProfile() {
         </button>
       </div>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
 
       {scope.error && <div className="error">Could not analyse every test: {scope.error}</div>}
       {scope.loading && <div className="empty">Analysing…</div>}
 
       {!scope.loading && scope.sources.length === 0 && (
-        <div className="empty">Choose at least one test to build a profile from.</div>
+        <div className="empty">
+          {scope.tests.length === 0
+            ? noTestsInMode(scope.mode)
+            : 'Choose at least one test to build a profile from.'}
+        </div>
       )}
 
       {!scope.loading &&
@@ -299,6 +310,8 @@ function Profile({
   const { project } = useStore()
   const names = useStudentNames()
   const { notation } = project.settings
+  const { mode } = useReportMode()
+  const spoke = mode === 'decoding'
 
   const summary = summarise(reports, student.id)
   const errors = errorLines(reports, student.id)
@@ -352,7 +365,7 @@ function Profile({
             {totalCorrect}/{totalAttempted}
           </strong>
           <span>
-            words spelled correctly
+            words {spoke ? 'read' : 'spelled'} correctly
             {totalAttempted > 0 && ` · ${Math.round((totalCorrect / totalAttempted) * 100)}%`}
           </span>
         </div>
@@ -457,10 +470,18 @@ function Profile({
 
       {spellingErrors.length > 0 && (
         <>
-          <h4>Right sound, different spelling</h4>
+          {/*
+            * Amber is the same cell in both directions but not the same news. In
+            * encoding it is the right sound spelled another way, which is a
+            * spelling lesson. In decoding it is the right word said with an
+            * accent or a reduced vowel, which is not an error to teach against
+            * at all — only something to know about before reading the rest.
+            */}
+          <h4>{spoke ? 'Close enough' : 'Right sound, different spelling'}</h4>
           <p className="sub" style={{ marginBottom: 6 }}>
-            These sounded correct read aloud. The sound is known; the spelling choice is what needs
-            teaching.
+            {spoke
+              ? 'These were near enough: an accent difference, or an unstressed vowel reduced the way everybody reduces it. The word was decoded.'
+              : 'These sounded correct read aloud. The sound is known; the spelling choice is what needs teaching.'}
           </p>
           <ErrorList
             lines={spellingErrors}
@@ -484,7 +505,7 @@ function Profile({
               <thead>
                 <tr>
                   <th>Word</th>
-                  <th>Wrote</th>
+                  <th>{spoke ? 'Said' : 'Wrote'}</th>
                   <th>Type</th>
                 </tr>
               </thead>

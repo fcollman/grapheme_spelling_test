@@ -7,6 +7,26 @@ conversation with a case manager.
 
 ![The top of a student profile: the word score, what is secure, and what needs work](images/profile-top.webp)
 
+## Spelling or reading — one question at a time
+
+Above the test picker, **Evidence from** chooses which way round the page is
+reading the evidence:
+
+- **Spelling tests** — *encoding*. You said a sound, could they write it?
+- **Reading passages** — *decoding*. They saw the letters, could they say it?
+
+![Evidence from, with Spelling tests chosen, above the test picker listing only the spelling tests](images/mode-toggle.webp)
+
+It is the same grapheme–phoneme knowledge asked in opposite directions, and a
+child can be fluent one way and lost the other — which way round it is changes
+what you teach. So the two are never averaged together: every number on every
+report answers one of those questions, and this says which.
+
+The choice follows you between tabs like the test picker does, and each side
+keeps its own selection, so flipping across and back does not lose the span you
+had lined up. The picker underneath lists only the tests that answer the
+question you have chosen, and your printouts and downloads say which it was.
+
 ## One test, or a whole term
 
 The row of chips under the toolbar decides which tests the page covers.

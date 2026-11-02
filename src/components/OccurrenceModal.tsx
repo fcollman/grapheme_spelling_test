@@ -3,6 +3,7 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { findOccurrences, type Drill } from '../reports/occurrences'
 import { displayList } from '../data/phonemes'
+import { isReading } from '../state/types'
 import type { Mark } from '../engine/align'
 import { toCsv } from '../export/csv'
 import { useDownloads } from './DownloadProvider'
@@ -13,6 +14,20 @@ const MARK_TEXT: Record<Mark, string> = {
   plausible: 'right sound, other spelling',
   wrong: 'wrong sound',
   omitted: 'left out',
+}
+
+/**
+ * The same four marks, said the way they happened.
+ *
+ * Reading aloud makes no spelling choice, so "other spelling" would describe
+ * the teacher's typing rather than the student's answer — and an amber mark
+ * here is a reduced vowel or an accent, not an error at all.
+ */
+const SAID_TEXT: Record<Mark, string> = {
+  exact: 'correct',
+  plausible: 'close pronunciation',
+  wrong: 'wrong sound',
+  omitted: 'said nothing',
 }
 
 /**
@@ -31,6 +46,15 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
 
   const rows = useMemo(() => findOccurrences(project, drill), [project, drill])
   const sounds = drill.sounds?.length ? displayList(drill.sounds, notation) : ''
+
+  /*
+   * Decided from the evidence rather than from the toggle, because these are
+   * the very answers the cell counted. The columns below hold the teacher's
+   * transcription of a reading, and heading one "They wrote" would credit the
+   * student with a spelling they never produced.
+   */
+  const said = drill.sources.length > 0 && drill.sources.every(({ test }) => isReading(test))
+  const markText = said ? SAID_TEXT : MARK_TEXT
 
   // Escape closes, which a modal opened by a stray click badly needs.
   useEffect(() => {
@@ -54,7 +78,9 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
 
   const exportCsv = () => {
     const out: string[][] = [
-      ['Test', 'Date', 'Student', 'Word', 'Type', 'Wrote', 'Needed', 'They wrote', 'Sounds', 'Result'],
+      said
+        ? ['Test', 'Date', 'Student', 'Word', 'Type', 'Read as', 'Letters', 'You typed', 'Sounds', 'Result']
+        : ['Test', 'Date', 'Student', 'Word', 'Type', 'Wrote', 'Needed', 'They wrote', 'Sounds', 'Result'],
       ...rows.map((r) => [
         r.testName,
         r.testDate,
@@ -65,7 +91,7 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
         r.targetLetters,
         r.wroteLetters || '—',
         displayList(r.sounds, notation),
-        MARK_TEXT[r.mark],
+        markText[r.mark],
       ]),
     ]
     requestDownload({
@@ -105,8 +131,9 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                   {correct}/{rows.length}
                 </strong>
                 <span>
-                  spelled correctly
-                  {plausible > 0 && ` · ${plausible} right sound, other spelling`}
+                  {said ? 'read correctly' : 'spelled correctly'}
+                  {plausible > 0 &&
+                    ` · ${plausible} ${said ? 'close pronunciation' : 'right sound, other spelling'}`}
                 </span>
               </>
             ) : (
@@ -128,9 +155,9 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                   {manyTests && <th>Test</th>}
                   {manyStudents && <th>Student</th>}
                   <th>Word</th>
-                  <th>They wrote</th>
-                  <th>Needed</th>
-                  <th>Wrote here</th>
+                  <th>{said ? 'Read as' : 'They wrote'}</th>
+                  <th>{said ? 'Letters' : 'Needed'}</th>
+                  <th>{said ? 'You typed' : 'Wrote here'}</th>
                   <th>Result</th>
                 </tr>
               </thead>
@@ -149,7 +176,7 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                       {r.wroteLetters || '—'}
                     </td>
                     <td className={`cell ${r.mark}`} style={{ cursor: 'default' }}>
-                      {MARK_TEXT[r.mark]}
+                      {markText[r.mark]}
                     </td>
                   </tr>
                 ))}

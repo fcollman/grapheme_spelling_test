@@ -52,6 +52,7 @@ what that child needs. Sounds that never came up sink to the bottom either way.
 Everything else on this page behaves exactly as **Accuracy by grapheme** does:
 
 - Rows are grouped by category, with the **whole class** column first.
+- **Evidence from** at the top chooses spelling tests or reading passages — the two are never pooled into one number. The **Student profile** section of this guide explains the choice.
 - The test picker at the top pools results across any tests you choose.
 - The **Student** columns let you compare across the class, or read one child.
 - **Click any fraction or percentage** to open every example behind it.

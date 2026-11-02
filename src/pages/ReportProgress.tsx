@@ -14,6 +14,8 @@ import { scaleColor, scaleInk } from '../components/Legend'
 import { toCsv } from '../export/csv'
 import { useDownloads } from '../components/DownloadProvider'
 import { useFileName } from '../state/filename'
+import { ModeToggle, noTestsInMode } from '../components/ModeToggle'
+import { inMode, modeNoun, useReportMode } from '../state/useSelectedTests'
 
 /**
  * Accuracy across every test, for showing growth on an IEP goal rather than a
@@ -34,11 +36,22 @@ export function ReportProgress() {
 
   // Only analyses every test while this tab is open.
   const all = useAllTests(project, true)
-  const tests = useMemo(() => testsInOrder(project), [project])
+
+  /*
+   * This report builds its own series rather than going through a selection, so
+   * the encode/decode filter has to be applied by hand here. Without it a
+   * spelling test and a reading test would sit in adjacent columns and the
+   * change between them would be read as growth.
+   */
+  const { mode } = useReportMode()
+  const tests = useMemo(
+    () => testsInOrder(project).filter((t) => inMode(t, mode)),
+    [project, mode],
+  )
 
   const rows = useMemo(
-    () => (all.loading ? [] : buildProgress(project, all.byTest, who, level)),
-    [project, all.byTest, all.loading, who, level],
+    () => (all.loading ? [] : buildProgress(project, all.byTest, who, level, tests)),
+    [project, all.byTest, all.loading, who, level, tests],
   )
 
   const whoName = who === CLASS ? 'Whole class' : names(who)
@@ -63,7 +76,7 @@ export function ReportProgress() {
       ])
     }
     requestDownload({
-      name: fileName('Progress over time', [whoName]),
+      name: fileName('Progress over time', [whoName, modeNoun(mode)]),
       extension: 'csv',
       mime: 'text/csv',
       build: () => toCsv(out),
@@ -71,13 +84,17 @@ export function ReportProgress() {
     })
   }
 
-  if (project.tests.length < 2) {
+  // Two *of this mode*: one of each is not a series, it is two different
+  // questions, and the change between them would mean nothing.
+  if (tests.length < 2) {
     return (
       <section className="panel">
         <h2>Progress over time</h2>
+        <ModeToggle />
         <div className="empty">
-          There is only one test so far. Add a second test with a later date and this report will
-          compare them.
+          {tests.length === 0
+            ? noTestsInMode(mode)
+            : `There is only one ${modeNoun(mode, false)} so far. Add a second with a later date and this report will compare them.`}
         </div>
       </section>
     )
@@ -85,8 +102,11 @@ export function ReportProgress() {
 
   return (
     <section className="panel">
-      <PrintTitle>Progress over time · {whoName}</PrintTitle>
+      <PrintTitle>
+        Progress over time · {whoName} · {modeNoun(mode)}
+      </PrintTitle>
       <h2>Progress over time</h2>
+      <ModeToggle />
       <p className="hint">
         Accuracy on each test, oldest first, so growth on a goal can be shown rather than a single
         snapshot. A dash means that category was not on that test — it is not a zero, and it does not
@@ -116,7 +136,7 @@ export function ReportProgress() {
         <button className="btn" onClick={exportCsv} disabled={rows.length === 0}>
           Download CSV
         </button>
-        <button className="btn" onClick={() => requestPrint(fileName('Progress over time', [whoName]))}>
+        <button className="btn" onClick={() => requestPrint(fileName('Progress over time', [whoName, modeNoun(mode)]))}>
           Print / Save PDF
         </button>
       </div>

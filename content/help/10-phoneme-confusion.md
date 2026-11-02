@@ -30,6 +30,7 @@ that is quietly costing them marks across every test.
 - **Hide rows and columns with no confusions** leaves only the sounds that were
   actually swapped. Untick it to see every sound with a row and a column of its
   own, which is the view where the correct answers run down the green diagonal.
+- **Evidence from** at the top chooses spelling tests or reading passages — the two are never pooled into one number. The **Student profile** section of this guide explains the choice.
 - The **test picker** at the top pools the count across any tests you select. 
 - **Click any number** to open the examples behind it.
 - **Download CSV** and **Print / Save PDF** work as they do everywhere else.

@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
 import { useSelectedTests } from '../state/useSelectedTests'
 import { TestPicker } from '../components/TestPicker'
+import { ModeToggle, noTestsInMode } from '../components/ModeToggle'
 import { buildReportsAcross, CLASS, getMisuse } from '../reports/aggregate'
 import { display, get, REPORT_ORDER } from '../data/phonemes'
 import { toCsv } from '../export/csv'
@@ -63,12 +64,15 @@ export function ReportMisuse() {
       <section className="panel">
         <h2>Phoneme misuse</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
         <div className="empty">
           {scope.loading
             ? 'Analysing every test…'
             : scope.sources.length === 0
-              ? 'Choose at least one test above.'
+              ? scope.tests.length === 0
+                ? noTestsInMode(scope.mode)
+                : 'Choose at least one test above.'
               : 'Nothing to report yet — enter some student spellings first.'}
         </div>
       </section>
@@ -82,11 +86,12 @@ export function ReportMisuse() {
       </PrintTitle>
       <h2>Phoneme misuse</h2>
 
+      <ModeToggle />
       <TestPicker tests={scope.tests} selected={scope.selected} onChange={scope.setSelected} />
       <p className="hint">
-        How many times each student wrote letters making this sound when a different sound was
-        needed. Inserted sounds are counted here too. Read it alongside the accuracy report: a sound
-        can be both well known and over-used.
+        {scope.mode === 'decoding'
+          ? 'How many times each student said this sound when the word called for a different one. Sounds they added are counted here too. Read it alongside the accuracy report: a sound can be both well known and over-used.'
+          : 'How many times each student wrote letters making this sound when a different sound was needed. Inserted sounds are counted here too. Read it alongside the accuracy report: a sound can be both well known and over-used.'}
       </p>
 
       <div className="group no-print" style={{ marginBottom: 12, display: 'flex', gap: 8 }}>
