@@ -13,6 +13,8 @@ export function SortHeader({
   sort,
   onSort,
   naturalOrder,
+  ascending,
+  descending,
   className,
 }: {
   columnId: string
@@ -21,6 +23,9 @@ export function SortHeader({
   onSort: (columnId: string) => void
   /** What a third click returns to, named in the tooltip. */
   naturalOrder: string
+  /** What the two directions mean here, when "worst/best" does not fit. */
+  ascending?: string
+  descending?: string
   className?: string
 }) {
   const active = sort?.columnId === columnId
@@ -31,7 +36,7 @@ export function SortHeader({
       className={`sortable ${active ? 'sorted' : ''} ${className ?? ''}`}
       aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
     >
-      <button className="sortbtn" onClick={() => onSort(columnId)} title={sortHint(sort, columnId, label, naturalOrder)}>
+      <button className="sortbtn" onClick={() => onSort(columnId)} title={sortHint(sort, columnId, label, naturalOrder, ascending, descending)}>
         <span className="sortlabel">{label}</span>
         {/* Unsorted columns show a faint double arrow; the sorted one shows which way. */}
         <span className={`sortmark ${active ? 'on' : ''}`} aria-hidden="true">

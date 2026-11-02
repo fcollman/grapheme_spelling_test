@@ -79,10 +79,55 @@ export function sortRows<T>(
   })
 }
 
+/**
+ * The same sort for a column that is one number rather than a score.
+ *
+ * A divergence is not a Tally — it has no "out of", and it is signed, so the
+ * lowest value is not the worst one. Everything else is unchanged: the same
+ * three-state cycle, the same tie-break, and the same rule that an absent value
+ * sinks whichever way round the sort is.
+ *
+ * @param valueOf the row's number in a given column, or `null` when there is
+ *   none to compare — which is not a zero and must never sort as one.
+ */
+export function sortRowsByValue<T>(
+  rows: readonly T[],
+  sort: SortState | null,
+  valueOf: (row: T, columnId: string) => number | null,
+  labelOf: (row: T) => string,
+): T[] {
+  if (sort === null) return [...rows]
+
+  return [...rows].sort((a, b) => {
+    const va = valueOf(a, sort.columnId)
+    const vb = valueOf(b, sort.columnId)
+
+    if (va === null || vb === null) {
+      if (va === vb) return labelOf(a).localeCompare(labelOf(b))
+      return va === null ? 1 : -1
+    }
+
+    if (va !== vb) return sort.direction === 'asc' ? va - vb : vb - va
+    return labelOf(a).localeCompare(labelOf(b))
+  })
+}
+
 /** What the header button says it will do, so a click is never a guess. */
-export function sortHint(sort: SortState | null, columnId: string, label: string, naturalOrder: string): string {
-  if (sort?.columnId !== columnId) return `Sort by ${label}, worst first`
+export function sortHint(
+  sort: SortState | null,
+  columnId: string,
+  label: string,
+  naturalOrder: string,
+  /*
+   * What each direction means in this column's own terms. "Worst first" is
+   * right for a score and wrong for a signed difference, where neither end is
+   * the bad one — they are two different things to teach.
+   */
+  ascending = 'worst first',
+  descending = 'best first',
+): string {
+  if (sort?.columnId !== columnId) return `Sort by ${label}, ${ascending}`
   return sort.direction === 'asc'
-    ? `Sorted worst first — click for best first`
-    : `Sorted best first — click to go back to ${naturalOrder}`
+    ? `Sorted ${ascending} — click for ${descending}`
+    : `Sorted ${descending} — click to go back to ${naturalOrder}`
 }

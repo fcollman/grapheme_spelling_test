@@ -154,6 +154,24 @@ export function soundsOf(key: string): PhonemeId[] {
   return key === NONE || key === '' ? [] : key.split('+')
 }
 
+const CATEGORY_RANK = new Map(CATEGORIES.map((c, i) => [c.id, i]))
+
+/**
+ * The order grapheme rows read in: by category in the taxonomy's own order,
+ * then alphabetically, so a sheet reads like a scope and sequence.
+ *
+ * Exported because the comparison sheets build their rows from the union of two
+ * reports rather than from one, and they have to come out in the same order as
+ * the sheets they are read beside.
+ */
+export function byTeachingOrder(a: GraphemeRow, b: GraphemeRow): number {
+  return (
+    (CATEGORY_RANK.get(a.category) ?? 99) - (CATEGORY_RANK.get(b.category) ?? 99) ||
+    a.letters.localeCompare(b.letters) ||
+    a.phonemes.join().localeCompare(b.phonemes.join())
+  )
+}
+
 /** The column a row's correct answer lands in — the diagonal of the sheet. */
 export function diagonalKey(row: GraphemeRow, producedIsSound: boolean): string {
   return producedIsSound ? soundsKey(row.phonemes) : row.letters
@@ -413,10 +431,6 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
 
   const order = (set: Set<PhonemeId>) => REPORT_ORDER.filter((p) => set.has(p))
 
-  // Grapheme rows come out grouped by category in the taxonomy's own order, then
-  // alphabetically, so the report reads like a scope and sequence.
-  const categoryRank = new Map(CATEGORIES.map((c, i) => [c.id, i]))
-
   /*
    * Columns run in the order the teacher already reads that axis in:
    * alphabetical for spellings, and the phoneme inventory's own order for
@@ -432,12 +446,7 @@ export function buildReportsAcross(project: Project, sources: ReportSource[]): R
     }
     return 0
   }
-  const graphemes = [...graphemeRows.values()].sort(
-    (a, b) =>
-      (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99) ||
-      a.letters.localeCompare(b.letters) ||
-      a.phonemes.join().localeCompare(b.phonemes.join()),
-  )
+  const graphemes = [...graphemeRows.values()].sort(byTeachingOrder)
 
   return {
     phonemes: order(seenTargets),

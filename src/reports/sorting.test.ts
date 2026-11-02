@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextSort, sortRows, type SortState, type Tally } from './sorting'
+import { nextSort, sortRows, sortRowsByValue, type SortState, type Tally } from './sorting'
 
 /**
  * The sheets are built in teaching order; sorting is how a teacher asks "what
@@ -90,5 +90,46 @@ describe('ties', () => {
   it('falls back to the label, so the order never shuffles', () => {
     const rows = [row('oa', { class: [1, 2] }), row('ai', { class: [1, 2] })]
     expect(order(rows, { columnId: 'class', direction: 'asc' })).toEqual(['ai', 'oa'])
+  })
+})
+
+describe('sorting by a plain value', () => {
+  /** A signed difference, as the spelling-against-reading sheet produces. */
+  const rows = [
+    { label: 'oa', gap: 0.8 },
+    { label: 'ck', gap: -0.4 },
+    { label: 'sh', gap: null },
+    { label: 'th', gap: 0 },
+    { label: 'ai', gap: null },
+  ]
+  const by = (sort: SortState | null) =>
+    sortRowsByValue(rows, sort, (r) => r.gap, (r) => r.label).map((r) => r.label)
+
+  it('leaves the sheet alone when nothing is chosen', () => {
+    expect(by(null)).toEqual(['oa', 'ck', 'sh', 'th', 'ai'])
+  })
+
+  it('runs from the lowest value up, which here is signed, not worst-to-best', () => {
+    expect(by({ columnId: 'gap', direction: 'asc' })).toEqual(['ck', 'th', 'oa', 'ai', 'sh'])
+  })
+
+  it('reverses without dragging the absent values up with it', () => {
+    expect(by({ columnId: 'gap', direction: 'desc' })).toEqual(['oa', 'th', 'ck', 'ai', 'sh'])
+  })
+
+  it('sinks a row with no value whichever way the sort runs', () => {
+    // A row the two directions cannot be compared on is not a row scoring zero.
+    for (const direction of ['asc', 'desc'] as const) {
+      expect(by({ columnId: 'gap', direction }).slice(-2)).toEqual(['ai', 'sh'])
+    }
+  })
+
+  it('falls back to the label on a tie, so the order never shuffles', () => {
+    const tied = [{ label: 'z', gap: 0.5 }, { label: 'a', gap: 0.5 }]
+    expect(
+      sortRowsByValue(tied, { columnId: 'gap', direction: 'asc' }, (r) => r.gap, (r) => r.label).map(
+        (r) => r.label,
+      ),
+    ).toEqual(['a', 'z'])
   })
 })

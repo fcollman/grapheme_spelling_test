@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useStore } from '../state/store'
 import { useStudentNames } from '../state/names'
-import { findOccurrences, type Drill } from '../reports/occurrences'
+import { findOccurrences, type Drill, type Occurrence } from '../reports/occurrences'
 import { displayList } from '../data/phonemes'
 import { isReading } from '../state/types'
 import type { Mark } from '../engine/align'
@@ -54,7 +54,14 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
    * student with a spelling they never produced.
    */
   const said = drill.sources.length > 0 && drill.sources.every(({ test }) => isReading(test))
-  const markText = said ? SAID_TEXT : MARK_TEXT
+
+  /*
+   * The comparison sheets open a cell that counts both directions at once, so
+   * one heading cannot describe every row. Each row says how it happened, and
+   * the headings fall back to words that are true of both.
+   */
+  const mixed = !said && drill.sources.some(({ test }) => isReading(test))
+  const markText = (r: Occurrence) => (r.spoken ? SAID_TEXT : MARK_TEXT)[r.mark]
 
   // Escape closes, which a modal opened by a stray click badly needs.
   useEffect(() => {
@@ -66,6 +73,14 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
   }, [onClose])
 
   const correct = rows.filter((r) => r.mark === 'exact').length
+  /*
+   * A mixed list is opened from a cell about the two directions, so the one
+   * thing it must not do is add them together: "50/80" answers neither
+   * question, and the eight read answers are 72 rows down the page.
+   */
+  const written = rows.filter((r) => !r.spoken)
+  const spoken = rows.filter((r) => r.spoken)
+  const exactIn = (of: Occurrence[]) => of.filter((r) => r.mark === 'exact').length
   const plausible = rows.filter((r) => r.mark === 'plausible').length
   /**
    * A confusion or misuse cell already counts one specific outcome, so a
@@ -77,10 +92,13 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
   const manyStudents = drill.studentId === '__class'
 
   const exportCsv = () => {
+    const lead = ['Test', 'Date', 'Student', 'Word', 'Type']
     const out: string[][] = [
-      said
-        ? ['Test', 'Date', 'Student', 'Word', 'Type', 'Read as', 'Letters', 'You typed', 'Sounds', 'Result']
-        : ['Test', 'Date', 'Student', 'Word', 'Type', 'Wrote', 'Needed', 'They wrote', 'Sounds', 'Result'],
+      mixed
+        ? [...lead, 'Whole word', 'Letters', 'This part', 'Sounds', 'Result']
+        : said
+          ? [...lead, 'Read as', 'Letters', 'You typed', 'Sounds', 'Result']
+          : [...lead, 'Wrote', 'Needed', 'They wrote', 'Sounds', 'Result'],
       ...rows.map((r) => [
         r.testName,
         r.testDate,
@@ -91,7 +109,7 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
         r.targetLetters,
         r.wroteLetters || '—',
         displayList(r.sounds, notation),
-        markText[r.mark],
+        markText(r),
       ]),
     ]
     requestDownload({
@@ -125,7 +143,19 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
             </p>
           </div>
           <div className="drillscore">
-            {!countOnly ? (
+            {countOnly ? (
+              <>
+                <strong>{rows.length}</strong>
+                <span>time{rows.length === 1 ? '' : 's'}</span>
+              </>
+            ) : mixed ? (
+              <>
+                <strong>
+                  {exactIn(written)}/{written.length} · {exactIn(spoken)}/{spoken.length}
+                </strong>
+                <span>spelled · read</span>
+              </>
+            ) : (
               <>
                 <strong>
                   {correct}/{rows.length}
@@ -135,11 +165,6 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                   {plausible > 0 &&
                     ` · ${plausible} ${said ? 'close pronunciation' : 'right sound, other spelling'}`}
                 </span>
-              </>
-            ) : (
-              <>
-                <strong>{rows.length}</strong>
-                <span>time{rows.length === 1 ? '' : 's'}</span>
               </>
             )}
           </div>
@@ -155,9 +180,9 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                   {manyTests && <th>Test</th>}
                   {manyStudents && <th>Student</th>}
                   <th>Word</th>
-                  <th>{said ? 'Read as' : 'They wrote'}</th>
-                  <th>{said ? 'Letters' : 'Needed'}</th>
-                  <th>{said ? 'You typed' : 'Wrote here'}</th>
+                  <th>{mixed ? 'Whole word' : said ? 'Read as' : 'They wrote'}</th>
+                  <th>{mixed || said ? 'Letters' : 'Needed'}</th>
+                  <th>{mixed ? 'This part' : said ? 'You typed' : 'Wrote here'}</th>
                   <th>Result</th>
                 </tr>
               </thead>
@@ -176,7 +201,7 @@ export function OccurrenceModal({ drill, onClose }: { drill: Drill; onClose: () 
                       {r.wroteLetters || '—'}
                     </td>
                     <td className={`cell ${r.mark}`} style={{ cursor: 'default' }}>
-                      {markText[r.mark]}
+                      {markText(r)}
                     </td>
                   </tr>
                 ))}

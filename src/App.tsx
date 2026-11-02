@@ -19,6 +19,7 @@ import { ReportGraphemeConfusion } from './pages/ReportGraphemeConfusion'
 import { ReportAccuracy } from './pages/ReportAccuracy'
 import { ReportMisuse } from './pages/ReportMisuse'
 import { ReportConfusion } from './pages/ReportConfusion'
+import { ReportCombinedAccuracy, ReportDivergence } from './pages/ReportCompare'
 import { Help } from './pages/Help'
 import './ui/styles.css'
 
@@ -34,6 +35,8 @@ const TABS = [
   { id: 'accuracy', label: 'Accuracy by phoneme', group: 'By sound' },
   { id: 'misuse', label: 'Phoneme misuse', group: 'By sound' },
   { id: 'confusion', label: 'Phoneme confusion', group: 'By sound' },
+  { id: 'combined', label: 'Combined accuracy', group: 'Both ways' },
+  { id: 'divergence', label: 'Spelling vs reading', group: 'Both ways' },
 ] as const
 
 /** 'help' is reached from the toolbar rather than the tab strip, which is for analysis. */
@@ -384,6 +387,8 @@ function Workspace() {
       {tab === 'accuracy' && <ReportAccuracy />}
       {tab === 'misuse' && <ReportMisuse />}
       {tab === 'confusion' && <ReportConfusion />}
+      {tab === 'combined' && <ReportCombinedAccuracy />}
+      {tab === 'divergence' && <ReportDivergence />}
     </div>
   )
 }
